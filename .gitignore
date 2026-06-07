@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Screenslop runtime output
+artifacts/**
+!artifacts/.gitkeep
+.screenslop/local.json
+
+# Local research workspace, intentionally untracked
+research/repos/
+research/skills/
+research/findings/
+
+# Environment
+.env
+
+# macOS metadata, common on external drives
+.DS_Store
+**/.DS_Store
+._*
+**/._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+
+# Editor/system noise
+*.swp
+*.swo
