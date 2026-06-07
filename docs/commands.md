@@ -76,9 +76,39 @@ Agent JSON contract:
 
 ### `screenslop fix`
 
-Patches selected findings and recaptures evidence.
+Plans and optionally applies selected safe fixes from a critique bundle.
 
-It should not fix everything by default. Pick the high-value findings first.
+Default behavior is conservative: it writes `fix-plan.json` and `fix.md` into the bundle, then edits nothing unless `--apply` is passed and confirmed. In non-interactive runs, `--apply` also needs `--yes`.
+
+Common forms:
+
+```bash
+screenslop fix artifacts/<run> --dry-run
+screenslop fix artifacts/<run> --finding <id> --source-root <app-root> --dry-run --json
+screenslop fix artifacts/<run> --finding <id> --source-root <app-root> --apply --yes --label "Save settings" --json
+screenslop fix artifacts/<run> --finding <id> --source-root <app-root> --apply --yes --verify-command "npm test"
+```
+
+Options:
+
+- `--finding <id>` selects one finding. Repeat it or pass comma-separated IDs for more than one.
+- `--source-root <path>` limits source search and patching to that app source tree.
+- `--dry-run` writes the plan/report and does not edit source.
+- `--apply` enables source edits for auto-fixable findings. It requires at least one `--finding`; dry-run is the only mode that can plan all findings at once.
+- `--yes` confirms non-interactive apply runs.
+- `--label <text>` supplies the replacement label for accessibility-label fixes.
+- `--verify-command <command>` runs a bounded verification command and records pass/fail in `fix-session.json`.
+- `--json` prints parseable JSON only and never prompts. Use `--yes` with `--json --apply`.
+
+MVP auto-fixes are deliberately narrow:
+
+- `ax.missing-name` with a unique `.accessibilityIdentifier(...)`, `.reviewID(...)`, or `sourceHint` line.
+- `ax.generic-name` with the same source certainty and a supplied label.
+- `layout.touch-target` with a unique source match and no existing nearby frame modifier.
+
+Unsupported or ambiguous findings still appear in the fix plan, but Screenslop does not edit source for them. `layout.offscreen-frame`, `logs.*`, evidence-quality findings, visible-label-only matches, and duplicate source matches are manual in this MVP.
+
+No fresh evidence means no verified fix claim. A passed `--verify-command` is recorded as `verify-passed`; only a future recapture/critique loop should use `recapture-passed`.
 
 ### `screenslop verify`
 
