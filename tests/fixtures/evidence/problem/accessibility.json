@@ -1,0 +1,47 @@
+{
+  "role": "AXApplication",
+  "label": "Problem App",
+  "enabled": true,
+  "hidden": false,
+  "frame": { "x": 0, "y": 0, "width": 402, "height": 874 },
+  "children": [
+    {
+      "role": "AXButton",
+      "label": null,
+      "title": null,
+      "value": null,
+      "enabled": true,
+      "hidden": false,
+      "frame": { "x": 20, "y": 120, "width": 32, "height": 32 }
+    },
+    {
+      "role": "AXButton",
+      "label": "Button",
+      "enabled": true,
+      "hidden": false,
+      "frame": { "x": 70, "y": 120, "width": 80, "height": 50 }
+    },
+    {
+      "role": "AXButton",
+      "label": "Offscreen action",
+      "enabled": true,
+      "hidden": false,
+      "frame": { "x": 430, "y": 120, "width": 80, "height": 50 }
+    },
+    {
+      "role": "AXGroup",
+      "label": "dismiss pop-up",
+      "identifier": "PopoverDismissRegion",
+      "enabled": true,
+      "hidden": false,
+      "frame": { "x": -402, "y": -874, "width": 1206, "height": 2622 }
+    },
+    {
+      "role": "AXButton",
+      "label": null,
+      "enabled": false,
+      "hidden": false,
+      "frame": { "x": 24, "y": 300, "width": 20, "height": 20 }
+    }
+  ]
+}
