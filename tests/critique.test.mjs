@@ -125,6 +125,17 @@ test('screenslop critique --json prints parseable output and writes artifacts', 
   assert.equal(fs.existsSync(path.join(root, payload.artifacts.reportPath)), true);
 });
 
+
+test('emitted findings conform to the finding schema contract', async () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(repoRoot, 'schemas/finding.schema.json'), 'utf8'));
+  const { root, bundle } = copyFixture('problem');
+  const result = await collectCritique({ root, bundlePath: bundle });
+
+  for (const finding of result.findings) {
+    assertFindingMatchesSchema(finding, schema);
+  }
+});
+
 test('screenslop critique exits nonzero for unreadable bundle input', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-critique-missing-'));
   const result = spawnSync('node', [path.join(repoRoot, 'bin/screenslop.mjs'), 'critique', 'missing', '--json'], {
@@ -137,6 +148,31 @@ test('screenslop critique exits nonzero for unreadable bundle input', () => {
   assert.equal(payload.ok, false);
   assert.match(payload.error, /Evidence manifest not found/);
 });
+
+
+/**
+ * Checks the subset of JSON Schema constraints used by finding.schema.json.
+ * @param {object} finding Emitted finding.
+ * @param {object} schema Finding JSON schema.
+ * @returns {void}
+ */
+function assertFindingMatchesSchema(finding, schema) {
+  for (const field of schema.required) {
+    assert.ok(Object.hasOwn(finding, field), `missing required field ${field}`);
+  }
+
+  assert.equal(typeof finding.id, 'string');
+  assert.equal(typeof finding.ruleId, 'string');
+  assert.equal(typeof finding.title, 'string');
+  assert.equal(typeof finding.detail, 'string');
+  assert.equal(typeof finding.suggestedFix, 'string');
+  assert.equal(typeof finding.verification, 'string');
+  assert.equal(typeof finding.evidence, 'object');
+  assert.equal(schema.properties.severity.enum.includes(finding.severity), true);
+  assert.equal(schema.properties.pillar.enum.includes(finding.pillar), true);
+  assert.equal(schema.properties.confidence.enum.includes(finding.confidence), true);
+  assert.equal(schema.properties.effort.enum.includes(finding.effort), true);
+}
 
 /**
  * Copies an evidence fixture into a temporary root.
