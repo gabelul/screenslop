@@ -3,10 +3,31 @@
   "$id": "https://booplex.com/screenslop/finding.schema.json",
   "title": "Screenslop Finding",
   "type": "object",
-  "required": ["id", "severity", "pillar", "title", "evidence"],
+  "required": [
+    "id",
+    "ruleId",
+    "severity",
+    "pillar",
+    "title",
+    "detail",
+    "evidence",
+    "suggestedFix",
+    "verification",
+    "confidence",
+    "effort"
+  ],
   "properties": {
-    "id": { "type": "string" },
-    "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+    "id": {
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
     "pillar": {
       "enum": [
         "accessibility",
@@ -21,18 +42,63 @@
         "slop"
       ]
     },
-    "title": { "type": "string" },
-    "detail": { "type": "string" },
+    "title": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
     "evidence": {
       "type": "object",
       "properties": {
-        "artifact": { "type": "string" },
-        "node": { "type": "object" },
-        "screenshotRegion": { "type": "object" },
-        "sourceHint": { "type": "string" }
+        "artifact": {
+          "type": "string"
+        },
+        "node": {
+          "type": "object"
+        },
+        "screenshotRegion": {
+          "type": "object"
+        },
+        "sourceHint": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "type": "number"
+        },
+        "snippet": {
+          "type": "string"
+        }
       }
     },
-    "suggestedFix": { "type": "string" },
-    "verification": { "type": "string" }
+    "suggestedFix": {
+      "type": "string"
+    },
+    "verification": {
+      "type": "string"
+    },
+    "ruleId": {
+      "type": "string"
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "effort": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    }
   }
 }

@@ -5,6 +5,7 @@ import readline from 'node:readline';
 import { run } from '../src/runtime/shell.mjs';
 import { detectRuntimes } from '../src/runtime/detect.mjs';
 import { collectSee } from '../src/evidence/collect-see.mjs';
+import { collectCritique } from '../src/critique/collect-critique.mjs';
 
 const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
@@ -25,6 +26,8 @@ switch (command) {
     await see();
     break;
   case 'critique':
+    await critique();
+    break;
   case 'fix':
   case 'matrix':
   case 'verify':
@@ -49,7 +52,7 @@ Commands:
   doctor     Check Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node
              Use --install-baguette to install after confirmation
   see        Capture screenshot, accessibility tree, optional logs, and evidence
-  critique   Review an evidence bundle (coming next)
+  critique   Review an evidence bundle
   fix        Patch selected findings (coming next)
   matrix     Capture across devices/settings (coming next)
   verify     Recheck previous findings (coming next)
@@ -166,6 +169,68 @@ async function see() {
   if (!result.ok) process.exitCode = 1;
 }
 
+
+/** Reviews an evidence bundle and writes findings. */
+async function critique() {
+  const options = parseOptions(args);
+  const bundlePath = firstPositional(args);
+
+  try {
+    const result = await collectCritique({
+      root: process.cwd(),
+      bundlePath
+    });
+
+    printCritiqueResult(result, options.flags.has('json'));
+  } catch (error) {
+    if (options.flags.has('json')) {
+      console.log(JSON.stringify({
+        ok: false,
+        command: 'critique',
+        error: error.message
+      }, null, 2));
+    } else {
+      console.error(`screenslop critique failed: ${error.message}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * Prints critique output for humans or agents.
+ * @param {object} result Critique result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printCritiqueResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Critiqued evidence bundle: ${result.bundle}`);
+  console.log(`Findings: ${result.summary.total}`);
+  for (const level of ['P0', 'P1', 'P2', 'P3']) {
+    const count = result.summary.bySeverity[level] || 0;
+    if (count > 0) console.log(`${level}: ${count}`);
+  }
+  console.log(`findings: ${result.artifacts.findingsPath}`);
+  console.log(`report: ${result.artifacts.reportPath}`);
+
+  let printed = 0;
+  for (const level of ['P0', 'P1', 'P2', 'P3']) {
+    const findings = result.findings.filter((finding) => finding.severity === level);
+    if (findings.length === 0) continue;
+    console.log(`\n${level}`);
+    for (const finding of findings) {
+      if (printed >= 8) break;
+      console.log(`- ${finding.id}: ${finding.title}`);
+      printed += 1;
+    }
+  }
+  if (result.findings.length > printed) console.log(`...${result.findings.length - printed} more finding(s)`);
+}
+
 /** Prints placeholder status for commands not wired yet. */
 function placeholder(name) {
   console.log(`screenslop ${name} is planned but not wired yet.`);
@@ -211,12 +276,18 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
+  const booleanFlags = new Set(['boot', 'dry-run', 'install-baguette', 'json', 'logs']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) continue;
 
     const key = arg.replace(/^-+/, '');
+    if (booleanFlags.has(key)) {
+      flags.add(key);
+      continue;
+    }
+
     const next = rawArgs[index + 1];
     if (next && !next.startsWith('-')) {
       values[key] = next;
@@ -227,4 +298,23 @@ function parseOptions(rawArgs) {
   }
 
   return { flags, values };
+}
+
+
+/**
+ * Returns the first non-option argument.
+ * @param {string[]} rawArgs Command arguments.
+ * @returns {string|null} Positional value.
+ */
+function firstPositional(rawArgs) {
+  const booleanFlags = new Set(['boot', 'dry-run', 'install-baguette', 'json', 'logs']);
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const arg = rawArgs[index];
+    if (!arg.startsWith('-')) return arg;
+    const key = arg.replace(/^-+/, '');
+    if (booleanFlags.has(key)) continue;
+    const next = rawArgs[index + 1];
+    if (next && !next.startsWith('-')) index += 1;
+  }
+  return null;
 }
