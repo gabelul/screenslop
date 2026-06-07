@@ -1,0 +1,7 @@
+Screenslop is inspired by Pixelslop, Impeccable, and the practical need to review Apple app UI from real runtime evidence.
+
+Pixelslop: https://github.com/gabelul/pixelslop
+Impeccable: https://github.com/pbakaus/impeccable
+Baguette: https://github.com/tddworks/baguette
+
+No upstream source text is copied into the runtime scaffold beyond ordinary command and project references. If future versions port Apache-licensed prose or code, attribution should be added here with file-level detail.

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booplex.com/screenslop/finding.schema.json",
+  "title": "Screenslop Finding",
+  "type": "object",
+  "required": ["id", "severity", "pillar", "title", "evidence"],
+  "properties": {
+    "id": { "type": "string" },
+    "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+    "pillar": {
+      "enum": [
+        "accessibility",
+        "hierarchy",
+        "typography",
+        "color",
+        "layout",
+        "interaction",
+        "motion",
+        "platform",
+        "performance",
+        "slop"
+      ]
+    },
+    "title": { "type": "string" },
+    "detail": { "type": "string" },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "artifact": { "type": "string" },
+        "node": { "type": "object" },
+        "screenshotRegion": { "type": "object" },
+        "sourceHint": { "type": "string" }
+      }
+    },
+    "suggestedFix": { "type": "string" },
+    "verification": { "type": "string" }
+  }
+}

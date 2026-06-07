@@ -1,0 +1,30 @@
+{
+  "name": "screenslop",
+  "version": "0.1.0",
+  "description": "Evidence-first design review for Apple apps. See the screen, read the AX tree, fix the slop.",
+  "type": "module",
+  "bin": {
+    "screenslop": "./bin/screenslop.mjs"
+  },
+  "scripts": {
+    "doctor": "node bin/screenslop.mjs doctor",
+    "see": "node bin/screenslop.mjs see --dry-run",
+    "test": "node --test tests/*.test.mjs",
+    "cleanup:macos": "node scripts/cleanup-macos-sidecars.mjs",
+    "cleanup:macos:dry": "node scripts/cleanup-macos-sidecars.mjs --dry-run"
+  },
+  "keywords": [
+    "swiftui",
+    "ios",
+    "macos",
+    "design-review",
+    "accessibility",
+    "baguette",
+    "simulator"
+  ],
+  "author": "Gabi @ Booplex",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

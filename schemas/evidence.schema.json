@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booplex.com/screenslop/evidence.schema.json",
+  "title": "Screenslop Evidence Bundle",
+  "type": "object",
+  "required": ["runId", "createdAt", "runtime", "artifacts"],
+  "properties": {
+    "runId": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "surface": { "type": ["string", "null"] },
+    "runtime": {
+      "type": "object",
+      "required": ["driver"],
+      "properties": {
+        "driver": { "enum": ["baguette", "xcodebuildmcp", "simctl", "manual"] },
+        "deviceName": { "type": ["string", "null"] },
+        "udid": { "type": ["string", "null"] },
+        "bundleId": { "type": ["string", "null"] },
+        "scheme": { "type": ["string", "null"] }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "appearance": { "enum": ["light", "dark", "unspecified"] },
+        "dynamicType": { "type": ["string", "null"] },
+        "reduceMotion": { "type": "boolean" },
+        "reduceTransparency": { "type": "boolean" },
+        "orientation": { "type": ["string", "null"] }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "screenshot": { "type": ["string", "null"] },
+        "accessibilityTree": { "type": ["string", "null"] },
+        "logs": { "type": ["string", "null"] },
+        "summary": { "type": ["string", "null"] }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "required": ["status", "steps"],
+      "properties": {
+        "status": { "enum": ["scaffold", "dry-run", "complete", "partial", "failed", "unavailable"] },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "ok"],
+            "properties": {
+              "name": { "type": "string" },
+              "ok": { "type": "boolean" },
+              "message": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "sourceHints": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

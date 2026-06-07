@@ -1,0 +1,14 @@
+{
+  "owner": "hud",
+  "pid": 21684,
+  "cwd": "/Volumes/MyEXT/Projects/Apple_Stuff/screenslop",
+  "heartbeat_at": "2026-06-07T14:27:39.124Z",
+  "cooldown_ms": 5000,
+  "jitter_ms": 199,
+  "skip_count": 2331,
+  "last_status": "skipped",
+  "last_reason": "rate_limited",
+  "last_spawn_at": "2026-06-07T14:27:36.055Z",
+  "last_skip_at": "2026-06-07T14:27:39.124Z",
+  "next_allowed_at": "2026-06-07T14:27:41.254Z"
+}
