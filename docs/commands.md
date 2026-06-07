@@ -66,6 +66,12 @@ Reviews evidence and produces findings.
 
 Every finding needs a screenshot region, AX node, log line, source hint, or an explicit note that evidence is missing.
 
+Agent JSON contract:
+
+- `bundle`, `evidence`, and generated artifact paths are repo-relative when the bundle lives inside the current project root.
+- Those paths are absolute when the bundle lives outside the current project root, such as a copied bundle in `/tmp`.
+- Artifact reads prefer files next to the bundle before falling back to repo-root paths from the manifest. This keeps shared or copied bundles self-contained.
+
 ### `screenslop fix`
 
 Patches selected findings and recaptures evidence.
