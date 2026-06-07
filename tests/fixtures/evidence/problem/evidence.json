@@ -1,0 +1,22 @@
+{
+  "runId": "problem",
+  "createdAt": "2026-06-07T00:00:00.000Z",
+  "surface": "Problem Fixture",
+  "runtime": { "driver": "baguette", "deviceName": "iPhone Test", "udid": "TEST" },
+  "environment": { "appearance": "unspecified" },
+  "artifacts": {
+    "screenshot": "tests/fixtures/evidence/problem/screenshot.jpg",
+    "accessibilityTree": "tests/fixtures/evidence/problem/accessibility.json",
+    "logs": "tests/fixtures/evidence/problem/logs.ndjson",
+    "summary": "tests/fixtures/evidence/problem/summary.md"
+  },
+  "capture": {
+    "status": "complete",
+    "steps": [
+      { "name": "screenshot", "ok": true, "message": "ok" },
+      { "name": "accessibility-tree", "ok": true, "message": "ok" },
+      { "name": "logs", "ok": true, "message": "ok" }
+    ]
+  },
+  "sourceHints": ["ProblemView.swift"]
+}

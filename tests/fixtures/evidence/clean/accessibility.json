@@ -1,0 +1,75 @@
+{
+  "role": "AXApplication",
+  "label": "Clean App",
+  "enabled": true,
+  "hidden": false,
+  "frame": {
+    "x": 0,
+    "y": 0,
+    "width": 402,
+    "height": 874
+  },
+  "children": [
+    {
+      "role": "AXHeading",
+      "label": "Settings",
+      "enabled": true,
+      "hidden": false,
+      "frame": {
+        "x": 16,
+        "y": 80,
+        "width": 300,
+        "height": 54
+      }
+    },
+    {
+      "role": "AXButton",
+      "label": "Save settings",
+      "identifier": "settings.saveButton",
+      "enabled": true,
+      "hidden": false,
+      "frame": {
+        "x": 24,
+        "y": 760,
+        "width": 354,
+        "height": 50
+      }
+    },
+    {
+      "role": "AXCell",
+      "label": null,
+      "enabled": true,
+      "hidden": false,
+      "frame": {
+        "x": 16,
+        "y": 160,
+        "width": 24,
+        "height": 24
+      }
+    },
+    {
+      "role": "AXTab",
+      "label": null,
+      "enabled": true,
+      "hidden": false,
+      "frame": {
+        "x": 48,
+        "y": 160,
+        "width": 24,
+        "height": 24
+      }
+    },
+    {
+      "role": "AXMenu",
+      "label": null,
+      "enabled": true,
+      "hidden": false,
+      "frame": {
+        "x": 80,
+        "y": 160,
+        "width": 24,
+        "height": 24
+      }
+    }
+  ]
+}

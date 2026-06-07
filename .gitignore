@@ -28,3 +28,13 @@ research/findings/
 # Editor/system noise
 *.swp
 *.swo
+# OMX local workflow runtime state
+.omx/context/
+.omx/logs/
+.omx/metrics.json
+.omx/state/
+!.omx/plans/
+!.omx/plans/**
+# Generated critique outputs inside copied test bundles
+tests/fixtures/**/findings.json
+tests/fixtures/**/critique.md
