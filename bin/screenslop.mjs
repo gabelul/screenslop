@@ -6,6 +6,7 @@ import { run } from '../src/runtime/shell.mjs';
 import { detectRuntimes } from '../src/runtime/detect.mjs';
 import { collectSee } from '../src/evidence/collect-see.mjs';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
+import { collectFix } from '../src/fix/collect-fix.mjs';
 
 const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
@@ -29,6 +30,8 @@ switch (command) {
     await critique();
     break;
   case 'fix':
+    await fix();
+    break;
   case 'matrix':
   case 'verify':
   case 'watch':
@@ -53,7 +56,7 @@ Commands:
              Use --install-baguette to install after confirmation
   see        Capture screenshot, accessibility tree, optional logs, and evidence
   critique   Review an evidence bundle
-  fix        Patch selected findings (coming next)
+  fix        Plan and apply selected safe SwiftUI finding fixes
   matrix     Capture across devices/settings (coming next)
   verify     Recheck previous findings (coming next)
   watch      Live review loop (coming next)
@@ -170,6 +173,58 @@ async function see() {
 }
 
 
+/** Plans and optionally applies deterministic fixes for critique findings. */
+async function fix() {
+  const options = parseOptions(args);
+  const bundlePath = firstPositional(args);
+  const findingIds = optionList(options, 'finding');
+
+  try {
+    const wantsApply = options.flags.has('apply') && !options.flags.has('dry-run');
+    const wantsJson = options.flags.has('json');
+    if (wantsApply && wantsJson && !options.flags.has('yes')) {
+      throw new Error('Refusing JSON apply without --yes. JSON mode never prompts.');
+    }
+    const confirmed = wantsApply && !options.flags.has('yes')
+      ? await confirmApply()
+      : options.flags.has('yes');
+
+    const result = await collectFix({
+      root: process.cwd(),
+      bundlePath,
+      sourceRoot: options.values['source-root'] || process.cwd(),
+      findingIds,
+      apply: wantsApply,
+      dryRun: options.flags.has('dry-run') || !wantsApply,
+      yes: options.flags.has('yes'),
+      confirmed,
+      label: options.values.label || null,
+      verifyCommand: options.values['verify-command'] || null
+    });
+
+    printFixResult(result, options.flags.has('json'));
+  } catch (error) {
+    if (options.flags.has('json')) {
+      console.log(JSON.stringify({
+        ok: false,
+        command: 'fix',
+        error: error.message
+      }, null, 2));
+    } else {
+      console.error(`screenslop fix failed: ${error.message}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+/** Asks before applying source patches from an interactive terminal. */
+async function confirmApply() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const answer = await ask('Apply Screenslop source patches now? [y/N] ');
+  return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+
 /** Reviews an evidence bundle and writes findings. */
 async function critique() {
   const options = parseOptions(args);
@@ -231,6 +286,34 @@ function printCritiqueResult(result, json) {
   if (result.findings.length > printed) console.log(`...${result.findings.length - printed} more finding(s)`);
 }
 
+
+/**
+ * Prints fix output for humans or agents.
+ * @param {object} result Fix result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printFixResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Prepared fix plan for: ${result.bundle}`);
+  console.log(`Items: ${result.items.length}`);
+  for (const [status, count] of Object.entries(result.summary || {})) {
+    console.log(`${status}: ${count}`);
+  }
+  console.log(`fix plan: ${result.artifacts.fixPlanPath}`);
+  console.log(`report: ${result.artifacts.reportPath}`);
+  if (result.artifacts.sessionPath) console.log(`session: ${result.artifacts.sessionPath}`);
+
+  for (const item of result.items.slice(0, 8)) {
+    console.log(`- ${item.findingId}: ${item.status} — ${item.note}`);
+  }
+  if (result.items.length > 8) console.log(`...${result.items.length - 8} more item(s)`);
+}
+
 /** Prints placeholder status for commands not wired yet. */
 function placeholder(name) {
   console.log(`screenslop ${name} is planned but not wired yet.`);
@@ -276,7 +359,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['boot', 'dry-run', 'install-baguette', 'json', 'logs']);
+  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -290,7 +373,8 @@ function parseOptions(rawArgs) {
 
     const next = rawArgs[index + 1];
     if (next && !next.startsWith('-')) {
-      values[key] = next;
+      if (values[key]) values[key] = `${values[key]},${next}`;
+      else values[key] = next;
       index += 1;
     } else {
       flags.add(key);
@@ -307,7 +391,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['boot', 'dry-run', 'install-baguette', 'json', 'logs']);
+  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;
@@ -317,4 +401,16 @@ function firstPositional(rawArgs) {
     if (next && !next.startsWith('-')) index += 1;
   }
   return null;
+}
+
+/**
+ * Returns comma-separated/repeated option values as a clean list.
+ * @param {{values:Record<string,string>}} options Parsed options.
+ * @param {string} key Option key.
+ * @returns {string[]} Option values.
+ */
+function optionList(options, key) {
+  const value = options.values[key];
+  if (!value) return [];
+  return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
