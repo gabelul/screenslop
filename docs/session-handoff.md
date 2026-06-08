@@ -140,7 +140,7 @@ docs/roadmap.md
 The v0.1 engine loop is package-ready for the public sample and contract proof,
 but Studio is still blocked until the private dogfood gate runs against a real
 user app. The current checkout does not contain `.screenslop/config.json`, so
-the dogfood flow cannot prove a private finding as `verified-fixed` yet.
+the dogfood gate outcome is `recorded-blocker`, not `passed`.
 
 The flat repo layout is intentional for v0.1; `package.json` uses an explicit
 `files` whitelist so local state, research folders, `.omx`, generated artifacts,

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
-const cliCommands = ['init', 'doctor', 'see', 'critique', 'fix', 'matrix', 'verify', 'watch'];
+const engineContract = readJson('docs/engine-contract.json');
 
 test('public JSON examples keep the agent-facing command shape', () => {
   const expectations = {
@@ -106,9 +106,9 @@ test('CLI help and Screenslop skill advertise the same command set', () => {
   const skill = readText('skills/screenslop/SKILL.md');
   const advertised = extractSkillCommands(skill);
 
-  assert.deepEqual(advertised, cliCommands);
+  assert.deepEqual(advertised, engineContract.commands);
 
-  for (const command of cliCommands) {
+  for (const command of engineContract.commands) {
     assert.match(help, new RegExp(`\\n\\s*${command}\\s+`), `CLI help should list ${command}`);
   }
 });
@@ -118,13 +118,31 @@ test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
   const limitations = readText('docs/known-limitations.md');
   const checklist = readText('docs/release-checklist.md');
 
+  assert.equal(engineContract.schemaVersion, 1);
+  assert.deepEqual(engineContract.blockerOutcomes, ['passed', 'recorded-blocker', 'blocked']);
   assert.match(skill, /non-Baguette capture fallback is future work/);
   assert.match(skill, /verifyStatus: "verified-fixed"/);
   assert.match(skill, /sample app is not/i);
-  assert.match(limitations, /private dogfood gate is not complete/i);
+  assert.match(limitations, /private dogfood gate outcome is `recorded-blocker`/i);
   assert.match(limitations, /not a substitute for a real app capture/i);
   assert.match(checklist, /summary\.freshCritiqueStatus: "passed"/);
   assert.match(checklist, /pathDisplayMode: "redacted"/);
+  assert.match(checklist, /recorded-blocker/);
+});
+
+test('readiness gate contract is reflected in release docs', () => {
+  const checklist = readText('docs/release-checklist.md');
+  const handoff = readText('docs/session-handoff.md');
+
+  assert.equal(engineContract.readinessGates.length, 8);
+  assert.equal(engineContract.releaseDecision.noTagWhen, 'private-dogfood-is-recorded-blocker-or-blocked');
+
+  for (const gate of engineContract.readinessGates) {
+    assert.ok(gate.id && gate.label, 'each readiness gate needs an id and label');
+  }
+
+  assert.match(checklist, /docs\/engine-contract\.json/);
+  assert.match(handoff, /recorded-blocker/);
 });
 
 /**
