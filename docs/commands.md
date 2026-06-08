@@ -236,6 +236,27 @@ That smoke builds and launches `examples/runtime-smoke-app` through XcodeBuildMC
 
 The runtime smoke prints JSON only. If Baguette, XcodeBuildMCP, the simulator, capture, fix, rebuild, or verification fails, it exits nonzero with the failing stage in the report.
 
+The default smoke stays pinned to `examples/runtime-smoke-app`. A configured
+target can be supplied for local dogfood without committing private paths:
+
+```bash
+node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier settings.saveButton
+node scripts/smoke-real-runtime.mjs --workspace App.xcworkspace --scheme App --bundle-id dev.example.App --source-root App --identifier settings.saveButton
+```
+
+Configured target requirements:
+
+- `workspacePath` or `projectPath`
+- `defaultScheme`
+- `defaultBundleId`
+- `sourceRoot`
+- `defaultSurface` or `--surface`
+- a stable finding selector via `--identifier` or `--finding`
+
+The smoke validates target config before build/run, keeps `verify` behind fresh
+build, fresh `see`, fresh artifacts, and fresh `critique`, and redacts private
+absolute paths in its final JSON report by default.
+
 ### `screenslop matrix`
 
 Placeholder only. The CLI currently prints a planned-but-not-wired message and writes no artifacts.

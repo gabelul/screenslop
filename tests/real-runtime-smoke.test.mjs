@@ -25,6 +25,7 @@ test('real runtime smoke runner orders live stages and restores baseline source'
     'preflight-baguette',
     'preflight-doctor',
     'preflight-baguette-list',
+    'target-config',
     'select-device',
     'build-run-baseline',
     'baseline-see',
@@ -43,6 +44,186 @@ test('real runtime smoke runner orders live stages and restores baseline source'
   assert.equal(calls.some((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run')), true);
   assert.equal(calls.some((call) => call.command === 'node' && call.args.includes('verify')), true);
   assert.equal(fs.readFileSync(workspace.paths.contentView, 'utf8').includes('.accessibilityLabel("Save changes")'), false);
+});
+
+test('real runtime smoke can use a configured target from config', async () => {
+  const workspace = createRuntimeWorkspace();
+  const configDir = path.join(workspace.root, '.screenslop');
+  const appSource = path.join(workspace.root, 'ConfiguredApp');
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.mkdirSync(appSource, { recursive: true });
+  fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'ConfiguredSettings',
+    defaultScheme: 'ConfiguredApp',
+    defaultBundleId: 'dev.example.ConfiguredApp',
+    defaultDevice: 'iPhone 17',
+    workspacePath: 'ConfiguredApp.xcworkspace',
+    projectPath: null,
+    sourceRoot: 'ConfiguredApp',
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/config.json', '--identifier', 'runtimeSmoke.saveButton', '--launch-wait-ms', '0'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  const buildCall = calls.find((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run'));
+  const seeCall = calls.find((call) => call.command === 'node' && call.args.includes('see'));
+  const fixCall = calls.find((call) => call.command === 'node' && call.args.includes('fix'));
+
+  assert.equal(report.ok, true);
+  assert.equal(report.target.kind, 'configured');
+  assert.equal(report.target.bundleId, 'dev.example.ConfiguredApp');
+  assert.equal(report.target.sourceRoot, '<repo>/ConfiguredApp');
+  assert.equal(buildCall.args.includes('ConfiguredApp'), true);
+  assert.equal(buildCall.args.some((arg) => String(arg).endsWith('ConfiguredApp.xcworkspace')), true);
+  assert.equal(seeCall.args.includes('ConfiguredSettings'), true);
+  assert.equal(seeCall.args.includes('dev.example.ConfiguredApp'), true);
+  assert.equal(fixCall.args.some((arg) => String(arg).endsWith('ConfiguredApp')), true);
+  assert.equal(JSON.stringify(report).includes(workspace.root), false);
+  assert.equal(report.pathDisplayMode, 'redacted');
+});
+
+test('configured runtime smoke reports invalid config without build or verify', async () => {
+  const workspace = createRuntimeWorkspace();
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/missing.json', '--launch-wait-ms', '0'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.reason, 'target-config-invalid');
+  assert.equal(report.stages[0].name, 'target-config');
+  assert.equal(calls.some((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run')), false);
+  assert.equal(calls.some((call) => call.command === 'node' && call.args.includes('verify')), false);
+});
+
+test('configured runtime smoke refuses missing target fields before build', async () => {
+  const workspace = createRuntimeWorkspace();
+  const configDir = path.join(workspace.root, '.screenslop');
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.mkdirSync(path.join(workspace.root, 'ConfiguredApp'), { recursive: true });
+  fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'ConfiguredSettings',
+    defaultScheme: null,
+    defaultBundleId: 'dev.example.ConfiguredApp',
+    defaultDevice: null,
+    workspacePath: 'ConfiguredApp.xcworkspace',
+    projectPath: null,
+    sourceRoot: 'ConfiguredApp',
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/config.json', '--launch-wait-ms', '0'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.reason, 'target-config-invalid');
+  assert.equal(report.stages.some((stage) => stage.name === 'target-config' && stage.ok === false), true);
+  assert.equal(calls.some((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run')), false);
+});
+
+test('configured runtime smoke requires surface and finding selector before build', async () => {
+  const workspace = createRuntimeWorkspace();
+  const configDir = path.join(workspace.root, '.screenslop');
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.mkdirSync(path.join(workspace.root, 'ConfiguredApp'), { recursive: true });
+  fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: null,
+    defaultScheme: 'ConfiguredApp',
+    defaultBundleId: 'dev.example.ConfiguredApp',
+    defaultDevice: null,
+    workspacePath: 'ConfiguredApp.xcworkspace',
+    projectPath: null,
+    sourceRoot: 'ConfiguredApp',
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/config.json', '--launch-wait-ms', '0'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  const targetConfig = report.stages.find((stage) => stage.name === 'target-config');
+  assert.equal(report.ok, false);
+  assert.equal(report.reason, 'target-config-invalid');
+  assert.deepEqual(targetConfig.details.missing, ['surface', 'identifier-or-finding']);
+  assert.equal(calls.some((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run')), false);
+});
+
+test('configured runtime smoke redacts external absolute paths from final report', async () => {
+  const workspace = createRuntimeWorkspace();
+  const externalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-configured-target-'));
+  const configDir = path.join(workspace.root, '.screenslop');
+  const sourceRoot = path.join(workspace.root, 'ConfiguredApp');
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.mkdirSync(externalRoot, { recursive: true });
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'ConfiguredSettings',
+    defaultScheme: 'ConfiguredApp',
+    defaultBundleId: 'dev.example.ConfiguredApp',
+    defaultDevice: 'iPhone 17',
+    workspacePath: path.join(externalRoot, 'ConfiguredApp.xcworkspace'),
+    projectPath: null,
+    sourceRoot: 'ConfiguredApp',
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/config.json', '--identifier', 'runtimeSmoke.saveButton', '--launch-wait-ms', '0'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  const rawReport = JSON.stringify(report);
+  assert.equal(report.ok, true);
+  assert.equal(rawReport.includes(externalRoot), false);
+  assert.equal(rawReport.includes(workspace.root), false);
+  assert.equal(rawReport.includes('<absolute-path>'), true);
 });
 
 test('real runtime smoke reports preflight failures as parseable JSON objects', async () => {
@@ -171,6 +352,8 @@ function fakeRuntimeCommandRunner({ workspace, calls, failFreshSee = false, fail
     }
 
     if (command === 'node' && args.includes('fix')) {
+      const sourceRoot = args[args.indexOf('--source-root') + 1];
+      const patchFile = path.join(sourceRoot, 'SettingsView.swift');
       const source = fs.readFileSync(workspace.paths.contentView, 'utf8');
       fs.writeFileSync(workspace.paths.contentView, source.replace('.accessibilityIdentifier("runtimeSmoke.saveButton")', '.accessibilityIdentifier("runtimeSmoke.saveButton")\n            .accessibilityLabel("Save changes")'));
       return shellResult({ stdout: JSON.stringify({
@@ -181,7 +364,7 @@ function fakeRuntimeCommandRunner({ workspace, calls, failFreshSee = false, fail
           sessionPath: 'artifacts/baseline-runtime/fix-session.json'
         },
         session: {
-          appliedPatches: [{ findingId: 'runtime-save-missing', file: 'examples/runtime-smoke-app/RuntimeSmokePackage/Sources/RuntimeSmokeFeature/ContentView.swift' }]
+          appliedPatches: [{ findingId: 'runtime-save-missing', file: path.relative(workspace.root, patchFile) }]
         }
       }) });
     }
