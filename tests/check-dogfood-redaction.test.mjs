@@ -69,12 +69,12 @@ test('dogfood redaction checker rejects raw absolute paths', () => {
 
   const result = runChecker([reportPath]);
   const payload = parseStdout(result);
-  const leakedValues = payload.issues.filter((issue) => issue.code === 'absolute-path').map((issue) => issue.value);
+  const absolutePathIssues = payload.issues.filter((issue) => issue.code === 'absolute-path');
 
   assert.equal(result.status, 1);
-  assert.equal(leakedValues.some((value) => value.includes('/Volumes/MyEXT/PrivateApp/Sources')), true);
-  assert.equal(leakedValues.some((value) => value.includes('file:///Users/gabel/PrivateApp/artifacts/screenshot.png')), true);
-  assert.equal(leakedValues.some((value) => value.includes('/tmp/screenslop-private/output.json')), true);
+  assert.equal(absolutePathIssues.length, 3);
+  assert.equal(absolutePathIssues.every((issue) => issue.value === '<raw-absolute-path>'), true);
+  assert.doesNotMatch(result.stdout, /PrivateApp|\/Users\/gabel|\/Volumes\/MyEXT|file:\/\/\//);
 });
 
 test('dogfood redaction checker rejects caller-forbidden values', () => {
@@ -91,7 +91,8 @@ test('dogfood redaction checker rejects caller-forbidden values', () => {
   const payload = parseStdout(result);
 
   assert.equal(result.status, 1);
-  assert.equal(payload.issues.some((issue) => issue.code === 'forbid-value' && issue.value === 'dev.example.Secret'), true);
+  assert.equal(payload.issues.some((issue) => issue.code === 'forbid-value' && issue.value === '<forbidden-value>'), true);
+  assert.doesNotMatch(result.stdout, /dev\.example\.Secret/);
 });
 
 test('dogfood redaction checker reports invalid JSON without a stack trace', () => {
