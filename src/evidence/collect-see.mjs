@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readProjectConfig, resolveTargetConfig } from '../config/project-config.mjs';
 import { BaguetteDriver } from '../runtime/baguette.mjs';
 import { detectRuntimes } from '../runtime/detect.mjs';
 import { isBooted, selectBaguetteDevice } from '../runtime/device-selection.mjs';
@@ -18,18 +19,21 @@ import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
  * @param {string|null} [options.deviceSet] Custom simulator device set path.
  * @param {string|null} [options.bundleId] Optional log filter.
  * @param {number} [options.logDurationMs] Log capture duration.
+ * @param {string|null} [options.artifactsDir] Explicit artifact directory override.
  * @param {Function} [options.detectRuntimesFn] Runtime detector override.
  * @param {Function} [options.createDriver] Runtime driver factory override.
  * @param {Function} [options.confirmBoot] Interactive boot confirmation callback.
  * @returns {Promise<object>} Machine-readable capture result.
  */
 export async function collectSee(options = {}) {
-  const root = options.root || process.cwd();
+  const root = fs.realpathSync.native(path.resolve(options.root || process.cwd()));
   const detected = (options.detectRuntimesFn || detectRuntimes)();
+  const artifactsDir = resolveCaptureArtifactsDir(root, options.artifactsDir || null);
   const bundle = createEvidenceBundle({
     surface: options.surface,
     driver: detected.preferred,
-    root
+    root,
+    artifactsDir
   });
 
   const result = baseResult({ root, bundle, runtime: detected.preferred });
@@ -55,6 +59,20 @@ export async function collectSee(options = {}) {
   }
 
   return captureWithBaguette({ root, bundle, options });
+}
+
+/**
+ * Resolves the configured capture artifact directory when a valid config exists.
+ * @param {string} root Project root.
+ * @param {string|null} explicit Explicit artifact directory.
+ * @returns {string} Artifact directory path.
+ */
+function resolveCaptureArtifactsDir(root, explicit) {
+  if (explicit) return explicit;
+  const read = readProjectConfig(root);
+  if (!read.exists) return 'artifacts';
+  if (read.error) throw new Error(read.error);
+  return path.relative(root, resolveTargetConfig(read.config, { root }).artifactsDir) || '.';
 }
 
 /**

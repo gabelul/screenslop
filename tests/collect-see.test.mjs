@@ -21,6 +21,38 @@ test('collectSee writes a dry-run bundle without runtime capture', async () => {
   assert.equal(fs.existsSync(path.join(root, result.artifacts.summary)), true);
 });
 
+test('collectSee honors the configured artifactsDir for dry-run bundles', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-config-artifacts-'));
+  writeConfig(root, { artifactsDir: 'custom-artifacts' });
+
+  const result = await collectSee({
+    root,
+    surface: 'Settings',
+    dryRun: true,
+    detectRuntimesFn: () => ({ preferred: 'manual', tools: {} })
+  });
+
+  assert.match(result.dir, /^custom-artifacts\//);
+  assert.match(result.evidence, /^custom-artifacts\//);
+  assert.match(result.artifacts.summary, /^custom-artifacts\//);
+  assert.equal(fs.existsSync(path.join(root, result.evidence)), true);
+});
+
+test('collectSee rejects invalid config instead of hiding the artifact root error', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-invalid-config-'));
+  writeConfig(root, { artifactsDir: '../outside-artifacts' });
+
+  await assert.rejects(
+    () => collectSee({
+      root,
+      surface: 'Settings',
+      dryRun: true,
+      detectRuntimesFn: () => ({ preferred: 'manual', tools: {} })
+    }),
+    /artifactsDir must resolve inside the project root/
+  );
+});
+
 test('collectSee captures screenshot and accessibility with a fake Baguette driver', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-live-'));
   const result = await collectSee({
@@ -135,4 +167,29 @@ class FakeBaguetteDriver {
     fs.writeFileSync(outputPath, '{"event":"fake"}\n');
     return { ok: true, message: 'logs ok', timedOut: true };
   }
+}
+
+/**
+ * Writes a minimal valid Screenslop config for capture tests.
+ * @param {string} root Workspace root.
+ * @param {object} [overrides] Config field overrides.
+ * @returns {void}
+ */
+function writeConfig(root, overrides = {}) {
+  fs.mkdirSync(path.join(root, '.screenslop'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'Settings',
+    defaultScheme: null,
+    defaultBundleId: null,
+    defaultDevice: null,
+    workspacePath: null,
+    projectPath: null,
+    sourceRoot: null,
+    artifactsDir: 'artifacts',
+    sourceHints: [],
+    ...overrides
+  }, null, 2)}\n`);
 }

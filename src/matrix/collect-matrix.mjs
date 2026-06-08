@@ -33,16 +33,17 @@ export const DEFAULT_MATRIX_PROFILE = {
  * @returns {Promise<object>} Matrix report.
  */
 export async function collectMatrix(options = {}) {
-  const root = path.resolve(options.root || process.cwd());
+  const root = fs.realpathSync.native(path.resolve(options.root || process.cwd()));
   const dryRun = Boolean(options.dryRun);
   const profile = loadMatrixProfile(root, options.profilePath || null);
   const runId = createRunId('matrix');
-  const reportDir = path.join(root, 'artifacts', runId);
+  const configState = readMatrixConfig(root);
+  const artifactRoot = configState.target?.artifactsDir || path.join(root, 'artifacts');
+  const reportDir = path.join(artifactRoot, runId);
   const reportPath = path.join(reportDir, 'matrix.json');
   const reportMarkdownPath = path.join(reportDir, 'matrix.md');
   fs.mkdirSync(reportDir, { recursive: true });
 
-  const configState = readMatrixConfig(root);
   const report = {
     ok: configState.ok,
     command: 'matrix',
@@ -73,6 +74,7 @@ export async function collectMatrix(options = {}) {
       cell,
       dryRun,
       configState,
+      artifactsDir: configState.target?.artifactsDir ? path.relative(root, configState.target.artifactsDir) : null,
       collectSeeFn: options.collectSeeFn || collectSee,
       collectCritiqueFn: options.collectCritiqueFn || collectCritique,
       commandRunner: options.commandRunner || defaultCommandRunner,
@@ -147,9 +149,9 @@ function readMatrixConfig(root) {
  * @returns {Promise<object>} Cell result.
  */
 async function runMatrixCell(options) {
-  const { root, cell, dryRun, configState } = options;
+  const { root, cell, dryRun, configState, artifactsDir } = options;
   if (!configState.exists || !configState.target) {
-    return writeUnavailableCell({ root, cell, reason: configState.reason || 'no-config', message: configState.message || 'Matrix capture needs project config.' });
+    return writeUnavailableCell({ root, cell, reason: configState.reason || 'no-config', message: configState.message || 'Matrix capture needs project config.', artifactsDir });
   }
   if (
     (!configState.target.workspacePath && !configState.target.projectPath)
@@ -161,10 +163,11 @@ async function runMatrixCell(options) {
       root,
       cell,
       reason: 'target-incomplete',
-      message: 'Matrix capture needs workspacePath/projectPath, defaultScheme, defaultBundleId, and defaultSurface in .screenslop/config.json.'
+      message: 'Matrix capture needs workspacePath/projectPath, defaultScheme, defaultBundleId, and defaultSurface in .screenslop/config.json.',
+      artifactsDir
     });
   }
-  if (dryRun) return writeUnavailableCell({ root, cell, reason: 'dry-run', message: 'Dry run only. No simulator capture attempted.', status: 'dryRun' });
+  if (dryRun) return writeUnavailableCell({ root, cell, reason: 'dry-run', message: 'Dry run only. No simulator capture attempted.', status: 'dryRun', artifactsDir });
 
   try {
     const build = runBuildTarget({ target: configState.target, cell, commandRunner: options.commandRunner });
@@ -175,6 +178,7 @@ async function runMatrixCell(options) {
         reason: 'build-run-failed',
         message: 'xcodebuildmcp could not build and launch this matrix cell.',
         status: 'failed',
+        artifactsDir,
         extra: { build }
       });
     }
@@ -203,7 +207,7 @@ async function runMatrixCell(options) {
       error: see.ok ? null : 'capture-failed'
     };
   } catch (error) {
-    return writeUnavailableCell({ root, cell, reason: 'capture-error', message: error.message, status: 'failed' });
+    return writeUnavailableCell({ root, cell, reason: 'capture-error', message: error.message, status: 'failed', artifactsDir });
   }
 }
 
@@ -212,8 +216,8 @@ async function runMatrixCell(options) {
  * @param {object} options Cell options.
  * @returns {object} Cell result.
  */
-function writeUnavailableCell({ root, cell, reason, message, status = 'unavailable', extra = {} }) {
-  const bundle = createEvidenceBundle({ root, surface: cell.surface || cell.id, driver: 'matrix' });
+function writeUnavailableCell({ root, cell, reason, message, status = 'unavailable', artifactsDir = null, extra = {} }) {
+  const bundle = createEvidenceBundle({ root, surface: cell.surface || cell.id, driver: 'matrix', artifactsDir });
   bundle.manifest.matrixCell = { id: cell.id, label: cell.label };
   bundle.manifest.environment = requestedEnvironment(cell);
   bundle.manifest.capture = {

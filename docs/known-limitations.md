@@ -15,7 +15,7 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 
 ## Config
 
-- `.screenslop/config.json` uses `schemaVersion: 1`, but the schema remains provisional until the v0.1 release boundary is frozen.
+- `.screenslop/config.json` uses `schemaVersion: 1` as the v0.1 generation. It is a 0.x contract, so future 0.x releases may change it with an explicit migration path.
 - `sourceRoot` and `artifactsDir` must stay inside the project root for this version.
 
 ## Product boundary

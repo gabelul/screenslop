@@ -8,12 +8,14 @@ import { createRunId } from './run-id.mjs';
  * @param {string} [options.surface] Surface name.
  * @param {string} [options.driver] Runtime driver name.
  * @param {string} [options.root] Project root.
+ * @param {string} [options.artifactsDir] Artifact output directory.
  * @returns {{runId:string, dir:string, manifestPath:string, manifest:object}}
  */
 export function createEvidenceBundle(options = {}) {
   const root = options.root || process.cwd();
   const runId = createRunId(options.surface);
-  const dir = path.join(root, 'artifacts', runId);
+  const artifactRoot = options.artifactsDir ? path.resolve(root, options.artifactsDir) : path.join(root, 'artifacts');
+  const dir = path.join(artifactRoot, runId);
   fs.mkdirSync(dir, { recursive: true });
 
   const manifest = {
