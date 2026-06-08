@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:11:18.393Z",
+  "updatedAt": "2026-06-08T13:16:47.586Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -47,11 +47,13 @@
       "id": "G004-phase-4-agent-contract-and-docs-sche",
       "title": "Phase 4 — Agent contract and docs/schema release polish",
       "objective": "Update the Screenslop skill, session handoff, command docs, architecture docs, agent integration docs, schemas, README, JSON examples, release checklist, and known limitations so they match shipped behavior.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:11:18.393Z",
-      "startedAt": "2026-06-08T13:11:18.393Z"
+      "updatedAt": "2026-06-08T13:16:47.586Z",
+      "startedAt": "2026-06-08T13:11:18.393Z",
+      "completedAt": "2026-06-08T13:16:47.586Z",
+      "evidence": "Committed and pushed Phase 4 docs/schema/agent polish at c168bce. Evidence: README, session handoff, repo strategy, skill, schemas, JSON examples, known limitations, and release checklist now match shipped init/see/critique/fix/verify/matrix behavior; node --check passed; npm test passed 80/80; smoke:e2e fixed passed; matrix dry-run/profile JSON smoke passed; doctor passed; cleanup dry-run clean."
     },
     {
       "id": "G005-phase-5-release-boundary-and-packagi",
@@ -63,6 +65,5 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G004-phase-4-agent-contract-and-docs-sche"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
