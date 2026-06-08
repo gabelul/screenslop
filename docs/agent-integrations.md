@@ -80,8 +80,7 @@ screenslop fix <baseline-evidence-dir> --finding <id> --source-root <app-root> -
 screenslop see --json --surface <name>
 screenslop critique <fresh-evidence-dir> --json
 screenslop verify <baseline-evidence-dir> --fresh-bundle <fresh-evidence-dir> --finding <id> --json
-# matrix is placeholder-only until wired
-screenslop matrix
+screenslop matrix --dry-run --json
 ```
 
 The `--json` forms should be implemented early. Human output can be friendly; agent output needs strict contracts.

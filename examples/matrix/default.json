@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "name": "default-six-cell",
+  "cells": [
+    {
+      "id": "default-configured-iphone",
+      "label": "Default configured iPhone",
+      "device": null,
+      "appearance": "unspecified",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "large-iphone",
+      "label": "Large iPhone",
+      "device": "iPhone 17 Pro",
+      "appearance": "unspecified",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "light-appearance",
+      "label": "Light appearance",
+      "device": null,
+      "appearance": "light",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "dark-appearance",
+      "label": "Dark appearance",
+      "device": null,
+      "appearance": "dark",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "dynamic-type-normal",
+      "label": "Normal Dynamic Type",
+      "device": null,
+      "appearance": "unspecified",
+      "dynamicType": "normal"
+    },
+    {
+      "id": "dynamic-type-accessibility",
+      "label": "Accessibility Dynamic Type",
+      "device": null,
+      "appearance": "unspecified",
+      "dynamicType": "accessibility3"
+    }
+  ]
+}
