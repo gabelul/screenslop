@@ -1,6 +1,6 @@
 ---
 name: screenslop
-description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop runs or connects to the app, captures screenshots, accessibility trees, logs, and source hints, then produces evidence-backed findings and fixes. Prefer Baguette for iOS simulator runtime control, with fallbacks to XcodeBuildMCP, simctl, and manual screenshots.
+description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop captures Baguette-backed simulator evidence, produces evidence-backed findings, applies narrow fixes, and verifies against fresh captures. XcodeBuildMCP is used for build/run support; non-Baguette capture fallback is future work.
 argument-hint: "[init|doctor|see|critique|fix|matrix|verify|watch] [target]"
 user-invocable: true
 allowed-tools:
@@ -18,16 +18,16 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 ## Runtime order
 
-1. Baguette: preferred for iOS simulator screen, AX tree, logs, and input.
-2. XcodeBuildMCP: use when available in the agent environment.
-3. `xcrun simctl` / `xcodebuild`: fallback for screenshots and build/run.
-4. Manual evidence: screenshot plus source paths from the user.
+1. Baguette: shipped capture path for iOS simulator screen, AX tree, logs, and input.
+2. XcodeBuildMCP: shipped build/run support for smoke and matrix flows.
+3. `xcrun simctl` / `xcodebuild`: planned lower-level fallback work.
+4. Manual evidence: user-provided screenshot plus source paths when automation is not available.
 
 ## Commands
 
 - `init`: create or migrate `.screenslop/config.json` with target metadata.
 - `doctor`: check runtime availability.
-- `see`: capture screenshot, AX tree, logs, and source hints.
+- `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.
 - `critique`: score evidence and produce findings.
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
 - `verify`: compare baseline findings with fresh capture plus fresh critique.
@@ -44,7 +44,7 @@ Every finding needs evidence:
 - source hint
 - or an explicit note that evidence is missing
 
-If Baguette is available, use it before guessing. The whole point is to see the thing instead of arguing with SwiftUI in the abstract.
+If Baguette is not available, do not pretend `see` has a full automated fallback yet. Use manual evidence or fix the runtime setup first. The whole point is to see the thing instead of arguing with SwiftUI in the abstract.
 
 ## Standard checks
 
