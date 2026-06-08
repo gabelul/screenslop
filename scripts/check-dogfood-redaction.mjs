@@ -187,7 +187,7 @@ export function collectStrings(value, location = '$') {
  */
 export function containsRawAbsolutePath(value) {
   const text = String(value || '');
-  if (!text || text.startsWith('<')) return false;
+  if (!text) return false;
 
   const trimmed = text.trim();
   if (path.isAbsolute(trimmed) && !trimmed.startsWith('/dev/null')) return true;
