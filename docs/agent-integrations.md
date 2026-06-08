@@ -102,6 +102,18 @@ fixture bundle -> critique -> fix temp SwiftUI source -> fresh fixture bundle ->
 
 Treat that as contract proof only. It shows that Screenslop writes and consumes the right artifacts. It does not replace runtime capture for real Apple UI review. For real app work, agents still need `screenslop see` before critique and fresh `screenslop see` before claiming a fix is verified.
 
+## Real-runtime MVP smoke
+
+Agents can run the live sample-app loop when Apple runtime tools are available:
+
+```bash
+npm run smoke:runtime
+```
+
+The smoke uses XcodeBuildMCP to build and launch `examples/runtime-smoke-app`, then uses Baguette-backed `screenslop see` for both baseline and fresh evidence. It proves the public engine loop against one deterministic sample app issue. It does not prove private or user app screens are fixed. For those, capture the actual app surface and verify against a fresh recapture from that app.
+
+The script prints one JSON report. Agents should treat any nonzero exit as a hard stop, not as permission to fall back to fixture proof.
+
 ## MCP plan
 
 An MCP server is useful later, but not required for the first version.
