@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T12:40:36.218Z",
+  "updatedAt": "2026-06-08T12:41:05.712Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -23,10 +23,11 @@
       "id": "G002-phase-2-shared-runtime-smoke-runner",
       "title": "Phase 2 — Shared runtime smoke runner and user-app dogfood path",
       "objective": "Extract reusable build/run target orchestration, keep the sample runtime smoke, add configured-target smoke support, preserve JSON stage failures, add negative fresh-capture/fresh-critique tests, and verify with runtime smoke when available.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:21:02.686Z"
+      "updatedAt": "2026-06-08T12:41:05.712Z",
+      "startedAt": "2026-06-08T12:41:05.712Z"
     },
     {
       "id": "G003-phase-3-matrix-mvp",
@@ -56,5 +57,6 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G002-phase-2-shared-runtime-smoke-runner"
 }
