@@ -49,6 +49,11 @@
     "recorded-blocker",
     "blocked"
   ],
+  "outcomeSemantics": {
+    "status": "workflow-state",
+    "outcome": "proof-state",
+    "recorded-blocker": "The workflow recorded a blocker instead of proving the gate passed."
+  },
   "releaseDecision": {
     "tagWhen": "all-readiness-gates-passed-and-explicit-approval-or-need",
     "noTagWhen": "private-dogfood-is-recorded-blocker-or-blocked"
