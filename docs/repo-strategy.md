@@ -44,6 +44,16 @@ The current repo stays flat for v0.1 because the public engine is still small.
 Package migration is a release-boundary decision, not a blocker for the matrix
 and runtime smoke loop.
 
+## v0.1 package policy
+
+Keep the flat layout for v0.1 and publish with an explicit `package.json`
+`files` whitelist. That keeps `.omx`, research notes, tests, and local state out
+of the npm tarball without forcing a package migration before the engine shape is
+settled.
+
+Revisit `packages/core` and `packages/cli` after v0.1 if Studio or MCP needs a
+clean import boundary. Until then, the CLI remains the stable integration seam.
+
 ## Runtime dependency policy
 
 Screenslop should not bundle Baguette or XcodeBuildMCP by default.
