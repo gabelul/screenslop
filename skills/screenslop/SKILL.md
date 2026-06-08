@@ -35,6 +35,12 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
   new evidence by itself.
 - `watch`: future live review loop; current CLI prints a placeholder.
 
+## Longer references
+
+- See `docs/agent-playbook.md` for practical Codex, Claude Code, Cursor, and terminal workflows.
+- See `skills/screenslop/reference/agent-contract.md` for the compact command contract.
+- See `skills/screenslop/reference/dogfood.md` for the private real-app dogfood gate and redaction check.
+
 ## Review rule
 
 Every finding needs evidence:
@@ -45,7 +51,7 @@ Every finding needs evidence:
 - source hint
 - or an explicit note that evidence is missing
 
-If Baguette is not available, do not pretend `see` has a full automated fallback yet. Use manual evidence or fix the runtime setup first. The whole point is to see the thing instead of arguing with SwiftUI in the abstract.
+If Baguette is not available, stop and fix runtime setup or use manual evidence. Do not pretend `see` has a full automated fallback yet. The whole point is to see the thing instead of arguing with SwiftUI in the abstract.
 
 ## Standard checks
 
