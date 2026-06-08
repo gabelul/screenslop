@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:17:05.753Z",
+  "updatedAt": "2026-06-08T13:56:15.059Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -59,13 +59,14 @@
       "id": "G005-phase-5-release-boundary-and-packagi",
       "title": "Phase 5 — Release boundary and packaging check",
       "objective": "Resolve flat-layout/package migration policy, reconcile repo-strategy drift, handle public apps/mac or Studio-shaped placeholders, freeze or document config schema instability, run npm package smoke, and tag only after all gates pass.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:17:05.753Z",
-      "startedAt": "2026-06-08T13:17:05.753Z"
+      "updatedAt": "2026-06-08T13:56:15.059Z",
+      "startedAt": "2026-06-08T13:17:05.753Z",
+      "evidence": "Committed and pushed final v0 release-boundary seam fix at 600381f. Evidence: configured artifactsDir is consumed by see and matrix; invalid config no longer silently falls back; config policy docs are consistent; code-reviewer APPROVE; architect CLEAR; node --check all mjs passed; npm test passed 83/83; smoke:e2e fixed passed; matrix dry/profile JSON passed; npm pack dry-run passed; doctor passed; cleanup dry-run found no sidecars; smoke:runtime passed verified-fixed with report artifacts/runtime-smoke-2026-06-08T13-49-41-383Z.json; extracted package smoke and npm test passed 83/83.",
+      "completedAt": "2026-06-08T13:56:15.059Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G005-phase-5-release-boundary-and-packagi"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
