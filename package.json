@@ -6,6 +6,25 @@
   "bin": {
     "screenslop": "./bin/screenslop.mjs"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "schemas/",
+    "skills/",
+    "docs/",
+    "examples/json/",
+    "examples/matrix/",
+    "examples/runtime-smoke-app/Config/",
+    "examples/runtime-smoke-app/README.md",
+    "examples/runtime-smoke-app/RuntimeSmoke.xcodeproj/",
+    "examples/runtime-smoke-app/RuntimeSmoke.xcworkspace/",
+    "examples/runtime-smoke-app/RuntimeSmoke/",
+    "examples/runtime-smoke-app/RuntimeSmokePackage/",
+    "examples/runtime-smoke-app/RuntimeSmokeUITests/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "scripts": {
     "doctor": "node bin/screenslop.mjs doctor",
     "see": "node bin/screenslop.mjs see --dry-run",

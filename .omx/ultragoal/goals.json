@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:16:47.586Z",
+  "updatedAt": "2026-06-08T13:17:05.753Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -59,11 +59,13 @@
       "id": "G005-phase-5-release-boundary-and-packagi",
       "title": "Phase 5 — Release boundary and packaging check",
       "objective": "Resolve flat-layout/package migration policy, reconcile repo-strategy drift, handle public apps/mac or Studio-shaped placeholders, freeze or document config schema instability, run npm package smoke, and tag only after all gates pass.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:21:02.686Z"
+      "updatedAt": "2026-06-08T13:17:05.753Z",
+      "startedAt": "2026-06-08T13:17:05.753Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G005-phase-5-release-boundary-and-packagi"
 }

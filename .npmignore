@@ -1,0 +1,10 @@
+.omx/
+.omc/
+artifacts/
+research/repos/
+research/skills/
+tests/
+examples/runtime-smoke-app/.cursor/
+examples/runtime-smoke-app/.github/
+examples/runtime-smoke-app/CLAUDE.md
+.screenslop/
