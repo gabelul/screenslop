@@ -56,7 +56,6 @@ test('dogfood redaction checker does not echo private report paths', () => {
   assert.doesNotMatch(result.stdout, /PrivateAppRedaction|private-app-report\.json/);
 });
 
-
 test('dogfood redaction checker does not echo missing report paths', () => {
   const missingPath = path.join(os.tmpdir(), 'PrivateAppRedaction-missing-report.json');
   const result = runChecker([missingPath]);
@@ -64,8 +63,10 @@ test('dogfood redaction checker does not echo missing report paths', () => {
 
   assert.equal(result.status, 1);
   assert.equal(payload.report, '<redacted-report-path>');
-  assert.equal(payload.summary, 'could not read or parse JSON report');
-  assert.doesNotMatch(result.stdout, /PrivateAppRedaction|missing-report/);
+  assert.equal(payload.reason, 'report-read-error');
+  assert.equal(payload.summary, 'could not read JSON report');
+  assert.equal(payload.issues[0].value, '<report-read-error>');
+  assert.doesNotMatch(result.stdout, /PrivateAppRedaction|missing-report|ENOENT|no such file/i);
 });
 
 test('dogfood redaction checker rejects missing redacted path mode', () => {
@@ -137,8 +138,8 @@ test('dogfood redaction checker reports invalid JSON without a stack trace', () 
   assert.equal(result.status, 1);
   assert.equal(payload.ok, false);
   assert.equal(payload.reason, 'json-parse-error');
-  assert.equal(payload.summary, 'could not read or parse JSON report');
-  assert.equal(payload.issues[0].value, '<redacted-error>');
+  assert.equal(payload.summary, 'could not parse JSON report');
+  assert.equal(payload.issues[0].value, '<json-parse-error>');
   assert.doesNotMatch(result.stderr, /SyntaxError|at JSON\.parse/);
   assert.doesNotMatch(result.stdout, /bad\.json|screenslop-redaction-test/);
 });
