@@ -45,16 +45,18 @@ Xcode: 26.5
 Swift: 6.3.2
 ```
 
-## Current scaffold
+## Current engine state
 
 Working pieces:
 
 - `bin/screenslop.mjs`
+- project config and migration in `src/config/`
 - runtime detection in `src/runtime/detect.mjs`
-- Baguette wrapper stub in `src/runtime/baguette.mjs`
+- Baguette capture in `src/runtime/baguette.mjs`
 - evidence bundle scaffold in `src/evidence/`
+- critique, fix, verify, and matrix modules in `src/`
 - schemas in `schemas/`
-- agent skill stub in `skills/screenslop/`
+- agent skill in `skills/screenslop/`
 - docs in `docs/`
 - ignored research workspace in `research/`
 
@@ -84,6 +86,17 @@ npm run smoke:runtime
 
 The real-runtime smoke builds and launches `examples/runtime-smoke-app` through XcodeBuildMCP, captures Baguette evidence, applies one safe sample-app fix, recaptures, critiques again, and verifies the selected finding against fresh evidence. It is sample-app proof, not proof for a private user app.
 
+Matrix smoke:
+
+```bash
+node bin/screenslop.mjs matrix --dry-run --json
+node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
+```
+
+The matrix command writes a six-cell report and one evidence bundle per cell. No
+config is not a blocker for the command; cells are marked unavailable with
+explicit no-config evidence instead of being dropped.
+
 ## Important docs
 
 Read these first in a new session:
@@ -99,17 +112,13 @@ docs/roadmap.md
 
 ## Current next engineering step
 
-Wire `screenslop see` to Baguette:
+Finish release polish:
 
-1. `baguette list --json`
-2. choose a booted simulator or offer to boot one
-3. capture screenshot with `baguette screenshot`
-4. capture AX tree with `baguette describe-ui`
-5. optionally collect logs
-6. write a complete `evidence.json`
-7. support `--json` output for agents
-
-After that, implement the first `critique` pass against evidence.
+1. Keep command docs, schemas, examples, and the agent skill aligned with the
+   shipped CLI.
+2. Reconcile release boundaries in `docs/repo-strategy.md`.
+3. Run the package smoke and decide whether the flat repo layout is acceptable
+   for v0.1 or should be deferred as explicit pre-1.0 work.
 
 ## Research workspace
 

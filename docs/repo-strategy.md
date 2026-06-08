@@ -34,15 +34,15 @@ screenslop/
   packages/
     core/              # shared engine, no UI assumptions
     cli/               # command-line wrapper around core
-    skill/             # agent skill files and references
-  apps/
-    studio-mac/        # future paid/polished Mac app
+    agents/            # agent skill files and references
   schemas/             # evidence and finding contracts
   docs/                # architecture, roadmap, product notes
   examples/            # fixture apps and captured evidence
 ```
 
-The current scaffold is flatter while the core is tiny. Once `see` and `critique` are real, move into this package layout.
+The current repo stays flat for v0.1 because the public engine is still small.
+Package migration is a release-boundary decision, not a blocker for the matrix
+and runtime smoke loop.
 
 ## Runtime dependency policy
 
@@ -87,6 +87,6 @@ screenslop          # public engine + CLI + agent integrations
 screenslop-studio   # private Mac app consuming the public engine/CLI
 ```
 
-For this early scaffold, it is still useful to keep `apps/mac/` as a placeholder so the engine API is designed with the app in mind. But real Mac app code should move to the private repo once it starts.
-
-The split is fine as long as the private app never forks the logic. It consumes the public engine like any other client.
+Do not add public `apps/mac/` placeholder code just to sketch Studio. The split
+is fine as long as the private app never forks the logic. It consumes the public
+engine like any other client.

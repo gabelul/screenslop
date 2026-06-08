@@ -12,11 +12,18 @@
       "type": "object",
       "required": ["driver"],
       "properties": {
-        "driver": { "enum": ["baguette", "xcodebuildmcp", "simctl", "manual"] },
+        "driver": { "enum": ["baguette", "xcodebuildmcp", "simctl", "manual", "matrix"] },
         "deviceName": { "type": ["string", "null"] },
         "udid": { "type": ["string", "null"] },
         "bundleId": { "type": ["string", "null"] },
         "scheme": { "type": ["string", "null"] }
+      }
+    },
+    "matrixCell": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" }
       }
     },
     "environment": {

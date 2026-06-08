@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "command": "matrix",
+  "runId": "2026-06-08T13-04-00Z-matrix",
+  "profile": { "schemaVersion": 1, "name": "default-six-cell", "cells": 6 },
+  "summary": { "total": 6, "captured": 0, "dryRun": 0, "unavailable": 6, "failed": 0 },
+  "cells": [
+    {
+      "id": "default-configured-iphone",
+      "label": "Default configured iPhone",
+      "status": "unavailable",
+      "reason": "no-config",
+      "evidenceBundle": "artifacts/2026-06-08T13-04-00Z-default-configured-iphone",
+      "evidence": "artifacts/2026-06-08T13-04-00Z-default-configured-iphone/evidence.json"
+    }
+  ],
+  "artifacts": {
+    "reportPath": "artifacts/2026-06-08T13-04-00Z-matrix/matrix.json",
+    "reportMarkdownPath": "artifacts/2026-06-08T13-04-00Z-matrix/matrix.md"
+  }
+}

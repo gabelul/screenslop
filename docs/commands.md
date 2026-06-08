@@ -309,3 +309,16 @@ verify    prove the fix
 matrix    bounded device/settings stress report
 watch     live iteration loop
 ```
+
+## JSON examples and schemas
+
+Agent-facing examples live in `examples/json/`:
+
+- `see.json`
+- `critique.json`
+- `fix.json`
+- `verify.json`
+- `matrix.json`
+
+Schemas live in `schemas/`. The matrix report contract is
+`schemas/matrix-report.schema.json`.

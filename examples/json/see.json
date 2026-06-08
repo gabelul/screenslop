@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "command": "see",
+  "runtime": "baguette",
+  "runId": "2026-06-08T13-00-00Z-settings",
+  "dir": "artifacts/2026-06-08T13-00-00Z-settings",
+  "evidence": "artifacts/2026-06-08T13-00-00Z-settings/evidence.json",
+  "artifacts": {
+    "screenshot": "artifacts/2026-06-08T13-00-00Z-settings/screenshot.jpg",
+    "accessibilityTree": "artifacts/2026-06-08T13-00-00Z-settings/accessibility.json",
+    "logs": "artifacts/2026-06-08T13-00-00Z-settings/logs.ndjson",
+    "summary": "artifacts/2026-06-08T13-00-00Z-settings/summary.md"
+  }
+}
