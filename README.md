@@ -8,7 +8,7 @@ I built Screenslop because AI can now generate SwiftUI faster than I can make co
 
 Screenslop reviews Apple app UI from runtime evidence. It runs or connects to the app, captures the actual screen, reads the accessibility tree, inspects logs and source hints, then produces findings an agent can fix and verify with a fresh capture.
 
-Works with Codex, Claude Code, Cursor, plain terminal workflows, Baguette, XcodeBuildMCP, and the usual `xcodebuild` / `simctl` escape hatches when life gets interesting.
+Works with Codex, Claude Code, Cursor, plain terminal workflows, Baguette-backed capture, and XcodeBuildMCP build/run support. Lower-level `xcodebuild` / `simctl` capture fallback is planned, not shipped yet.
 
 ---
 

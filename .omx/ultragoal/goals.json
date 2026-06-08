@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T20:20:43.035Z",
-  "updatedAt": "2026-06-08T20:25:18.809Z",
+  "updatedAt": "2026-06-08T20:27:16.915Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -53,17 +53,19 @@
       "updatedAt": "2026-06-08T20:25:18.809Z",
       "startedAt": "2026-06-08T20:24:23.819Z",
       "completedAt": "2026-06-08T20:25:18.809Z",
-      "evidence": "Recorded private dogfood blocker instead of claiming sample proof. .screenslop/config.json is missing. Documented preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify stages not-run, and pathDisplayMode redacted. check-dogfood-redaction passed against /tmp/screenslop-private-preflight.json with HOME, /Volumes/MyEXT, and selector strings forbidden. Studio remains blocked until a real configured app reaches verified-fixed."
+      "evidence": "Recorded private dogfood blocker instead of claiming sample proof. .screenslop/config.json is missing. Documented preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify stages not-run, and pathDisplayMode redacted. check-dogfood-redaction passed against <redacted-preflight-report> with HOME, a redacted volume marker, and selector strings forbidden. Studio remains blocked until a real configured app reaches verified-fixed."
     },
     {
       "id": "G005-run-final-verification-review-commit",
       "title": "Run final verification, review, commit, push, and checkpoint durable...",
       "objective": "Run final verification, review, commit, push, and checkpoint durable evidence.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:20:43.035Z"
+      "updatedAt": "2026-06-08T20:27:16.915Z",
+      "startedAt": "2026-06-08T20:27:16.915Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G005-run-final-verification-review-commit"
 }
