@@ -220,7 +220,6 @@ Read more in [docs/repo-strategy.md](docs/repo-strategy.md).
 - [Command model](docs/commands.md)
 - [Architecture](docs/architecture.md)
 - [Agent integrations](docs/agent-integrations.md)
-- [Agent playbook](docs/agent-playbook.md)
 - [Repo strategy](docs/repo-strategy.md)
 - [Known limitations](docs/known-limitations.md)
 - [Release checklist](docs/release-checklist.md)
