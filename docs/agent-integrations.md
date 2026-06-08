@@ -20,10 +20,11 @@ Ship a Codex-friendly skill that tells the agent to:
 
 1. Run `screenslop doctor`.
 2. Run `screenslop see` before judging UI.
-3. Read the evidence bundle.
-4. Produce findings with evidence references.
-5. Patch only selected findings.
-6. Run `screenslop verify` after edits.
+3. Run `screenslop critique` on the captured bundle.
+4. Patch only selected findings.
+5. Run `screenslop see` again after edits.
+6. Run `screenslop critique` on the fresh bundle.
+7. Run `screenslop verify <baseline> --fresh-bundle <fresh>` for selected findings.
 
 Codex can also use XcodeBuildMCP tools directly when available, but Screenslop should still own the evidence schema and report format.
 
@@ -67,20 +68,39 @@ Every agent integration follows the same rules:
 - Every finding must include an evidence pointer.
 - Do not install dependencies without explicit user confirmation.
 - Do not patch everything by default. Pick the highest-value findings first.
-- Always recapture or verify after edits.
+- Always recapture and critique after edits before calling a fix verified.
 
 ## CLI commands agents should rely on
 
 ```bash
-screenslop doctor --json
+screenslop doctor
 screenslop see --json --surface <name>
-screenslop critique --json <evidence-dir>
-screenslop fix --finding <id>
-screenslop verify <evidence-dir>
-screenslop matrix --surface <name> --profile default
+screenslop critique <baseline-evidence-dir> --json
+screenslop fix <baseline-evidence-dir> --finding <id> --source-root <app-root> --json
+screenslop see --json --surface <name>
+screenslop critique <fresh-evidence-dir> --json
+screenslop verify <baseline-evidence-dir> --fresh-bundle <fresh-evidence-dir> --finding <id> --json
+# matrix is placeholder-only until wired
+screenslop matrix
 ```
 
 The `--json` forms should be implemented early. Human output can be friendly; agent output needs strict contracts.
+
+## Fixture-backed e2e smoke
+
+Agents can check the command contract without a simulator by running:
+
+```bash
+npm run --silent smoke:e2e -- --fresh-mode fixed
+```
+
+This smoke exercises the internal fixture loop:
+
+```text
+fixture bundle -> critique -> fix temp SwiftUI source -> fresh fixture bundle -> critique -> verify
+```
+
+Treat that as contract proof only. It shows that Screenslop writes and consumes the right artifacts. It does not replace runtime capture for real Apple UI review. For real app work, agents still need `screenslop see` before critique and fresh `screenslop see` before claiming a fix is verified.
 
 ## MCP plan
 

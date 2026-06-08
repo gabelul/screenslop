@@ -25,7 +25,7 @@ Current repo facts:
 - Evidence bundles already write `evidence.json` plus `summary.md` under `artifacts/<run-id>` (`src/evidence/bundle.mjs:13-44`, `src/evidence/bundle.mjs:55-105`).
 - `screenslop critique` reads one bundle and writes findings from deterministic evidence/accessibility/layout/log detectors (`src/critique/collect-critique.mjs:18-45`).
 - `screenslop fix` plans and can apply only selected safe SwiftUI fixes, with `fix-plan.json`, `fix.md`, and optional `fix-session.json` (`docs/commands.md:77-112`, `src/fix/collect-fix.mjs:28-117`).
-- `screenslop verify` now compares baseline findings with a fresh bundle and writes `verification.json` / `verification.md`; it does not capture fresh evidence itself (`docs/commands.md:113-146`, `src/verify/collect-verify.mjs:17-43`).
+- `screenslop verify` now compares baseline findings with a fresh bundle and writes `verification.json` / `verification.md`; it does not capture fresh evidence itself and requires regenerated fresh critique output (`docs/commands.md:113-146`, `src/verify/collect-verify.mjs:17-43`).
 - Agent integrations should rely on strict `--json` forms and always recapture or verify after edits (`docs/agent-integrations.md:61-83`).
 - Every finished implementation slice must be committed and pushed after verification, per user instruction.
 
@@ -148,8 +148,9 @@ Work:
 - Run the same core functions the CLI uses:
   - `collectCritique`
   - `collectFix`
-  - copy or mutate the fresh fixture bundle to represent post-fix runtime evidence
-  - `collectCritique` again on fresh evidence
+  - copy a separate fresh evidence bundle for the selected scenario
+  - purge generated critique/fix/verify artifacts from copied bundles
+  - regenerate fresh findings with `collectCritique` before verification
   - `collectVerify`
 - Return a compact JSON summary with bundle paths, selected finding IDs, fix-session path, verification summary, and artifact paths.
 
@@ -181,22 +182,24 @@ Acceptance:
 - Tests read `verification.json` and confirm it matches returned summaries.
 - Tests fail if the flow claims proof without fresh evidence.
 
-### 4. Add a developer-facing smoke script only if tests show repeated boilerplate
+### 4. Add a developer-facing smoke script
 
-Preferred file, only if justified:
+Preferred file:
 
 - `scripts/smoke-e2e-flow.mjs`
 
 Work:
 
 - Wrap the same helper used by tests.
-- Print concise JSON by default or with `--json`.
+- Print parseable JSON by default.
 - Keep it under `scripts/`, not as a public command yet.
+- Add an npm script so CI and agents have one stable entrypoint.
 
 Acceptance:
 
-- The script is optional. If the test helper is enough, skip this step.
-- If added, it exits nonzero on any failed stage and reports the exact stage.
+- `npm run --silent smoke:e2e -- --fresh-mode fixed` prints parseable JSON.
+- The script exits nonzero on any failed stage and reports the exact stage.
+- The script does not mutate `findings.json` as proof input; fresh findings are regenerated from fresh evidence.
 
 ### 5. Update docs for the operator flow
 
@@ -239,7 +242,10 @@ node bin/screenslop.mjs doctor
 npm test
 npm run cleanup:macos:dry
 node bin/screenslop.mjs matrix
+npm run --silent smoke:e2e -- --fresh-mode fixed
 ```
+
+The matrix check must assert the placeholder message and no artifact side effects.
 
 Commit/push:
 
@@ -253,6 +259,8 @@ Acceptance:
 
 - Commit includes test evidence trailers.
 - Push succeeds to `origin/main`.
+- `git status --short` is empty after commit.
+- Local `HEAD` and `origin/main` resolve to the same SHA after push.
 - If sidecars appear, preview with `npm run cleanup:macos:dry`, clean through the cleanup script only, then rerun affected gates.
 
 ## Risks and Mitigations
@@ -266,8 +274,8 @@ Acceptance:
 - Risk: `fix` can patch source, so e2e tests may edit repo files by accident.
   - Mitigation: copy fixture source to a temp directory and pass that temp path as `--source-root`.
 
-- Risk: fresh evidence is faked too loosely and verify becomes a tautology.
-  - Mitigation: fresh bundle must be a separate bundle with its own critique artifacts; tests must inspect `freshFindingsPath` and `verification.json`.
+- Risk: fresh evidence is modeled too loosely and verify only rechecks matcher behavior.
+  - Mitigation: fresh bundle must be a separate bundle with its own `evidence.json`; copied bundles purge generated reports; fresh findings are regenerated from evidence; tests inspect `freshFindingsPath` and `verification.json`.
 
 - Risk: another adjacent CLI command regresses.
   - Mitigation: keep explicit `screenslop matrix` smoke in the verification checklist.
@@ -283,13 +291,10 @@ node bin/screenslop.mjs doctor
 npm test
 npm run cleanup:macos:dry
 node bin/screenslop.mjs matrix
+npm run --silent smoke:e2e -- --fresh-mode fixed
 ```
 
-If a smoke script is added:
-
-```bash
-node scripts/smoke-e2e-flow.mjs --json
-```
+The matrix smoke must assert the placeholder text and no artifact side effects.
 
 If real simulator evidence is available during execution:
 
