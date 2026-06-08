@@ -132,6 +132,23 @@ test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
   assert.match(checklist, /recorded-blocker/);
 });
 
+
+test('agent playbook stays aligned with shipped command and dogfood contracts', () => {
+  const playbook = readText('docs/agent-playbook.md');
+  const advertised = extractScreenslopCommands(playbook);
+
+  for (const command of advertised) {
+    assert.ok(engineContract.commands.includes(command), `playbook advertises unshipped command ${command}`);
+  }
+
+  assert.match(playbook, /Do not critique Apple UI from source alone when runtime evidence can be captured/);
+  assert.match(playbook, /`screenslop verify` needs a fresh bundle/);
+  assert.match(playbook, /It proves the public sample app loop\. It does not prove a private app/);
+  assert.match(playbook, /summary\.verifyStatus: "verified-fixed"/);
+  assert.match(playbook, /pathDisplayMode: "redacted"/);
+  assert.match(playbook, /check-dogfood-redaction\.mjs/);
+});
+
 test('readiness gate contract is reflected in release docs', () => {
   const checklist = readText('docs/release-checklist.md');
   const handoff = readText('docs/session-handoff.md');
@@ -147,6 +164,20 @@ test('readiness gate contract is reflected in release docs', () => {
   assert.match(checklist, /`status` is workflow state/);
   assert.match(handoff, /recorded-blocker/);
 });
+
+/**
+ * Extracts Screenslop command names used in shell snippets.
+ *
+ * @param {string} text Markdown text.
+ * @returns {string[]} Unique command names.
+ */
+function extractScreenslopCommands(text) {
+  const commands = new Set();
+  for (const match of text.matchAll(/(?:^|\s)(?:node bin\/screenslop\.mjs|screenslop)\s+([a-z][a-z-]*)/gm)) {
+    commands.add(match[1]);
+  }
+  return [...commands].sort();
+}
 
 /**
  * Reads a repository-local JSON file.

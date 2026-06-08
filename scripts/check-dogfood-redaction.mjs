@@ -131,7 +131,7 @@ export function inspectReport(report, forbidden = []) {
     issues.push({ code: 'path-display-mode', path: '$.pathDisplayMode', value: String(report.pathDisplayMode || '') });
   }
 
-  const forbiddenValues = forbidden.filter((value) => value);
+  const forbiddenValues = forbidden.filter((value) => value && !/^<[^>]+>$/.test(value));
   for (const entry of collectStrings(report)) {
     if (containsRawAbsolutePath(entry.value)) {
       issues.push({ code: 'absolute-path', path: entry.path, value: '<raw-absolute-path>' });
