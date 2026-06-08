@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:14:25.238Z",
+  "updatedAt": "2026-06-08T19:15:21.389Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -47,10 +47,11 @@
       "id": "G004-matrix-proof-upgrades-six-cell-prese",
       "title": "Matrix proof upgrades: six-cell preservation plus explicit applied/re...",
       "objective": "Matrix proof upgrades: six-cell preservation plus explicit applied/requested/unavailable setting status.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:15:21.389Z",
+      "startedAt": "2026-06-08T19:15:21.389Z"
     },
     {
       "id": "G005-configured-target-preflight-private",
@@ -89,5 +90,6 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G004-matrix-proof-upgrades-six-cell-prese"
 }

@@ -10,6 +10,21 @@
       "label": "Default configured iPhone",
       "status": "unavailable",
       "reason": "no-config",
+      "requested": { "device": null, "appearance": "unspecified", "dynamicType": "unspecified" },
+      "settingStatus": {
+        "appearance": {
+          "requested": "unspecified",
+          "applied": null,
+          "status": "not-requested",
+          "message": "appearance was not requested for this cell."
+        },
+        "dynamicType": {
+          "requested": "unspecified",
+          "applied": null,
+          "status": "not-requested",
+          "message": "dynamicType was not requested for this cell."
+        }
+      },
       "evidenceBundle": "artifacts/2026-06-08T13-04-00Z-default-configured-iphone",
       "evidence": "artifacts/2026-06-08T13-04-00Z-default-configured-iphone/evidence.json"
     }

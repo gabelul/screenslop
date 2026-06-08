@@ -34,7 +34,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "label", "status", "evidenceBundle", "evidence"],
+        "required": ["id", "label", "status", "settingStatus", "evidenceBundle", "evidence"],
         "properties": {
           "id": { "type": "string" },
           "label": { "type": "string" },
@@ -42,6 +42,32 @@
           "reason": { "type": "string" },
           "message": { "type": "string" },
           "requested": { "type": "object" },
+          "settingStatus": {
+            "type": "object",
+            "required": ["appearance", "dynamicType"],
+            "properties": {
+              "appearance": {
+                "type": "object",
+                "required": ["requested", "applied", "status", "message"],
+                "properties": {
+                  "requested": { "type": "string" },
+                  "applied": { "type": ["string", "null"] },
+                  "status": { "enum": ["applied", "requested-only", "unavailable", "not-requested"] },
+                  "message": { "type": "string" }
+                }
+              },
+              "dynamicType": {
+                "type": "object",
+                "required": ["requested", "applied", "status", "message"],
+                "properties": {
+                  "requested": { "type": "string" },
+                  "applied": { "type": ["string", "null"] },
+                  "status": { "enum": ["applied", "requested-only", "unavailable", "not-requested"] },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          },
           "build": { "type": "object" },
           "evidenceBundle": { "type": "string" },
           "evidence": { "type": "string" },
