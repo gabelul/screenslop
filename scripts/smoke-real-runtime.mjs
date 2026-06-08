@@ -602,6 +602,7 @@ function assertFixScope({ repoRoot, sourceRoot, fix }) {
 function finishReport(report, { reason = null, paths, writeReport, repoRoot }) {
   report.finishedAt = new Date().toISOString();
   report.reason = reason;
+  report.summary = summarizeRuntimeSmoke(report);
   report.artifacts.report = displayPath(paths.reportPath, repoRoot || defaultRepoRoot);
   report.pathDisplayMode = 'redacted';
   sanitizeReport(report, {
@@ -613,6 +614,47 @@ function finishReport(report, { reason = null, paths, writeReport, repoRoot }) {
     fs.writeFileSync(paths.reportPath, `${JSON.stringify(report, null, 2)}\n`);
   }
   return report;
+}
+
+/**
+ * Builds the compact status block agents can read without parsing every stage.
+ *
+ * @param {object} report Full runtime smoke report.
+ * @returns {object} Stable public summary.
+ */
+function summarizeRuntimeSmoke(report) {
+  const failedStage = report.stages.find((stage) => stage.ok === false) || null;
+  return {
+    status: report.ok ? 'passed' : 'failed',
+    reason: report.reason || null,
+    targetKind: report.target?.kind || null,
+    surface: report.surface || report.target?.surface || null,
+    captureStatus: stageOutcome(report.stages, 'baseline-see'),
+    artifactStatus: stageOutcome(report.stages, 'baseline-artifacts'),
+    critiqueStatus: stageOutcome(report.stages, 'baseline-critique'),
+    selectedFindingId: report.findingId || null,
+    fixStatus: stageOutcome(report.stages, 'fix-apply'),
+    freshCaptureStatus: stageOutcome(report.stages, 'fresh-see'),
+    freshArtifactStatus: stageOutcome(report.stages, 'fresh-artifacts'),
+    freshCritiqueStatus: stageOutcome(report.stages, 'fresh-critique'),
+    verifyStageStatus: stageOutcome(report.stages, 'verify'),
+    verifyStatus: report.verificationStatus || null,
+    failedStage: failedStage?.name || null,
+    stageCount: report.stages.length
+  };
+}
+
+/**
+ * Returns a stable status word for one runtime smoke stage.
+ *
+ * @param {object[]} stages Smoke stages.
+ * @param {string} name Stage name.
+ * @returns {"passed"|"failed"|"not-run"} Stage outcome.
+ */
+function stageOutcome(stages, name) {
+  const stage = stages.find((entry) => entry.name === name);
+  if (!stage) return 'not-run';
+  return stage.ok ? 'passed' : 'failed';
 }
 
 /**
