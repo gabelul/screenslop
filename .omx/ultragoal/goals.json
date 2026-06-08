@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:19:04.678Z",
+  "updatedAt": "2026-06-08T19:23:05.536Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -59,11 +59,13 @@
       "id": "G005-configured-target-preflight-private",
       "title": "Configured-target preflight: private config validation, redacted pars...",
       "objective": "Configured-target preflight: private config validation, redacted parseable failures, public-safe checklist/docs.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:19:04.678Z",
-      "startedAt": "2026-06-08T19:19:04.678Z"
+      "updatedAt": "2026-06-08T19:23:05.536Z",
+      "startedAt": "2026-06-08T19:19:04.678Z",
+      "completedAt": "2026-06-08T19:23:05.536Z",
+      "evidence": "Committed and pushed configured-target preflight at 3c4b1e9. Files: scripts/smoke-real-runtime.mjs, tests/real-runtime-smoke.test.mjs, docs/getting-started.md, docs/commands.md, Ultragoal ledger. Evidence: --preflight-only validates configured target fields and emits redacted parseable JSON without Baguette, XcodeBuildMCP, build/run, capture, fix, or verify; target validation now happens before runtime tool preflight; tests cover no runtime calls and redaction; preflight-only JSON smoke checked no private bundle ID leak; cleanup dry-run, node checks, doctor, npm test 89/89, smoke:runtime verified-fixed, smoke:e2e fixed, matrix dry/profile JSON, npm pack dry-run, and smoke:package passed."
     },
     {
       "id": "G006-private-dogfood-confidence-proof-rea",
@@ -93,6 +95,5 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G005-configured-target-preflight-private"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
