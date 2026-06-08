@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Screenslop</title>
+  <desc id="desc">Evidence-first Apple UI review for AI agents.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f0f0f"/>
+      <stop offset="0.55" stop-color="#171827"/>
+      <stop offset="1" stop-color="#251322"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff6b6b"/>
+      <stop offset="1" stop-color="#ffa36b"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1 0 0.42 0 0 0.35 0 0 0.32 0 0.25 0 0 0 1 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="400" rx="28" fill="url(#bg)"/>
+  <circle cx="1030" cy="70" r="180" fill="#ff6b6b" opacity="0.08"/>
+  <circle cx="80" cy="360" r="210" fill="#ffa36b" opacity="0.07"/>
+
+  <g transform="translate(70 58)">
+    <rect x="0" y="0" width="1060" height="284" rx="24" fill="#ffffff" opacity="0.045" stroke="#ffffff" stroke-opacity="0.08"/>
+
+    <g transform="translate(44 42)">
+      <text x="0" y="38" fill="#f2f2f2" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="54" font-weight="800">Screenslop</text>
+      <rect x="0" y="62" width="330" height="6" rx="3" fill="url(#accent)" filter="url(#glow)"/>
+      <text x="0" y="106" fill="#c8c8c8" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="22">Evidence-first Apple UI review for AI agents.</text>
+      <text x="0" y="142" fill="#8c8c8c" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">see &#8594; critique &#8594; fix &#8594; recapture &#8594; verify</text>
+    </g>
+
+    <g transform="translate(680 50)">
+      <rect x="0" y="0" width="310" height="52" rx="14" fill="#11131f" stroke="#ffffff" stroke-opacity="0.1"/>
+      <text x="22" y="32" fill="#ffb18a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">runtime: Baguette first</text>
+      <rect x="0" y="72" width="310" height="52" rx="14" fill="#11131f" stroke="#ffffff" stroke-opacity="0.1"/>
+      <text x="22" y="104" fill="#ffb18a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">proof: AX + screenshot + logs</text>
+      <rect x="0" y="144" width="310" height="52" rx="14" fill="#11131f" stroke="#ffffff" stroke-opacity="0.1"/>
+      <text x="22" y="176" fill="#ffb18a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">fixes: selected, verified</text>
+    </g>
+  </g>
+
+  <g transform="translate(70 358)">
+    <text fill="#777" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">SwiftUI &#183; iOS Simulator &#183; Accessibility Tree &#183; XcodeBuildMCP &#183; Agent Workflows</text>
+  </g>
+</svg>

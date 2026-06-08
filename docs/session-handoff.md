@@ -7,13 +7,13 @@ This file exists so a new AI session can pick up Screenslop without needing the 
 Public engine:
 
 ```text
-/Volumes/MyEXT/Projects/Apple_Stuff/screenslop
+<local Screenslop checkout>
 ```
 
 Private Mac app shell:
 
 ```text
-/Volumes/MyEXT/Projects/Apple_Stuff/screenslop-studio
+<private Screenslop Studio checkout>
 ```
 
 ## Product decision
@@ -110,15 +110,11 @@ docs/research-workspace.md
 docs/roadmap.md
 ```
 
-## Current next engineering step
+## Current release state
 
-Finish release polish:
+The v0.1 engine loop is complete and package-ready. The flat repo layout is intentional for v0.1; `package.json` uses an explicit `files` whitelist so local state, research folders, `.omx`, generated artifacts, and private config stay out of the npm tarball.
 
-1. Keep command docs, schemas, examples, and the agent skill aligned with the
-   shipped CLI.
-2. Reconcile release boundaries in `docs/repo-strategy.md`.
-3. Run the package smoke and decide whether the flat repo layout is acceptable
-   for v0.1 or should be deferred as explicit pre-1.0 work.
+Before tagging or publishing, run the release checklist in `docs/release-checklist.md`.
 
 ## Research workspace
 
