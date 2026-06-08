@@ -261,16 +261,37 @@ absolute paths in its final JSON report by default.
 
 ### `screenslop matrix`
 
-Placeholder only. The CLI currently prints a planned-but-not-wired message and writes no artifacts.
+Writes a bounded matrix report and one evidence bundle per matrix cell.
 
-The future matrix runner should cover:
+MVP usage:
 
-- iPhone small / large
-- iPad split width
-- light / dark
-- Dynamic Type normal / accessibility
-- Reduce Motion
-- Reduce Transparency
+```bash
+screenslop matrix --dry-run --json
+screenslop matrix --profile examples/matrix/default.json --json
+screenslop matrix --critique --json
+```
+
+The built-in profile has six fixed cells:
+
+- default configured iPhone
+- large iPhone
+- light appearance
+- dark appearance
+- normal Dynamic Type
+- accessibility Dynamic Type
+
+When `.screenslop/config.json` is missing, the report still keeps all cells and
+marks them unavailable with no-config evidence bundles. With config present,
+`--dry-run` writes the same cell bundles without runtime capture. Live capture
+builds and launches the configured target through XcodeBuildMCP, then captures
+with the configured `defaultSurface`, `defaultBundleId`, and default/device cell
+preference. `--critique` runs critique after a successful cell capture.
+
+The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
+cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
+`surface`. Appearance and Dynamic Type are recorded as requested profile
+metadata in this MVP; the report must not pretend a cell was captured if the
+runtime cannot supply it.
 
 ### `screenslop watch`
 
@@ -287,6 +308,6 @@ see       capture evidence
 critique  find issues
 fix       patch selected issues
 verify    prove the fix
-matrix    future stress runner; placeholder today
+matrix    bounded device/settings stress report
 watch     live iteration loop
 ```

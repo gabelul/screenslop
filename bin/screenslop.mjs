@@ -7,6 +7,7 @@ import { collectSee } from '../src/evidence/collect-see.mjs';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
+import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
 import {
   createDefaultConfig,
   planInitConfig,
@@ -43,6 +44,8 @@ switch (command) {
     await verify();
     break;
   case 'matrix':
+    await matrix();
+    break;
   case 'watch':
     placeholder(command);
     break;
@@ -66,10 +69,32 @@ Commands:
   see        Capture screenshot, accessibility tree, optional logs, and evidence
   critique   Review an evidence bundle
   fix        Plan and apply selected safe SwiftUI finding fixes
-  matrix     Capture across devices/settings (coming next)
+  matrix     Write a bounded six-cell device/settings report
   verify     Compare previous findings with fresh evidence
   watch      Live review loop (coming next)
 `);
+}
+
+/** Captures or scaffolds a bounded matrix report. */
+async function matrix() {
+  const options = parseOptions(args);
+  try {
+    const result = await collectMatrix({
+      root: process.cwd(),
+      profilePath: options.values.profile || null,
+      dryRun: options.flags.has('dry-run'),
+      includeCritique: options.flags.has('critique')
+    });
+    printMatrixResult(result, options.flags.has('json'));
+    if (!result.ok) process.exitCode = 1;
+  } catch (error) {
+    if (options.flags.has('json')) {
+      console.log(JSON.stringify({ ok: false, command: 'matrix', error: error.message }, null, 2));
+    } else {
+      console.error(`screenslop matrix failed: ${error.message}`);
+    }
+    process.exitCode = 1;
+  }
 }
 
 /** Checks runtime availability and offers safe setup help. */
@@ -598,6 +623,31 @@ function printVerifyResult(result, json) {
   if (result.items.length > 8) console.log(`...${result.items.length - 8} more item(s)`);
 }
 
+/**
+ * Prints matrix output for humans or agents.
+ * @param {object} result Matrix result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printMatrixResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Matrix report: ${result.artifacts.reportPath}`);
+  console.log(`Cells: ${result.summary.total}`);
+  console.log(`captured: ${result.summary.captured}`);
+  console.log(`dry-run: ${result.summary.dryRun}`);
+  console.log(`unavailable: ${result.summary.unavailable}`);
+  console.log(`failed: ${result.summary.failed}`);
+
+  for (const cell of result.cells) {
+    const note = cell.reason ? ` (${cell.reason})` : '';
+    console.log(`- ${cell.id}: ${cell.status}${note}`);
+  }
+}
+
 /** Prints placeholder status for commands not wired yet. */
 function placeholder(name) {
   console.log(`screenslop ${name} is planned but not wired yet.`);
@@ -643,7 +693,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'critique', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -675,7 +725,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'critique', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;
