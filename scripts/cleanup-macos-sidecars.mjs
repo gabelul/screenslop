@@ -10,6 +10,7 @@ const yes = args.has('--yes') || args.has('-y');
 
 const ignoredDirs = new Set([
   '.git',
+  '.omc',
   'node_modules',
   'artifacts',
   'research/repos',

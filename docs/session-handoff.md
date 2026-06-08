@@ -70,6 +70,20 @@ Doctor:
 node bin/screenslop.mjs doctor
 ```
 
+Fixture smoke:
+
+```bash
+npm run --silent smoke:e2e -- --fresh-mode fixed
+```
+
+Real-runtime sample smoke:
+
+```bash
+npm run smoke:runtime
+```
+
+The real-runtime smoke builds and launches `examples/runtime-smoke-app` through XcodeBuildMCP, captures Baguette evidence, applies one safe sample-app fix, recaptures, critiques again, and verifies the selected finding against fresh evidence. It is sample-app proof, not proof for a private user app.
+
 ## Important docs
 
 Read these first in a new session:

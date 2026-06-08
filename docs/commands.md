@@ -175,6 +175,16 @@ npm run --silent smoke:e2e -- --fresh-mode fixed
 
 That smoke uses copied fixtures and temporary source files. It proves command composition and artifact contracts; it does not prove a real app screen is visually fixed. Real UI claims still require runtime evidence from `screenslop see`.
 
+For the first self-contained live simulator proof, run the real-runtime smoke:
+
+```bash
+npm run smoke:runtime
+```
+
+That smoke builds and launches `examples/runtime-smoke-app` through XcodeBuildMCP, captures Baguette-backed baseline evidence, applies one narrow source fix, rebuilds, recaptures, critiques the fresh bundle, and runs `screenslop verify`. It is still sample-app proof only. A user app needs its own real `screenslop see` capture on the user surface before any verified UI claim.
+
+The runtime smoke prints JSON only. If Baguette, XcodeBuildMCP, the simulator, capture, fix, rebuild, or verification fails, it exits nonzero with the failing stage in the report.
+
 ### `screenslop matrix`
 
 Placeholder only. The CLI currently prints a planned-but-not-wired message and writes no artifacts.

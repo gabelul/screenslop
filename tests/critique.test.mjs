@@ -14,9 +14,11 @@ test('isInteractiveNode keeps the MVP role set conservative', () => {
   assert.equal(isInteractiveNode({ role: 'AXButton' }), true);
   assert.equal(isInteractiveNode({ role: 'AXMenuButton' }), true);
   assert.equal(isInteractiveNode({ role: 'AXPopUpButton' }), true);
+  assert.equal(isInteractiveNode({ role: 'AXGenericElement', identifier: 'runtimeSmoke.saveButton' }), true);
   assert.equal(isInteractiveNode({ role: 'AXCell' }), false);
   assert.equal(isInteractiveNode({ role: 'AXTab' }), false);
   assert.equal(isInteractiveNode({ role: 'AXMenu' }), false);
+  assert.equal(isInteractiveNode({ role: 'AXGenericElement', identifier: 'runtimeSmoke.title' }), false);
 });
 
 test('collectCritique writes an empty report for a clean bundle', async () => {
