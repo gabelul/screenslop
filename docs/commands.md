@@ -32,11 +32,10 @@ screenslop init --scheme RuntimeSmoke --bundle-id dev.example.RuntimeSmoke --sou
 That file is ignored because it can contain private app paths. Commit docs or
 templates instead of committing local target config.
 
-The config keeps `artifactsDir` as the canonical artifact-root field. Phase 1
-stores, validates, and resolves it; current `see` capture still writes to the
-default `artifacts/` directory until the shared runtime runner consumes target
-config in the next slice. `sourceHints` stays evidence/source-location metadata;
-it is not a write scope and must not be treated as `sourceRoot`.
+The config keeps `artifactsDir` as the canonical artifact-root field. `see` and
+`matrix` use it when a valid config exists. `sourceHints` stays
+evidence/source-location metadata; it is not a write scope and must not be
+treated as `sourceRoot`.
 
 Existing fields are preserved or mapped:
 
@@ -66,8 +65,8 @@ Safety rules:
 - `artifactsDir` must not point at `.git`, `.omx`, `node_modules`, `DerivedData`, `build`, or the repo root.
 - `sourceRoot` and `artifactsDir` must not overlap.
 
-The config schema is still provisional until the matrix runner exercises the
-target/profile needs. Freeze or document pre-1.0 instability before a v0.1 tag.
+`schemaVersion: 1` is the v0.1 config generation. It is a 0.x contract, so
+future 0.x releases may change it with an explicit migration path.
 
 ### `screenslop learn`
 
