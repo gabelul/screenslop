@@ -4,6 +4,7 @@ node_modules/
 # Screenslop runtime output
 artifacts/**
 !artifacts/.gitkeep
+.screenslop/config.json
 .screenslop/local.json
 
 # Local research workspace, intentionally untracked

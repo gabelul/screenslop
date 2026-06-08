@@ -1,0 +1,1 @@
+Execute the approved Screenslop rest-to-v0 plan at .omx/plans/screenslop-rest-to-v0-2026-06-08.md as phase-level goals only. Preserve the public engine boundary, commit and push every execution slice, and use runtime evidence before UI critique.
