@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "command": "verify",
+  "baselineBundle": "artifacts/2026-06-08T13-00-00Z-settings",
+  "freshBundle": "artifacts/2026-06-08T13-02-00Z-settings",
+  "summary": { "total": 1, "verifiedFixed": 1, "stillPresent": 0, "changed": 0, "unknown": 0 },
+  "items": [
+    {
+      "findingId": "ax-missing-name-example",
+      "ruleId": "ax.missing-name",
+      "status": "verified-fixed",
+      "reason": "Fresh critique no longer reports this rule."
+    }
+  ]
+}

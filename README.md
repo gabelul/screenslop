@@ -8,11 +8,13 @@ AI can generate SwiftUI now. Very fast. Sometimes suspiciously fast. Screenslop 
 
 Screenslop reviews Apple app UI from evidence, not vibes:
 
-1. Runs or connects to an Apple app surface.
-2. Captures screenshots, accessibility JSON, logs, and source hints.
-3. Scores the screen across Apple-native design pillars.
-4. Produces findings with proof.
-5. Fixes selected issues and verifies with a fresh capture.
+1. Configures a target app.
+2. Runs or connects to an Apple app surface.
+3. Captures screenshots, accessibility JSON, logs, and source hints.
+4. Scores the screen across Apple-native design pillars.
+5. Produces findings with proof.
+6. Fixes selected issues and verifies with a fresh capture.
+7. Writes a bounded matrix report across the first device/settings cells.
 
 Baguette is the preferred runtime for iOS simulator screens. If it is not available, Screenslop falls back to XcodeBuildMCP, then `xcrun simctl` / `xcodebuild`, screenshots, and manual evidence where possible.
 
@@ -29,19 +31,22 @@ see the app -> critique the rendered UI -> patch SwiftUI -> verify on the simula
 ## Commands
 
 ```bash
-screenslop init      # create project context and runtime preferences
+screenslop init      # create or migrate .screenslop/config.json
 screenslop doctor    # check Baguette, XcodeBuildMCP, Xcode, simctl, and fallback paths
 screenslop see       # capture screenshot + AX tree + logs
 screenslop critique  # score current evidence and produce findings
-screenslop fix       # patch selected findings, then recapture
-screenslop matrix    # run across devices, appearance, type size, motion settings
+screenslop fix       # patch selected safe findings
 screenslop verify    # confirm previous findings are fixed
+screenslop matrix    # write a bounded six-cell stress report
 screenslop watch     # live review loop for ongoing UI iteration
 ```
 
 ## Current status
 
-This is the scaffold. The first real milestone is `screenslop see` producing an evidence bundle:
+The public MVP loop is wired for evidence capture, critique, selected safe fixes,
+fresh verification, configured runtime smoke, and a bounded matrix report.
+
+Evidence bundles look like:
 
 ```text
 artifacts/<run-id>/screenshot.jpg
@@ -50,7 +55,16 @@ artifacts/<run-id>/logs.ndjson
 artifacts/<run-id>/summary.md
 ```
 
-After that, critique and fix become much less hand-wavy.
+Useful local checks:
+
+```bash
+node bin/screenslop.mjs doctor
+npm test
+npm run --silent smoke:e2e -- --fresh-mode fixed
+npm run smoke:runtime
+node bin/screenslop.mjs matrix --dry-run --json
+node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
+```
 
 ## Runtime priority
 
@@ -67,7 +81,7 @@ The agent needs a boring, scriptable core more than it needs a beautiful wrapper
 
 ## Repo strategy
 
-Screenslop is the public engine repo: core, CLI, and agent integrations. The future Mac app should live privately as Screenslop Studio and wrap this same engine instead of growing a second critique brain. See [docs/session-handoff.md](docs/session-handoff.md), [docs/commands.md](docs/commands.md), [docs/repo-strategy.md](docs/repo-strategy.md), [docs/agent-integrations.md](docs/agent-integrations.md), [docs/maintenance.md](docs/maintenance.md), and [docs/research-workspace.md](docs/research-workspace.md).
+Screenslop is the public engine repo: core, CLI, and agent integrations. The future Mac app should live privately as Screenslop Studio and wrap this same engine instead of growing a second critique brain. See [docs/session-handoff.md](docs/session-handoff.md), [docs/commands.md](docs/commands.md), [docs/repo-strategy.md](docs/repo-strategy.md), [docs/agent-integrations.md](docs/agent-integrations.md), [docs/known-limitations.md](docs/known-limitations.md), [docs/release-checklist.md](docs/release-checklist.md), [docs/maintenance.md](docs/maintenance.md), and [docs/research-workspace.md](docs/research-workspace.md).
 
 ## License
 

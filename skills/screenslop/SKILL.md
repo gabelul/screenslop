@@ -25,13 +25,13 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 ## Commands
 
-- `init`: create project config and ask for scheme/bundle if missing.
+- `init`: create or migrate `.screenslop/config.json` with target metadata.
 - `doctor`: check runtime availability.
 - `see`: capture screenshot, AX tree, logs, and source hints.
 - `critique`: score evidence and produce findings.
-- `fix`: patch selected findings and recapture.
-- `matrix`: test across devices, appearance, Dynamic Type, motion, and transparency settings.
-- `verify`: confirm previous findings are fixed with fresh evidence.
+- `fix`: patch selected safe findings; use `--source-root` or config before applying.
+- `verify`: compare baseline findings with fresh capture plus fresh critique.
+- `matrix`: write a bounded six-cell report with linked evidence bundles.
 - `watch`: keep a live review loop open while editing.
 
 ## Review rule
@@ -45,3 +45,15 @@ Every finding needs evidence:
 - or an explicit note that evidence is missing
 
 If Baguette is available, use it before guessing. The whole point is to see the thing instead of arguing with SwiftUI in the abstract.
+
+## Standard checks
+
+```bash
+node bin/screenslop.mjs doctor
+npm test
+npm run --silent smoke:e2e -- --fresh-mode fixed
+node bin/screenslop.mjs matrix --dry-run --json
+```
+
+Use `npm run smoke:runtime` when Apple simulator tools are available. It proves
+the sample app loop only. User-app claims still need evidence from that app.
