@@ -40,6 +40,22 @@ test('matrix dry-run with config preserves the six requested profile cells', asy
   assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-accessibility').requested.dynamicType, 'accessibility3');
 });
 
+test('matrix writes reports and dry-run bundles under configured artifactsDir', async () => {
+  const root = createWorkspace();
+  writeConfig(root, { artifactsDir: 'matrix-artifacts' });
+
+  const report = await collectMatrix({ root, dryRun: true });
+
+  assert.match(report.artifacts.reportPath, /^matrix-artifacts\//);
+  assert.match(report.artifacts.reportMarkdownPath, /^matrix-artifacts\//);
+  assert.equal(fs.existsSync(path.join(root, report.artifacts.reportPath)), true);
+  for (const cell of report.cells) {
+    assert.match(cell.evidenceBundle, /^matrix-artifacts\//);
+    assert.match(cell.evidence, /^matrix-artifacts\//);
+    assert.equal(fs.existsSync(path.join(root, cell.evidence)), true);
+  }
+});
+
 test('matrix live path records capture and optional critique per cell', async () => {
   const root = createWorkspace();
   writeConfig(root);
@@ -91,9 +107,10 @@ function createWorkspace() {
 /**
  * Writes a valid Screenslop project config.
  * @param {string} root Workspace root.
+ * @param {object} [overrides] Config field overrides.
  * @returns {void}
  */
-function writeConfig(root) {
+function writeConfig(root, overrides = {}) {
   fs.mkdirSync(path.join(root, '.screenslop'), { recursive: true });
   fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
     schemaVersion: 1,
@@ -107,6 +124,7 @@ function writeConfig(root) {
     projectPath: null,
     sourceRoot: 'App',
     artifactsDir: 'artifacts',
-    sourceHints: []
+    sourceHints: [],
+    ...overrides
   }, null, 2)}\n`);
 }

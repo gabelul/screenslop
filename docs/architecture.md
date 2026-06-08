@@ -29,17 +29,18 @@ Current schema:
 }
 ```
 
-`artifactsDir` is the canonical artifact-root config field. Phase 1 stores and
-resolves it; the runtime capture path will consume it when the shared target
-runner lands. `sourceHints` are evidence metadata and never grant write scope.
-Source edits need an explicit `sourceRoot` from config or CLI flags.
+`artifactsDir` is the canonical artifact-root config field. `see` and `matrix`
+use it when a valid config exists. `sourceHints` are evidence metadata and never
+grant write scope. Source edits need an explicit `sourceRoot` from config or CLI
+flags.
 
 The config file is ignored because workspace paths, source roots, and bundle IDs
 can reveal private app details. Durable examples belong in docs or templates,
 not in local config.
 
-The config schema is provisional until matrix capture proves the profile needs.
-Before a v0.1 tag, either freeze this schema or document the pre-1.0 instability.
+`schemaVersion: 1` is the v0.1 config generation, not a long-term stability
+promise. The config contract is allowed to change during 0.x releases with an
+explicit migration path.
 
 ### Matrix runner
 
