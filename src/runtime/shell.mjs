@@ -1,4 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 /**
  * Checks whether a command is available on PATH.
@@ -6,9 +8,7 @@ import { spawn, spawnSync } from 'node:child_process';
  * @returns {boolean} True when the command can be executed.
  */
 export function hasCommand(command) {
-  const result = spawnSync('zsh', ['-lc', `command -v ${quote(command)} >/dev/null 2>&1`], {
-    encoding: 'utf8'
-  });
+  const result = spawnShellSync(`command -v ${quote(command)} >/dev/null 2>&1`);
   return result.status === 0;
 }
 
@@ -18,8 +18,7 @@ export function hasCommand(command) {
  * @returns {{status:number|null, stdout:string, stderr:string}}
  */
 export function run(command) {
-  const result = spawnSync('zsh', ['-lc', command], {
-    encoding: 'utf8',
+  const result = spawnShellSync(command, {
     maxBuffer: 10 * 1024 * 1024
   });
   return {
@@ -40,7 +39,7 @@ export function runFor(command, options = {}) {
   const timeoutMs = options.timeoutMs ?? 3000;
 
   return new Promise((resolve) => {
-    const child = spawn('zsh', ['-lc', command], {
+    const child = spawn(resolveShell(), ['-c', command], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -68,6 +67,47 @@ export function runFor(command, options = {}) {
       resolve({ status, stdout, stderr, timedOut });
     });
   });
+}
+
+/**
+ * Returns the shell used for small local commands.
+ * @returns {string} Absolute shell path or shell name.
+ */
+export function resolveShell() {
+  const configuredShell = process.env.SCREENSLOP_SHELL || process.env.SHELL;
+  if (configuredShell && shellExists(configuredShell)) {
+    return configuredShell;
+  }
+  return '/bin/sh';
+}
+
+/**
+ * Runs a command through the resolved shell without assuming zsh is installed.
+ * @param {string} command Shell command to execute.
+ * @param {object} [options] spawnSync options.
+ * @returns {import('node:child_process').SpawnSyncReturns<string>} Spawn result.
+ */
+function spawnShellSync(command, options = {}) {
+  return spawnSync(resolveShell(), ['-c', command], {
+    encoding: 'utf8',
+    ...options
+  });
+}
+
+/**
+ * Checks whether a configured shell can be spawned on this machine.
+ * @param {string} shell Shell path or command name.
+ * @returns {boolean} True when the shell exists.
+ */
+function shellExists(shell) {
+  if (path.isAbsolute(shell)) {
+    return existsSync(shell);
+  }
+
+  return (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .some((directory) => existsSync(path.join(directory, shell)));
 }
 
 /**
