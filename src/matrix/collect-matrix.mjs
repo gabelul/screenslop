@@ -199,6 +199,7 @@ async function runMatrixCell(options) {
       label: cell.label,
       status,
       requested: requestedEnvironment(cell),
+      settingStatus: matrixSettingStatus(cell, { runtimeAttempted: true }),
       build,
       evidenceBundle: see.dir,
       evidence: see.evidence,
@@ -233,6 +234,7 @@ function writeUnavailableCell({ root, cell, reason, message, status = 'unavailab
     reason,
     message,
     requested: requestedEnvironment(cell),
+    settingStatus: matrixSettingStatus(cell, { runtimeAttempted: false }),
     evidenceBundle: path.relative(root, bundle.dir),
     evidence: path.relative(root, bundle.manifestPath),
     artifacts: bundle.manifest.artifacts,
@@ -285,6 +287,65 @@ function requestedEnvironment(cell) {
 }
 
 /**
+ * Reports whether requested appearance and Dynamic Type settings were applied.
+ *
+ * Screenslop records profile intent today, but it does not force these settings
+ * at runtime yet. The matrix report says that plainly instead of implying a
+ * captured cell actually changed simulator settings.
+ *
+ * @param {object} cell Matrix cell.
+ * @param {object} options Status options.
+ * @param {boolean} options.runtimeAttempted Whether capture was attempted.
+ * @returns {object} Setting status block.
+ */
+function matrixSettingStatus(cell, { runtimeAttempted }) {
+  return {
+    appearance: settingEntry({
+      kind: 'appearance',
+      requested: cell.appearance || 'unspecified',
+      runtimeAttempted
+    }),
+    dynamicType: settingEntry({
+      kind: 'dynamicType',
+      requested: cell.dynamicType || 'unspecified',
+      runtimeAttempted
+    })
+  };
+}
+
+/**
+ * Creates one setting status record.
+ * @param {object} options Setting options.
+ * @returns {object} Setting status record.
+ */
+function settingEntry({ kind, requested, runtimeAttempted }) {
+  if (!requested || requested === 'unspecified') {
+    return {
+      requested: requested || 'unspecified',
+      applied: null,
+      status: 'not-requested',
+      message: `${kind} was not requested for this cell.`
+    };
+  }
+
+  if (!runtimeAttempted) {
+    return {
+      requested,
+      applied: null,
+      status: 'unavailable',
+      message: `${kind} was requested, but no runtime capture was attempted for this cell.`
+    };
+  }
+
+  return {
+    requested,
+    applied: null,
+    status: 'requested-only',
+    message: `${kind} was recorded as requested. Runtime forcing is not shipped yet.`
+  };
+}
+
+/**
  * Removes private path fields from target output.
  * @param {object|null} target Resolved target.
  * @returns {object|null} Public target summary.
@@ -331,7 +392,11 @@ function writeMatrixReport({ report, reportPath, reportMarkdownPath }) {
  * @returns {string} Markdown report.
  */
 function renderMatrixMarkdown(report) {
-  const cells = report.cells.map((cell) => `- ${cell.id}: ${cell.status}${cell.reason ? ` (${cell.reason})` : ''} — ${cell.evidenceBundle}`).join('\n');
+  const cells = report.cells.map((cell) => {
+    const appearance = cell.settingStatus?.appearance?.status || 'unknown';
+    const dynamicType = cell.settingStatus?.dynamicType?.status || 'unknown';
+    return `- ${cell.id}: ${cell.status}${cell.reason ? ` (${cell.reason})` : ''}; settings appearance=${appearance}, dynamicType=${dynamicType} — ${cell.evidenceBundle}`;
+  }).join('\n');
   return `# Screenslop Matrix
 
 Run: ${report.runId}

@@ -17,6 +17,8 @@ test('matrix dry-run with no config writes six unavailable cell bundles', async 
   assert.equal(fs.existsSync(path.join(root, report.artifacts.reportPath)), true);
   for (const cell of report.cells) {
     assert.equal(fs.existsSync(path.join(root, cell.evidence)), true);
+    assert.ok(cell.settingStatus.appearance.status);
+    assert.ok(cell.settingStatus.dynamicType.status);
   }
 });
 
@@ -38,6 +40,8 @@ test('matrix dry-run with config preserves the six requested profile cells', asy
   ]);
   assert.equal(report.cells.find((cell) => cell.id === 'dark-appearance').requested.appearance, 'dark');
   assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-accessibility').requested.dynamicType, 'accessibility3');
+  assert.equal(report.cells.find((cell) => cell.id === 'dark-appearance').settingStatus.appearance.status, 'unavailable');
+  assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-accessibility').settingStatus.dynamicType.status, 'unavailable');
 });
 
 test('matrix writes reports and dry-run bundles under configured artifactsDir', async () => {
@@ -92,6 +96,9 @@ test('matrix live path records capture and optional critique per cell', async ()
   assert.equal(seen[0].bundleId, 'dev.example.App');
   assert.equal(report.cells[0].build.ok, true);
   assert.equal(report.cells[0].critique.findings, 1);
+  assert.equal(report.cells.find((cell) => cell.id === 'dark-appearance').settingStatus.appearance.status, 'requested-only');
+  assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-normal').settingStatus.dynamicType.status, 'requested-only');
+  assert.equal(report.cells[0].settingStatus.appearance.status, 'not-requested');
 });
 
 /**
