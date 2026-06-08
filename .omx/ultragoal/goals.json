@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:01:21.312Z",
+  "updatedAt": "2026-06-08T19:03:58.944Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -11,11 +11,13 @@
       "id": "G001-boundary-contract-lock-make-docs-blo",
       "title": "Boundary contract lock: make docs block Studio until engine gates pas...",
       "objective": "Boundary contract lock: make docs block Studio until engine gates pass, with no Studio placeholders.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.312Z",
-      "startedAt": "2026-06-08T19:01:21.312Z"
+      "updatedAt": "2026-06-08T19:03:58.944Z",
+      "startedAt": "2026-06-08T19:01:21.312Z",
+      "completedAt": "2026-06-08T19:03:58.944Z",
+      "evidence": "Committed boundary gate docs at 0f02aa9. Files: README.md, docs/session-handoff.md, docs/repo-strategy.md, docs/known-limitations.md, .gitignore, .omx/ultragoal/*. Evidence: grep confirms Studio block, apps/mac guard, verified-fixed dogfood gate, and readiness gates; cleanup dry-run clean; node --check bin plus all src/tests/scripts passed; doctor passed; npm test passed 85/85; smoke:e2e fixed passed; matrix dry-run/default profile JSON passed; npm pack dry-run passed."
     },
     {
       "id": "G002-contract-and-package-locks-golden-js",
@@ -81,6 +83,5 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G001-boundary-contract-lock-make-docs-blo"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
