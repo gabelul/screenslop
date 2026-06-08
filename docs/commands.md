@@ -306,9 +306,14 @@ preference. `--critique` runs critique after a successful cell capture.
 
 The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
 cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
-`surface`. Appearance and Dynamic Type are recorded as requested profile
-metadata in this MVP; the report must not pretend a cell was captured if the
-runtime cannot supply it.
+`surface`. Appearance and Dynamic Type now have explicit per-cell
+`settingStatus` entries. The status is `not-requested`, `unavailable`,
+`requested-only`, or `applied`.
+
+In this MVP, runtime forcing is not shipped yet, so captured cells with requested
+appearance or Dynamic Type report `requested-only`. No-config and dry-run cells
+report requested settings as `unavailable`. The report must not pretend a cell
+actually applied a setting just because the profile asked for it.
 
 ### `screenslop watch`
 
