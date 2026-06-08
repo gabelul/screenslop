@@ -59,12 +59,21 @@ export async function runRealRuntimeSmoke(options = {}) {
   try {
     if (target.resetsSource) restoreBaselineSource(target.contentView);
 
-    const preflight = runPreflight({ repoRoot, commandRunner, stages });
-    if (!preflight.ok) return finishReport(report, { reason: preflight.reason, paths, writeReport: options.writeReport !== false, repoRoot });
-
     const targetReady = validateBuildTarget(target);
     addSyntheticStage(stages, 'target-config', targetReady.ok, targetReady.message, targetReady.details);
     if (!targetReady.ok) return finishReport(report, { reason: 'target-config-invalid', paths, writeReport: options.writeReport !== false, repoRoot });
+
+    if (args.preflightOnly) {
+      addSyntheticStage(stages, 'preflight-only', true, 'Configured target preflight passed without runtime capture.', {
+        kind: target.kind,
+        runtimeToolsChecked: false
+      });
+      report.ok = true;
+      return finishReport(report, { paths, writeReport: options.writeReport !== false, repoRoot });
+    }
+
+    const preflight = runPreflight({ repoRoot, commandRunner, stages });
+    if (!preflight.ok) return finishReport(report, { reason: preflight.reason, paths, writeReport: options.writeReport !== false, repoRoot });
 
     const device = selectRuntimeDevice(preflight.baguetteList, {
       udid: args.udid,
@@ -340,6 +349,7 @@ export function parseArgs(argv) {
     label: 'Save changes',
     keepDerivedData: false,
     skipApply: false,
+    preflightOnly: false,
     launchWaitMs: 2500
   };
 
@@ -359,6 +369,7 @@ export function parseArgs(argv) {
     else if (arg === '--label') parsed.label = argv[++index] || 'Save changes';
     else if (arg === '--keep-derived-data') parsed.keepDerivedData = true;
     else if (arg === '--skip-apply') parsed.skipApply = true;
+    else if (arg === '--preflight-only') parsed.preflightOnly = true;
     else if (arg === '--launch-wait-ms') parsed.launchWaitMs = Number(argv[++index] || 2500);
   }
 

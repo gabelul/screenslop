@@ -263,6 +263,7 @@ target can be supplied for local dogfood without committing private paths:
 ```bash
 node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier settings.saveButton
 node scripts/smoke-real-runtime.mjs --workspace App.xcworkspace --scheme App --bundle-id dev.example.App --source-root App --identifier settings.saveButton
+node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier settings.saveButton --preflight-only
 ```
 
 Configured target requirements:
@@ -277,6 +278,10 @@ Configured target requirements:
 The smoke validates target config before build/run, keeps `verify` behind fresh
 build, fresh `see`, fresh artifacts, and fresh `critique`, and redacts private
 absolute paths in its final JSON report by default.
+
+Use `--preflight-only` for private config checks. It validates the target and
+prints redacted JSON without calling Baguette, XcodeBuildMCP, build/run,
+capture, fix, or verify.
 
 ### `screenslop matrix`
 

@@ -39,11 +39,11 @@ test('real runtime smoke runner orders live stages and restores baseline source'
     stageCount: 19
   });
   assert.deepEqual(report.stages.map((stage) => stage.name), [
+    'target-config',
     'preflight-xcodebuildmcp',
     'preflight-baguette',
     'preflight-doctor',
     'preflight-baguette-list',
-    'target-config',
     'select-device',
     'build-run-baseline',
     'baseline-see',
@@ -114,6 +114,46 @@ test('real runtime smoke can use a configured target from config', async () => {
   assert.equal(report.pathDisplayMode, 'redacted');
 });
 
+test('configured runtime smoke preflight-only validates target without runtime tools', async () => {
+  const workspace = createRuntimeWorkspace();
+  const configDir = path.join(workspace.root, '.screenslop');
+  const appSource = path.join(workspace.root, 'ConfiguredApp');
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.mkdirSync(appSource, { recursive: true });
+  fs.writeFileSync(path.join(configDir, 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'ConfiguredSettings',
+    defaultScheme: 'ConfiguredApp',
+    defaultBundleId: 'dev.example.ConfiguredApp',
+    defaultDevice: 'iPhone 17',
+    workspacePath: 'ConfiguredApp.xcworkspace',
+    projectPath: null,
+    sourceRoot: 'ConfiguredApp',
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const calls = [];
+  const report = await runRealRuntimeSmoke({
+    repoRoot: workspace.root,
+    paths: workspace.paths,
+    argv: ['--config', '.screenslop/config.json', '--identifier', 'runtimeSmoke.saveButton', '--preflight-only'],
+    writeReport: false,
+    sleep: async () => {},
+    commandRunner: fakeRuntimeCommandRunner({ workspace, calls })
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.reason, null);
+  assert.equal(report.summary.status, 'passed');
+  assert.deepEqual(report.stages.map((stage) => stage.name), ['target-config', 'preflight-only']);
+  assert.equal(calls.length, 0);
+  assert.equal(JSON.stringify(report).includes(workspace.root), false);
+  assert.equal(JSON.stringify(report).includes('dev.example.ConfiguredApp'), false);
+});
+
 test('configured runtime smoke reports invalid config without build or verify', async () => {
   const workspace = createRuntimeWorkspace();
   const calls = [];
@@ -166,6 +206,7 @@ test('configured runtime smoke refuses missing target fields before build', asyn
   assert.equal(report.ok, false);
   assert.equal(report.reason, 'target-config-invalid');
   assert.equal(report.stages.some((stage) => stage.name === 'target-config' && stage.ok === false), true);
+  assert.equal(calls.length, 0);
   assert.equal(calls.some((call) => call.command === 'xcodebuildmcp' && call.args.includes('build-and-run')), false);
 });
 
