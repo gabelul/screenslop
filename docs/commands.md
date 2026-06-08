@@ -237,6 +237,26 @@ That smoke builds and launches `examples/runtime-smoke-app` through XcodeBuildMC
 
 The runtime smoke prints JSON only. If Baguette, XcodeBuildMCP, the simulator, capture, fix, rebuild, or verification fails, it exits nonzero with the failing stage in the report.
 
+Every report includes a compact `summary` block so agents do not have to guess
+from raw stage logs:
+
+```json
+{
+  "status": "passed",
+  "captureStatus": "passed",
+  "critiqueStatus": "passed",
+  "fixStatus": "passed",
+  "freshCaptureStatus": "passed",
+  "freshCritiqueStatus": "passed",
+  "verifyStageStatus": "passed",
+  "verifyStatus": "verified-fixed"
+}
+```
+
+Failure reports use the same keys with `failed` or `not-run`, plus `reason` and
+`failedStage`. This is the part automation should read first. The full `stages`
+array is still there when something goes sideways and you need the messy details.
+
 The default smoke stays pinned to `examples/runtime-smoke-app`. A configured
 target can be supplied for local dogfood without committing private paths:
 
