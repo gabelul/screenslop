@@ -47,6 +47,20 @@ node bin/screenslop.mjs init \
 
 `.screenslop/config.json` is ignored by git because it can contain private paths and bundle IDs.
 
+Before you run a private app, check the config shape without launching anything:
+
+```bash
+node scripts/smoke-real-runtime.mjs \
+  --config .screenslop/config.json \
+  --identifier settings.saveButton \
+  --preflight-only
+```
+
+That prints JSON, validates the configured target fields, redacts private paths
+and bundle IDs, and stops before Baguette, XcodeBuildMCP, build/run, capture, or
+verify. If this fails, fix the config first. No need to wake the simulator just
+to discover you misspelled a scheme. Not that any of us would ever do that.
+
 ## 3. Capture evidence
 
 ```bash
