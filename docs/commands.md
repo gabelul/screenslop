@@ -110,9 +110,38 @@ No fresh evidence means no verified fix claim. A passed `--verify-command` is re
 
 ### `screenslop verify`
 
-Checks whether previous findings were actually fixed.
+Compares previous findings against fresh evidence and writes proof artifacts.
 
-No fresh evidence, no verified claim.
+MVP usage:
+
+```bash
+screenslop verify artifacts/<baseline-run> --fresh-bundle artifacts/<fresh-run>
+screenslop verify artifacts/<baseline-run> --fresh-bundle artifacts/<fresh-run> --finding <id> --json
+screenslop verify artifacts/<baseline-run> --fresh-bundle artifacts/<fresh-run> --refresh-critique --json
+```
+
+Options:
+
+- `--fresh-bundle <path>` is required. Verification needs a fresh evidence bundle.
+- `--finding <id>` selects one or more baseline findings. Repeat it or pass comma-separated IDs.
+- `--refresh-critique` reruns critique on the fresh bundle before comparison.
+- `--fix-session <path>` attaches optional context from a fix session. It does not prove the fix by itself.
+- `--json` prints parseable JSON only and never prompts.
+
+Outputs are written into the baseline bundle:
+
+- `verification.json`
+- `verification.md`
+
+Statuses:
+
+- `verified-fixed`: fresh critique no longer reports the same issue by stable evidence keys.
+- `still-present`: fresh critique still reports the same rule and stable evidence key.
+- `changed`: the same rule remains, but the stable evidence key changed.
+- `unknown`: the baseline finding lacks enough stable evidence to prove fixed or still present.
+- `missing-baseline`: a requested finding ID was not in the baseline findings.
+
+The MVP does not capture fresh evidence itself. Run `screenslop see`, then `screenslop critique`, then `screenslop verify`. No fresh evidence, no verified claim.
 
 ### `screenslop matrix`
 

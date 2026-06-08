@@ -7,6 +7,7 @@ import { detectRuntimes } from '../src/runtime/detect.mjs';
 import { collectSee } from '../src/evidence/collect-see.mjs';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
+import { collectVerify } from '../src/verify/collect-verify.mjs';
 
 const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
@@ -32,8 +33,10 @@ switch (command) {
   case 'fix':
     await fix();
     break;
-  case 'matrix':
   case 'verify':
+    await verify();
+    break;
+  case 'matrix':
   case 'watch':
     placeholder(command);
     break;
@@ -58,7 +61,7 @@ Commands:
   critique   Review an evidence bundle
   fix        Plan and apply selected safe SwiftUI finding fixes
   matrix     Capture across devices/settings (coming next)
-  verify     Recheck previous findings (coming next)
+  verify     Compare previous findings with fresh evidence
   watch      Live review loop (coming next)
 `);
 }
@@ -225,6 +228,38 @@ async function confirmApply() {
 }
 
 
+/** Compares baseline findings against a fresh evidence bundle. */
+async function verify() {
+  const options = parseOptions(args);
+  const baselineBundle = firstPositional(args);
+  const findingIds = optionList(options, 'finding');
+
+  try {
+    const result = await collectVerify({
+      root: process.cwd(),
+      baselineBundle,
+      freshBundle: options.values['fresh-bundle'] || null,
+      findingIds,
+      refreshCritique: options.flags.has('refresh-critique'),
+      fixSessionPath: options.values['fix-session'] || null
+    });
+
+    printVerifyResult(result, options.flags.has('json'));
+  } catch (error) {
+    if (options.flags.has('json')) {
+      console.log(JSON.stringify({
+        ok: false,
+        command: 'verify',
+        error: error.message
+      }, null, 2));
+    } else {
+      console.error(`screenslop verify failed: ${error.message}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+
 /** Reviews an evidence bundle and writes findings. */
 async function critique() {
   const options = parseOptions(args);
@@ -314,6 +349,35 @@ function printFixResult(result, json) {
   if (result.items.length > 8) console.log(`...${result.items.length - 8} more item(s)`);
 }
 
+
+/**
+ * Prints verify output for humans or agents.
+ * @param {object} result Verify result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printVerifyResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Verified baseline bundle: ${result.baselineBundle}`);
+  console.log(`Fresh bundle: ${result.freshBundle}`);
+  console.log(`Items: ${result.summary.total}`);
+  console.log(`verified-fixed: ${result.summary.verifiedFixed}`);
+  console.log(`still-present: ${result.summary.stillPresent}`);
+  console.log(`changed: ${result.summary.changed}`);
+  console.log(`unknown: ${result.summary.unknown}`);
+  console.log(`verification: ${result.artifacts.verificationPath}`);
+  console.log(`report: ${result.artifacts.reportPath}`);
+
+  for (const item of result.items.slice(0, 8)) {
+    console.log(`- ${item.findingId}: ${item.status} — ${item.reason}`);
+  }
+  if (result.items.length > 8) console.log(`...${result.items.length - 8} more item(s)`);
+}
+
 /** Prints placeholder status for commands not wired yet. */
 function placeholder(name) {
   console.log(`screenslop ${name} is planned but not wired yet.`);
@@ -359,7 +423,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -391,7 +455,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;
