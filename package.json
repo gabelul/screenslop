@@ -30,6 +30,7 @@
     "docs/release-checklist.md",
     "docs/repo-strategy.md",
     "docs/roadmap.md",
+    "docs/session-handoff.md",
     "examples/json/",
     "examples/matrix/",
     "examples/runtime-smoke-app/Config/",

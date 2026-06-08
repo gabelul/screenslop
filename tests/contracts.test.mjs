@@ -120,6 +120,8 @@ test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
 
   assert.equal(engineContract.schemaVersion, 1);
   assert.deepEqual(engineContract.blockerOutcomes, ['passed', 'recorded-blocker', 'blocked']);
+  assert.equal(engineContract.outcomeSemantics.status, 'workflow-state');
+  assert.equal(engineContract.outcomeSemantics.outcome, 'proof-state');
   assert.match(skill, /non-Baguette capture fallback is future work/);
   assert.match(skill, /verifyStatus: "verified-fixed"/);
   assert.match(skill, /sample app is not/i);
@@ -142,6 +144,7 @@ test('readiness gate contract is reflected in release docs', () => {
   }
 
   assert.match(checklist, /docs\/engine-contract\.json/);
+  assert.match(checklist, /`status` is workflow state/);
   assert.match(handoff, /recorded-blocker/);
 });
 
