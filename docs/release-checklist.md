@@ -18,6 +18,10 @@ npm run --silent smoke:package
 If the CLI, skill, or checklist changes, update that file first and let the
 contract tests catch the boring drift. Boring drift is still drift.
 
+`status` is workflow state. `outcome` is proof state. A completed workflow story
+can still have `outcome: "recorded-blocker"` when the honest result is “we
+recorded why this cannot pass yet.”
+
 Private dogfood gate:
 
 ```bash

@@ -79,7 +79,7 @@
       "completedAt": "2026-06-08T19:27:26.697Z",
       "evidence": "Committed blocker docs at bb149f2. Evidence: no .screenslop/config.json in checkout; configured private dogfood preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify statuses not-run, and pathDisplayMode redacted. Machine leak scan over latest runtime-smoke JSON found no repo path, home path, /Volumes/MyEXT, or /Users/gabel. Studio remains blocked; private real-app verified-fixed dogfood is not claimed.",
       "outcome": "recorded-blocker",
-      "outcomeDetail": "Private dogfood proof did not run because .screenslop/config.json is absent; docs and release checklist keep Studio blocked."
+      "outcomeDetail": "Private dogfood proof did not run because .screenslop/config.json is absent; Studio remains blocked until a configured real-app run proves verified-fixed."
     },
     {
       "id": "G007-agent-contract-polish-align-screensl",
@@ -118,5 +118,9 @@
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G009-resolve-final-code-review-blockers"
+  "activeGoalId": "G009-resolve-final-code-review-blockers",
+  "outcomeSemantics": {
+    "status": "workflow-state",
+    "outcome": "proof-state"
+  }
 }
