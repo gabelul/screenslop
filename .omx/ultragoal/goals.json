@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T12:21:08.722Z",
+  "updatedAt": "2026-06-08T12:40:36.218Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -11,11 +11,13 @@
       "id": "G001-phase-1-config-and-target-model",
       "title": "Phase 1 — Config and target model",
       "objective": "Implement schemaVersion: 1 config, safe migration from the current .screenslop/config.json shape, target resolution helpers, init wizard/flags, simulator-free config tests, docs alignment for artifactsDir, and required Phase 1 verification from the approved plan.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:21:08.722Z",
-      "startedAt": "2026-06-08T12:21:08.722Z"
+      "updatedAt": "2026-06-08T12:40:36.218Z",
+      "startedAt": "2026-06-08T12:21:08.722Z",
+      "completedAt": "2026-06-08T12:40:36.218Z",
+      "evidence": "Committed and pushed Phase 1 config schema at 9fb85b6. Evidence: node --check bin/screenslop.mjs plus all src/tests/scripts passed; npm test passed 72/72; smoke:e2e fixed passed; doctor passed; cleanup dry-run clean; reviewer APPROVE after blocker fixes; HEAD matches origin/main 9fb85b6."
     },
     {
       "id": "G002-phase-2-shared-runtime-smoke-runner",
@@ -54,6 +56,5 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G001-phase-1-config-and-target-model"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
