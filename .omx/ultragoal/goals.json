@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:36:36.045Z",
+  "updatedAt": "2026-06-08T19:51:11.881Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -109,16 +109,16 @@
       "id": "G009-resolve-final-code-review-blockers",
       "title": "Resolve final code-review blockers",
       "objective": "Resolve architect WATCH findings by reducing release/agent contract drift and clarifying blocker-state semantics before final release decision.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T19:36:16.173Z",
-      "updatedAt": "2026-06-08T19:36:36.045Z",
-      "evidence": "Final independent review was not clean: code-reviewer APPROVE with no findings, architect WATCH. Architect concerns: release/agent contract remains split across prose/markdown regex tests rather than one machine-readable source; G006 is complete because blocker recording was allowed, but future automation could misread blocker-recorded as proof-passed. Do not call update_goal until this blocker is resolved and final code-review returns APPROVE plus CLEAR.",
-      "startedAt": "2026-06-08T19:36:36.045Z"
+      "updatedAt": "2026-06-08T19:51:11.881Z",
+      "evidence": "Resolved final review blockers and completed aggregate goal. Committed fixes through 4255e95: docs/session-handoff.md ships in package; smoke-package runs contracts.test.mjs inside extracted tarball; docs/engine-contract.json defines commands, readiness gates, blocker outcomes, status workflow-state, and outcome proof-state; .omx ledger has structured goal_outcome_recorded for G006 recorded-blocker. Verification: cleanup dry-run, doctor, npm test 92/92, smoke:e2e fixed verifiedFixed 1/1, smoke:runtime sample verified-fixed with pathDisplayMode redacted, matrix dry/profile six cells, npm pack dry-run, smoke:package with contracts from package, CI 27162654062 success. Final independent code-review: APPROVE; architect: CLEAR. No release tag cut because private dogfood remains recorded-blocker until configured real-app proof passes.",
+      "startedAt": "2026-06-08T19:36:36.045Z",
+      "completedAt": "2026-06-08T19:51:11.881Z"
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G009-resolve-final-code-review-blockers",
   "outcomeSemantics": {
     "status": "workflow-state",
     "outcome": "proof-state"
