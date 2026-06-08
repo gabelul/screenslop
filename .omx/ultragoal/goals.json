@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:10:42.352Z",
+  "updatedAt": "2026-06-08T19:14:25.238Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -35,11 +35,13 @@
       "id": "G003-runtime-smoke-hardening-stable-smoke",
       "title": "Runtime smoke hardening: stable smoke summaries, failure-stage tests,...",
       "objective": "Runtime smoke hardening: stable smoke summaries, failure-stage tests, source restoration, redacted JSON.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:10:42.352Z",
-      "startedAt": "2026-06-08T19:10:42.352Z"
+      "updatedAt": "2026-06-08T19:14:25.238Z",
+      "startedAt": "2026-06-08T19:10:42.352Z",
+      "completedAt": "2026-06-08T19:14:25.238Z",
+      "evidence": "Committed and pushed runtime smoke summary hardening at 634b9b9. Files: scripts/smoke-real-runtime.mjs, tests/real-runtime-smoke.test.mjs, docs/commands.md, Ultragoal ledger. Evidence: runtime smoke reports now include stable summary statuses for capture, artifacts, critique, selected finding, fix, fresh capture, fresh artifacts, fresh critique, verify stage, verifyStatus, failedStage, and stageCount; tests cover passed, preflight failure, and fresh capture failure; node --check passed; runtime smoke unit tests passed; npm run smoke:runtime passed with summary.status passed and verifyStatus verified-fixed; cleanup dry-run, doctor, npm test 88/88, smoke:e2e fixed, matrix dry/profile JSON, npm pack dry-run, and smoke:package all passed."
     },
     {
       "id": "G004-matrix-proof-upgrades-six-cell-prese",
@@ -87,6 +89,5 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G003-runtime-smoke-hardening-stable-smoke"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
