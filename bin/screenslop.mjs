@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { run } from '../src/runtime/shell.mjs';
@@ -8,6 +7,13 @@ import { collectSee } from '../src/evidence/collect-see.mjs';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
+import {
+  createDefaultConfig,
+  planInitConfig,
+  readProjectConfig,
+  resolveTargetConfig,
+  writeProjectConfig
+} from '../src/config/project-config.mjs';
 
 const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
@@ -22,7 +28,7 @@ switch (command) {
     await doctor();
     break;
   case 'init':
-    initProject();
+    await initProject();
     break;
   case 'see':
     await see();
@@ -128,30 +134,221 @@ function ask(prompt) {
   });
 }
 
-/** Writes default project config without overwriting existing config. */
-function initProject() {
-  const dir = path.join(process.cwd(), '.screenslop');
-  const file = path.join(dir, 'config.json');
-  fs.mkdirSync(dir, { recursive: true });
-
-  if (fs.existsSync(file)) {
-    console.log('.screenslop/config.json already exists. Leaving it alone because past-you may have had reasons.');
+/** Creates or migrates project config after explicit confirmation. */
+async function initProject() {
+  const options = parseOptions(args);
+  if (options.flags.has('help') || options.flags.has('h')) {
+    printInitHelp();
     return;
   }
 
-  const detected = detectRuntimes();
-  const config = {
-    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
-    preferredRuntime: detected.preferred,
-    defaultSurface: null,
-    defaultScheme: null,
-    defaultBundleId: null,
-    artifactsDir: 'artifacts',
-    sourceHints: []
-  };
+  const values = await collectInitValues(options);
+  const plan = planInitConfig({
+    root: process.cwd(),
+    detected: detectRuntimes(),
+    values
+  });
 
-  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
-  console.log('Created .screenslop/config.json');
+  try {
+    if (!plan.ok) throw new Error(plan.error);
+
+    const shouldWrite = await shouldWriteInitConfig(plan, options);
+    if (shouldWrite) writeProjectConfig(process.cwd(), plan.config);
+
+    const refusedMigration = plan.action === 'migrate' && !shouldWrite && !options.flags.has('dry-run');
+    printInitResult({
+      ...plan,
+      ok: !refusedMigration,
+      status: refusedMigration ? 'requires-migration-confirmation' : 'ready',
+      dryRun: options.flags.has('dry-run'),
+      wrote: shouldWrite
+    }, options.flags.has('json'));
+
+    if (refusedMigration) process.exitCode = 1;
+  } catch (error) {
+    if (options.flags.has('json')) {
+      console.log(JSON.stringify(redactInitJson({
+        ok: false,
+        command: 'init',
+        action: plan.action,
+        status: 'failed',
+        error: error.message,
+        file: plan.file,
+        config: plan.config || null
+      }), null, 2));
+    } else {
+      console.error(`screenslop init failed: ${error.message}`);
+      if (plan.action === 'migrate') {
+        console.error('Re-run with --migrate --yes to rewrite the config, or --migrate --dry-run to inspect the new shape.');
+      }
+    }
+    process.exitCode = 1;
+  }
+}
+
+/** Prints init-specific options. */
+function printInitHelp() {
+  console.log(`Screenslop init
+
+Usage:
+  screenslop init [options]
+
+Options:
+  --json                 Print machine-readable output
+  --dry-run              Show the config without writing files
+  --migrate              Migrate an existing config shape
+  --yes                  Skip interactive confirmation for writes
+  --workspace <path>     Xcode workspace path
+  --project <path>       Xcode project path
+  --scheme <name>        Default scheme
+  --bundle-id <id>       Default app bundle ID
+  --device <name>        Default simulator device
+  --source-root <path>   Source root for future apply flows
+  --artifacts-dir <path> Artifact output directory
+`);
+}
+
+/**
+ * Collects init values from flags or an interactive terminal.
+ * @param {{flags:Set<string>,values:Record<string,string>}} options Parsed options.
+ * @returns {Promise<Record<string,string>>} Init values.
+ */
+async function collectInitValues(options) {
+  const values = { ...options.values };
+  if (options.flags.has('json') || options.flags.has('dry-run')) return values;
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return values;
+
+  const prompts = [
+    ['workspace', 'Xcode workspace path (optional): '],
+    ['project', 'Xcode project path (optional): '],
+    ['scheme', 'Default scheme (optional): '],
+    ['bundle-id', 'Default bundle ID (optional): '],
+    ['device', 'Default simulator device (optional): '],
+    ['source-root', 'Source root for fixes (optional, defaults later): '],
+    ['artifacts-dir', 'Artifacts directory [artifacts]: ']
+  ];
+
+  for (const [key, prompt] of prompts) {
+    if (values[key]) continue;
+    const answer = (await ask(prompt)).trim();
+    if (answer) values[key] = answer;
+  }
+  return values;
+}
+
+/**
+ * Decides whether init should write the planned config.
+ * @param {object} plan Init plan.
+ * @param {{flags:Set<string>}} options Parsed options.
+ * @returns {Promise<boolean>} True when writing is allowed.
+ */
+async function shouldWriteInitConfig(plan, options) {
+  if (options.flags.has('dry-run')) return false;
+  if (plan.action === 'exists') return false;
+  if (plan.action === 'create') return options.flags.has('yes') || !options.flags.has('json');
+  if (plan.action !== 'migrate') return false;
+
+  if (!options.flags.has('migrate')) return false;
+  if (options.flags.has('yes')) return true;
+  if (options.flags.has('json')) return false;
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+
+  const answer = await ask('Migrate existing .screenslop/config.json to schemaVersion: 1? [y/N] ');
+  return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+/**
+ * Prints init output for humans or agents.
+ * @param {object} result Init result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printInitResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(redactInitJson({
+      ok: result.ok,
+      command: 'init',
+      action: result.action,
+      status: result.status || 'ready',
+      file: path.relative(process.cwd(), result.file),
+      wrote: result.wrote,
+      dryRun: result.dryRun,
+      schemaVersion: result.config?.schemaVersion || null,
+      migration: result.migration,
+      config: result.config
+    }), null, 2));
+    return;
+  }
+
+  if (result.action === 'exists') {
+    console.log('.screenslop/config.json is already schemaVersion: 1. Leaving it alone.');
+    return;
+  }
+  if (result.wrote) {
+    console.log(`${result.action === 'migrate' ? 'Migrated' : 'Created'} .screenslop/config.json`);
+    return;
+  }
+  console.log(`${result.action === 'migrate' ? 'Prepared migration for' : 'Prepared'} .screenslop/config.json`);
+  if (result.action === 'migrate') console.log('Re-run with --migrate --yes to write it.');
+}
+
+/**
+ * Redacts path-like init JSON values before agent-facing output.
+ * @param {object} payload Init payload.
+ * @returns {object} Redacted payload.
+ */
+function redactInitJson(payload) {
+  const redacted = {
+    ...payload,
+    pathDisplayMode: 'redacted'
+  };
+  if (redacted.file) redacted.file = redactPath(redacted.file);
+  if (redacted.config) redacted.config = redactConfig(redacted.config);
+  if (redacted.migration?.config) {
+    redacted.migration = {
+      ...redacted.migration,
+      config: redactConfig(redacted.migration.config)
+    };
+  }
+  return redacted;
+}
+
+/**
+ * Redacts private config fields for JSON output.
+ * @param {object} config Config payload.
+ * @returns {object} Redacted config.
+ */
+function redactConfig(config) {
+  return {
+    ...config,
+    workspacePath: redactPath(config.workspacePath),
+    projectPath: redactPath(config.projectPath),
+    sourceRoot: redactPath(config.sourceRoot),
+    artifactsDir: redactPath(config.artifactsDir),
+    defaultBundleId: config.defaultBundleId ? '<bundle-id>' : config.defaultBundleId
+  };
+}
+
+/**
+ * Redacts absolute path prefixes in agent-facing output.
+ * @param {string|null|undefined} value Path value.
+ * @returns {string|null|undefined} Redacted value.
+ */
+function redactPath(value) {
+  if (!value || typeof value !== 'string') return value;
+  const root = process.cwd();
+  const home = process.env.HOME || '';
+  if (path.isAbsolute(value)) {
+    const relative = path.relative(root, value);
+    if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) {
+      return path.join('<repo>', relative);
+    }
+    if (home && (value === home || value.startsWith(`${home}${path.sep}`))) {
+      return path.join('<home>', path.relative(home, value));
+    }
+    return '<absolute-path>';
+  }
+  return value;
 }
 
 /** Captures an evidence bundle for the current screen. */
@@ -188,6 +385,7 @@ async function fix() {
     if (wantsApply && wantsJson && !options.flags.has('yes')) {
       throw new Error('Refusing JSON apply without --yes. JSON mode never prompts.');
     }
+    const sourceRoot = resolveFixSourceRoot(options, wantsApply);
     const confirmed = wantsApply && !options.flags.has('yes')
       ? await confirmApply()
       : options.flags.has('yes');
@@ -195,7 +393,7 @@ async function fix() {
     const result = await collectFix({
       root: process.cwd(),
       bundlePath,
-      sourceRoot: options.values['source-root'] || process.cwd(),
+      sourceRoot,
       findingIds,
       apply: wantsApply,
       dryRun: options.flags.has('dry-run') || !wantsApply,
@@ -225,6 +423,28 @@ async function confirmApply() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
   const answer = await ask('Apply Screenslop source patches now? [y/N] ');
   return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+/**
+ * Resolves the source root allowed for fix planning/apply.
+ * @param {{values:Record<string,string>}} options Parsed options.
+ * @param {boolean} wantsApply Whether source edits may be applied.
+ * @returns {string} Source root path.
+ */
+function resolveFixSourceRoot(options, wantsApply) {
+  if (options.values['source-root']) {
+    const config = createDefaultConfig({
+      detected: { preferred: 'manual' },
+      values: { 'source-root': options.values['source-root'], 'artifacts-dir': 'artifacts' }
+    });
+    return resolveTargetConfig(config, { root: process.cwd() }).sourceRoot;
+  }
+
+  const read = readProjectConfig(process.cwd());
+  if (read.error) throw new Error(read.error);
+  if (read.config?.sourceRoot) return resolveTargetConfig(read.config, { root: process.cwd() }).sourceRoot;
+  if (wantsApply) throw new Error('screenslop fix --apply requires --source-root or .screenslop/config.json sourceRoot.');
+  return process.cwd();
 }
 
 

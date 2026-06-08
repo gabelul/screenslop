@@ -6,6 +6,41 @@ The core rule: never critique from source alone when runtime evidence is availab
 
 ## Layers
 
+### Project config and target resolution
+
+Project-local runtime metadata lives in `.screenslop/config.json`.
+
+Current schema:
+
+```json
+{
+  "schemaVersion": 1,
+  "runtimePreference": ["baguette", "xcodebuildmcp", "simctl", "manual"],
+  "preferredRuntime": "baguette",
+  "defaultSurface": null,
+  "defaultScheme": null,
+  "defaultBundleId": null,
+  "defaultDevice": null,
+  "workspacePath": null,
+  "projectPath": null,
+  "sourceRoot": null,
+  "artifactsDir": "artifacts",
+  "sourceHints": []
+}
+```
+
+`artifactsDir` is the canonical artifact-root config field. Phase 1 stores and
+resolves it; the runtime capture path will consume it when the shared target
+runner lands. `sourceHints` are evidence metadata and never grant write scope.
+Source edits need an explicit `sourceRoot` from config or CLI flags.
+
+The config file is ignored because workspace paths, source roots, and bundle IDs
+can reveal private app details. Durable examples belong in docs or templates,
+not in local config.
+
+The config schema is provisional until matrix capture proves the profile needs.
+Before a v0.1 tag, either freeze this schema or document the pre-1.0 instability.
+
 ### Runtime drivers
 
 Runtime drivers know how to control the app surface.
