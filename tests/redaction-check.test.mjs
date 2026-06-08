@@ -51,6 +51,7 @@ test('containsRawAbsolutePath ignores placeholders and catches path fragments', 
   assert.equal(containsRawAbsolutePath('<absolute-path>'), false);
   assert.equal(containsRawAbsolutePath('<repo>/artifacts/run.json'), false);
   assert.equal(containsRawAbsolutePath('workspace=/Users/gabel/Private/App.xcworkspace'), true);
+  assert.equal(containsRawAbsolutePath('<repo>/ok /Users/gabel/PrivateApp/file.swift'), true);
 });
 
 test('parseArgs collects report and repeated forbid values', () => {
