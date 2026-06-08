@@ -23,4 +23,5 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 - The public repo owns engine, CLI, schemas, runtime, docs, and agent integration.
 - Screenslop Studio is private and should wrap this engine instead of duplicating it.
 - Studio work is blocked until the engine passes the documented readiness gates: contract tests, package smoke, sample runtime smoke, matrix setting status, configured-target preflight, private dogfood `verified-fixed` proof, redaction proof, and agent contract drift checks.
+- The private dogfood gate is not complete in this checkout because no private `.screenslop/config.json` is present. The preflight failure is redacted and parseable, but it is not a substitute for a real app capture, fix, fresh capture, fresh critique, and `verified-fixed` result.
 - This repo should not grow `apps/mac/`, private wrapper scaffolding, or duplicate runtime/critique/fix logic while those gates are still open.

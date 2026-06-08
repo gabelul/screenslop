@@ -137,7 +137,14 @@ docs/roadmap.md
 
 ## Current release state
 
-The v0.1 engine loop is complete and package-ready. The flat repo layout is intentional for v0.1; `package.json` uses an explicit `files` whitelist so local state, research folders, `.omx`, generated artifacts, and private config stay out of the npm tarball.
+The v0.1 engine loop is package-ready for the public sample and contract proof,
+but Studio is still blocked until the private dogfood gate runs against a real
+user app. The current checkout does not contain `.screenslop/config.json`, so
+the dogfood flow cannot prove a private finding as `verified-fixed` yet.
+
+The flat repo layout is intentional for v0.1; `package.json` uses an explicit
+`files` whitelist so local state, research folders, `.omx`, generated artifacts,
+and private config stay out of the npm tarball.
 
 Before tagging or publishing, run the release checklist in `docs/release-checklist.md`.
 
