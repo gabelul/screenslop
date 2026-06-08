@@ -1,32 +1,9 @@
-Execute the approved Screenslop engine-proof plan at .omx/plans/screenslop-engine-proof-before-studio-2026-06-08.md as phase-level goals only.
+Execute .omx/plans/screenslop-agent-playbook-real-app-dogfood-2026-06-08.md as an engine-only Screenslop goal. Keep Studio blocked. Use these durable stories only:
 
-Constraints:
-- Work only in the public Screenslop engine/CLI/schema/runtime/test/docs/agent contract repo.
-- Do not implement Screenslop Studio, apps/mac, private wrapper scaffolding, or duplicate engine logic.
-- Commit and push every completed execution slice.
-- Keep private .screenslop config, private paths, screenshots, bundle IDs, and dogfood artifacts untracked.
-- Use runtime evidence before UI critique claims.
-- Studio remains blocked until every engine readiness gate passes, especially the private dogfood verified-fixed and redaction gates.
+1. Ship and package the agent playbook for Codex, Claude Code, Cursor/generic agents, and terminal workflows. Update README/package docs map as needed.
+2. Polish the Screenslop skill/reference docs so agents know the runtime-first contract, fresh-bundle verify rule, and private dogfood gate without overclaiming fallback capture.
+3. Add/validate the dogfood redaction checker, contract tests, and package-smoke coverage.
+4. Run private real-app dogfood preflight/full smoke if .screenslop/config.json exists; otherwise record recorded-blocker with redacted preflight evidence and keep Studio blocked.
+5. Run final verification, review, commit, push, and checkpoint durable evidence.
 
-Goals:
-1. Boundary contract lock: make docs block Studio until engine gates pass, with no Studio placeholders.
-2. Contract and package locks: golden JSON/schema tests, package whitelist checks, extracted package smoke.
-3. Runtime smoke hardening: stable smoke summaries, failure-stage tests, source restoration, redacted JSON.
-4. Matrix proof upgrades: six-cell preservation plus explicit applied/requested/unavailable setting status.
-5. Configured-target preflight: private config validation, redacted parseable failures, public-safe checklist/docs.
-6. Private dogfood confidence proof: real app capture -> critique -> fix -> fresh capture -> fresh critique -> verify with selectedFinding.source real-app, verifyStatus verified-fixed, and machine redaction pass; if unavailable/blocking, record blocker and keep Studio blocked.
-7. Agent contract polish: align Screenslop skill/docs with actual CLI behavior and add contract-drift checks.
-8. Release decision: run release checklist and tag only after green local plus CI evidence and explicit approval/need.
-
-Required verification after implementation slices:
-npm run cleanup:macos:dry
-node --check bin/screenslop.mjs
-find src tests scripts -name '*.mjs' -print0 | xargs -0 -n1 node --check
-node bin/screenslop.mjs doctor
-npm test
-npm run --silent smoke:e2e -- --fresh-mode fixed
-node bin/screenslop.mjs matrix --dry-run --json
-node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
-npm pack --dry-run
-
-Before claiming engine proof complete, also run npm run smoke:runtime and private dogfood proof if a private target exists.
+Acceptance criteria are the acceptance criteria from .omx/plans/screenslop-agent-playbook-real-app-dogfood-2026-06-08.md. Do not add Studio files, do not commit private config/artifacts, and do not cut a release tag.
