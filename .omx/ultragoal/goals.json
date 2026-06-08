@@ -1,72 +1,86 @@
 {
   "version": 1,
-  "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:56:15.059Z",
+  "createdAt": "2026-06-08T19:01:21.015Z",
+  "updatedAt": "2026-06-08T19:01:21.312Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
   "codexGoalMode": "aggregate",
   "goals": [
     {
-      "id": "G001-phase-1-config-and-target-model",
-      "title": "Phase 1 — Config and target model",
-      "objective": "Implement schemaVersion: 1 config, safe migration from the current .screenslop/config.json shape, target resolution helpers, init wizard/flags, simulator-free config tests, docs alignment for artifactsDir, and required Phase 1 verification from the approved plan.",
-      "status": "complete",
+      "id": "G001-boundary-contract-lock-make-docs-blo",
+      "title": "Boundary contract lock: make docs block Studio until engine gates pas...",
+      "objective": "Boundary contract lock: make docs block Studio until engine gates pass, with no Studio placeholders.",
+      "status": "in_progress",
       "attempt": 1,
-      "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:40:36.218Z",
-      "startedAt": "2026-06-08T12:21:08.722Z",
-      "completedAt": "2026-06-08T12:40:36.218Z",
-      "evidence": "Committed and pushed Phase 1 config schema at 9fb85b6. Evidence: node --check bin/screenslop.mjs plus all src/tests/scripts passed; npm test passed 72/72; smoke:e2e fixed passed; doctor passed; cleanup dry-run clean; reviewer APPROVE after blocker fixes; HEAD matches origin/main 9fb85b6."
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.312Z",
+      "startedAt": "2026-06-08T19:01:21.312Z"
     },
     {
-      "id": "G002-phase-2-shared-runtime-smoke-runner",
-      "title": "Phase 2 — Shared runtime smoke runner and user-app dogfood path",
-      "objective": "Extract reusable build/run target orchestration, keep the sample runtime smoke, add configured-target smoke support, preserve JSON stage failures, add negative fresh-capture/fresh-critique tests, and verify with runtime smoke when available.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:00:57.644Z",
-      "startedAt": "2026-06-08T12:41:05.712Z",
-      "completedAt": "2026-06-08T13:00:57.644Z",
-      "evidence": "Committed and pushed Phase 2 configured runtime smoke target at 0fed772. Evidence: node --check bin/screenslop.mjs plus all src/tests/scripts passed; npm test passed 77/77; smoke:e2e fixed passed; doctor passed; cleanup dry-run clean; npm run smoke:runtime passed with verified-fixed runtime evidence; reviewer blockers fixed with target-config validation and report path redaction tests."
+      "id": "G002-contract-and-package-locks-golden-js",
+      "title": "Contract and package locks: golden JSON/schema tests, package whiteli...",
+      "objective": "Contract and package locks: golden JSON/schema tests, package whitelist checks, extracted package smoke.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
     },
     {
-      "id": "G003-phase-3-matrix-mvp",
-      "title": "Phase 3 — Matrix MVP",
-      "objective": "Replace the matrix placeholder with a real bounded six-cell matrix report, preserve unavailable/failure evidence per cell including no-config behavior, write linked evidence bundles, and feed profile needs back into the provisional config schema.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:10:58.199Z",
-      "startedAt": "2026-06-08T13:01:14.020Z",
-      "completedAt": "2026-06-08T13:10:58.199Z",
-      "evidence": "Committed and pushed Phase 3 matrix MVP at 22832bc. Evidence: matrix command now writes a six-cell report and linked evidence bundles; no-config cells are explicit unavailable evidence; configured dry-run and live path are covered by tests; node --check all mjs passed; npm test passed 80/80; smoke:e2e fixed passed; matrix dry-run/profile JSON smoke passed; doctor passed; cleanup dry-run clean."
+      "id": "G003-runtime-smoke-hardening-stable-smoke",
+      "title": "Runtime smoke hardening: stable smoke summaries, failure-stage tests,...",
+      "objective": "Runtime smoke hardening: stable smoke summaries, failure-stage tests, source restoration, redacted JSON.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
     },
     {
-      "id": "G004-phase-4-agent-contract-and-docs-sche",
-      "title": "Phase 4 — Agent contract and docs/schema release polish",
-      "objective": "Update the Screenslop skill, session handoff, command docs, architecture docs, agent integration docs, schemas, README, JSON examples, release checklist, and known limitations so they match shipped behavior.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:16:47.586Z",
-      "startedAt": "2026-06-08T13:11:18.393Z",
-      "completedAt": "2026-06-08T13:16:47.586Z",
-      "evidence": "Committed and pushed Phase 4 docs/schema/agent polish at c168bce. Evidence: README, session handoff, repo strategy, skill, schemas, JSON examples, known limitations, and release checklist now match shipped init/see/critique/fix/verify/matrix behavior; node --check passed; npm test passed 80/80; smoke:e2e fixed passed; matrix dry-run/profile JSON smoke passed; doctor passed; cleanup dry-run clean."
+      "id": "G004-matrix-proof-upgrades-six-cell-prese",
+      "title": "Matrix proof upgrades: six-cell preservation plus explicit applied/re...",
+      "objective": "Matrix proof upgrades: six-cell preservation plus explicit applied/requested/unavailable setting status.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
     },
     {
-      "id": "G005-phase-5-release-boundary-and-packagi",
-      "title": "Phase 5 — Release boundary and packaging check",
-      "objective": "Resolve flat-layout/package migration policy, reconcile repo-strategy drift, handle public apps/mac or Studio-shaped placeholders, freeze or document config schema instability, run npm package smoke, and tag only after all gates pass.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:56:15.059Z",
-      "startedAt": "2026-06-08T13:17:05.753Z",
-      "evidence": "Committed and pushed final v0 release-boundary seam fix at 600381f. Evidence: configured artifactsDir is consumed by see and matrix; invalid config no longer silently falls back; config policy docs are consistent; code-reviewer APPROVE; architect CLEAR; node --check all mjs passed; npm test passed 83/83; smoke:e2e fixed passed; matrix dry/profile JSON passed; npm pack dry-run passed; doctor passed; cleanup dry-run found no sidecars; smoke:runtime passed verified-fixed with report artifacts/runtime-smoke-2026-06-08T13-49-41-383Z.json; extracted package smoke and npm test passed 83/83.",
-      "completedAt": "2026-06-08T13:56:15.059Z"
+      "id": "G005-configured-target-preflight-private",
+      "title": "Configured-target preflight: private config validation, redacted pars...",
+      "objective": "Configured-target preflight: private config validation, redacted parseable failures, public-safe checklist/docs.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
+    },
+    {
+      "id": "G006-private-dogfood-confidence-proof-rea",
+      "title": "Private dogfood confidence proof: real app capture -> critique -> fix...",
+      "objective": "Private dogfood confidence proof: real app capture -> critique -> fix -> fresh capture -> fresh critique -> verify with selectedFinding.source real-app, verifyStatus verified-fixed, and machine redaction pass; if unavailable/blocking, record blocker and keep Studio blocked.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
+    },
+    {
+      "id": "G007-agent-contract-polish-align-screensl",
+      "title": "Agent contract polish: align Screenslop skill/docs with actual CLI be...",
+      "objective": "Agent contract polish: align Screenslop skill/docs with actual CLI behavior and add contract-drift checks.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
+    },
+    {
+      "id": "G008-release-decision-run-release-checkli",
+      "title": "Release decision: run release checklist and tag only after green loca...",
+      "objective": "Release decision: run release checklist and tag only after green local plus CI evidence and explicit approval/need.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T19:01:21.015Z",
+      "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G001-boundary-contract-lock-make-docs-blo"
 }

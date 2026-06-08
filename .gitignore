@@ -35,6 +35,8 @@ research/findings/
 .omx/artifacts/
 .omx/metrics.json
 .omx/state/
+.omx/brief-*.md
+.omx/ultragoal-archive/
 !.omx/plans/
 !.omx/plans/**
 # Generated critique outputs inside copied test bundles

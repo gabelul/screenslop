@@ -193,6 +193,21 @@ Screenslop is the public engine repo:
 
 Screenslop Studio is the future private Mac app wrapper. Studio should consume this engine, not duplicate the critique logic in another corner of the universe because apparently one source of truth was too relaxing.
 
+Studio is deliberately blocked until the engine proves the boring stuff:
+
+- JSON and schema contracts for agent-facing commands
+- package smoke from the packed npm tarball
+- sample runtime smoke with fresh capture and verified fix
+- six-cell matrix output with clear setting status
+- configured-target preflight with redacted failures
+- one private dogfood finding verified as `verified-fixed` from fresh real-app evidence
+- machine-checked redaction before any dogfood lesson becomes public
+- agent docs that match what the CLI actually ships
+
+So no `apps/mac/` placeholder here, no private wrapper scaffold, and no second
+critique engine hiding in a corner. Studio can be pretty later. The engine has
+to be trustworthy first.
+
 Read more in [docs/repo-strategy.md](docs/repo-strategy.md).
 
 ---
