@@ -70,6 +70,16 @@ Every agent integration follows the same rules:
 - Do not patch everything by default. Pick the highest-value findings first.
 - Always recapture and critique after edits before calling a fix verified.
 
+## Sibling tool compatibility
+
+Screenslop should play nicely with the other agent tools, but it should not become a launcher for all of them. Keep the boundary boring:
+
+- Pixeltamer generates and edits images. It can help with banners, README assets, or mockups, but it does not prove a rendered Apple app screen is fixed.
+- Pixelslop is the browser/web visual QA sibling. Screenslop is the Apple runtime sibling. Both inspect real rendered output instead of guessing from source.
+- Stitch Kit helps agents design and convert UI, including SwiftUI ideas. Screenslop verifies the real Apple UI after it runs.
+- Slopbuster cleans prose, comments, docs, and commit text. It is useful for final polish, not runtime UI proof.
+- Claude Code Skill Activator can index the Screenslop skill after install. It should help discovery, not replace the capture -> critique -> fix -> fresh capture -> verify loop.
+
 ## CLI commands agents should rely on
 
 ```bash

@@ -26,12 +26,12 @@ Private dogfood gate:
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier> \
   --preflight-only
 
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier>
 ```
 
@@ -57,7 +57,7 @@ The second command must finish with these public-safe summary values:
 - `summary.verifyStatus: "verified-fixed"`
 - `pathDisplayMode: "redacted"`
 
-If `.screenslop/config.json` is missing, incomplete, or unsafe, stop there.
+If the private app `.screenslop/config.json` path is missing, incomplete, or unsafe, stop there.
 Record the blocker as `recorded-blocker` and keep Screenslop Studio blocked. A
 sample-app pass is not private dogfood proof, no matter how much we want the
 annoying gate to be over.
