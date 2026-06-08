@@ -27,6 +27,31 @@ The engine owns the truth.
 Studio owns the experience.
 ```
 
+## Studio is blocked until the engine proves itself
+
+Do not start Screenslop Studio work from this repo yet. No `apps/mac/`
+placeholder, no private wrapper scaffold, and no second copy of critique,
+runtime, schema, or fix logic.
+
+The engine has to pass the proof ladder first:
+
+1. CLI JSON and schemas are locked with tests for agent-facing commands.
+2. The npm package smoke passes outside repo-only assumptions.
+3. The sample runtime smoke proves capture, critique, fix, fresh capture,
+   fresh critique, and verify.
+4. Matrix output keeps all six cells and reports whether appearance and Dynamic
+   Type settings were applied, requested-only, or unavailable.
+5. A private configured target fails safely with redacted, parseable JSON when
+   config is incomplete or unsafe.
+6. A private dogfood run verifies one real-app finding as `verified-fixed` after
+   fresh runtime evidence, and the redacted summary passes a machine leak check.
+7. Agent docs match shipped CLI behavior and do not promise fallback capture the
+   engine does not ship.
+
+If any of those gates fail, Studio stays blocked. Sample-app proof is useful,
+but it is not the same as proving a private user app. Annoying distinction,
+yes. Also the whole point.
+
 ## Runtime priority
 
 Screenslop runtime order:

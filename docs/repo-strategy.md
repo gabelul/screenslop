@@ -88,6 +88,26 @@ The Mac app should import or call the same public core. No separate critique log
 
 This gives the public project exposure and contribution surface without giving away the whole paid product.
 
+## Engine readiness before Studio
+
+Studio starts after the public engine earns it, not before. Until the readiness
+gates pass, this repo should only receive engine, CLI, schema, runtime, test,
+docs, and agent-contract work.
+
+The blocking gates are:
+
+- agent-facing JSON and schemas are covered by contract tests
+- package smoke proves the npm tarball works without local repo state
+- sample runtime smoke proves capture → critique → fix → fresh capture → fresh critique → verify
+- matrix output preserves the six requested cells and states whether settings were applied, requested-only, or unavailable
+- configured-target preflight fails safely with redacted JSON
+- private dogfood proves at least one real-app finding as `verified-fixed` after fresh capture and critique
+- the private dogfood summary passes a machine leak check before any public lesson is committed
+- agent docs match the actual shipped commands and do not overclaim fallback capture
+
+Do not treat a passing fixture, a dry-run bundle, or a sample app as permission
+to start Studio. Those are engine signals, not product-wrapper proof.
+
 ## Repo split
 
 Because the Mac app is private, the long-term shape should be two repos:
@@ -100,3 +120,7 @@ screenslop-studio   # private Mac app consuming the public engine/CLI
 Do not add public `apps/mac/` placeholder code just to sketch Studio. The split
 is fine as long as the private app never forks the logic. It consumes the public
 engine like any other client.
+
+If a future agent wants to add Studio-shaped code here, the answer is no until
+the readiness gates above are green. Keep the seam boring: CLI JSON, schemas,
+artifact layout, and command status vocabulary.
