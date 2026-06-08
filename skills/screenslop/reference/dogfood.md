@@ -1,12 +1,12 @@
 # Private Dogfood
 
-Private dogfood proves Screenslop on a real app. The sample runtime smoke is useful, but it is not this gate.
+Private dogfood proves Screenslop on a real app. The sample runtime smoke is useful, but it is not this gate. Run these commands from the Screenslop checkout and pass an absolute private-app config path, or a path relative to the checkout.
 
 ## Preflight
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier> \
   --preflight-only
 ```
@@ -15,7 +15,7 @@ node scripts/smoke-real-runtime.mjs \
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier>
 ```
 

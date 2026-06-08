@@ -37,6 +37,24 @@ You can also run it without linking:
 node bin/screenslop.mjs see --dry-run --json
 ```
 
+### Agent skill install
+
+The CLI and the agent skill are separate. Install the CLI first, then install the skill so Codex, Claude Code, Cursor, or another agent knows the runtime-first loop.
+
+Preview the packaged skill:
+
+```bash
+npx skills add gabelul/screenslop --list
+```
+
+Install it:
+
+```bash
+npx skills add gabelul/screenslop --skill screenslop
+```
+
+Manual paths and scope notes live in [Skill installation](docs/skill-installation.md).
+
 ---
 
 ## What Screenslop does
@@ -217,6 +235,7 @@ Read more in [docs/repo-strategy.md](docs/repo-strategy.md).
 
 - [Getting started](docs/getting-started.md)
 - [Agent playbook](docs/agent-playbook.md)
+- [Skill installation](docs/skill-installation.md)
 - [Command model](docs/commands.md)
 - [Architecture](docs/architecture.md)
 - [Agent integrations](docs/agent-integrations.md)

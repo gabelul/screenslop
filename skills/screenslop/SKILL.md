@@ -37,9 +37,15 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 ## Longer references
 
-- See `docs/agent-playbook.md` for practical Codex, Claude Code, Cursor, and terminal workflows.
-- See `skills/screenslop/reference/agent-contract.md` for the compact command contract.
-- See `skills/screenslop/reference/dogfood.md` for the private real-app dogfood gate and redaction check.
+If you are in the Screenslop repo checkout, read `docs/agent-playbook.md` and
+`docs/skill-installation.md` for the full agent workflow and install notes.
+
+If this skill was installed by itself, use the bundled references next to this
+file:
+
+- `reference/install.md` for CLI-vs-skill install notes.
+- `reference/agent-contract.md` for the compact command contract.
+- `reference/dogfood.md` for the private real-app dogfood gate and redaction check.
 
 ## Review rule
 
@@ -69,7 +75,7 @@ the sample app loop only. User-app claims still need evidence from that app.
 For private dogfood, check the target without launching first:
 
 ```bash
-node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier <stable-id> --preflight-only
+node scripts/smoke-real-runtime.mjs --config /path/to/private-app/.screenslop/config.json --identifier <stable-id> --preflight-only
 ```
 
 Only a full configured run with fresh capture, fresh critique, and
