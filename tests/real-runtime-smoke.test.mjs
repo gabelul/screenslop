@@ -20,6 +20,24 @@ test('real runtime smoke runner orders live stages and restores baseline source'
   assert.equal(report.ok, true);
   assert.equal(report.findingId, 'runtime-save-missing');
   assert.equal(report.verificationStatus, 'verified-fixed');
+  assert.deepEqual(report.summary, {
+    status: 'passed',
+    reason: null,
+    targetKind: 'sample',
+    surface: 'RuntimeSmoke',
+    captureStatus: 'passed',
+    artifactStatus: 'passed',
+    critiqueStatus: 'passed',
+    selectedFindingId: 'runtime-save-missing',
+    fixStatus: 'passed',
+    freshCaptureStatus: 'passed',
+    freshArtifactStatus: 'passed',
+    freshCritiqueStatus: 'passed',
+    verifyStageStatus: 'passed',
+    verifyStatus: 'verified-fixed',
+    failedStage: null,
+    stageCount: 19
+  });
   assert.deepEqual(report.stages.map((stage) => stage.name), [
     'preflight-xcodebuildmcp',
     'preflight-baguette',
@@ -243,6 +261,10 @@ test('real runtime smoke reports preflight failures as parseable JSON objects', 
 
   assert.equal(report.ok, false);
   assert.equal(report.reason, 'xcodebuildmcp-unavailable');
+  assert.equal(report.summary.status, 'failed');
+  assert.equal(report.summary.failedStage, 'preflight-xcodebuildmcp');
+  assert.equal(report.summary.captureStatus, 'not-run');
+  assert.equal(report.summary.verifyStageStatus, 'not-run');
   assert.doesNotThrow(() => JSON.parse(JSON.stringify(report)));
 });
 
@@ -260,6 +282,10 @@ test('real runtime smoke does not verify when fresh capture fails', async () => 
 
   assert.equal(report.ok, false);
   assert.equal(report.reason, 'fresh-see-failed');
+  assert.equal(report.summary.freshCaptureStatus, 'failed');
+  assert.equal(report.summary.freshCritiqueStatus, 'not-run');
+  assert.equal(report.summary.verifyStageStatus, 'not-run');
+  assert.equal(report.summary.verifyStatus, null);
   assert.equal(calls.some((call) => call.command === 'node' && call.args.includes('verify')), false);
 });
 
