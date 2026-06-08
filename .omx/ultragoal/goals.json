@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:23:05.536Z",
+  "updatedAt": "2026-06-08T19:27:26.697Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -71,10 +71,13 @@
       "id": "G006-private-dogfood-confidence-proof-rea",
       "title": "Private dogfood confidence proof: real app capture -> critique -> fix...",
       "objective": "Private dogfood confidence proof: real app capture -> critique -> fix -> fresh capture -> fresh critique -> verify with selectedFinding.source real-app, verifyStatus verified-fixed, and machine redaction pass; if unavailable/blocking, record blocker and keep Studio blocked.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:27:26.697Z",
+      "startedAt": "2026-06-08T19:25:22.734Z",
+      "completedAt": "2026-06-08T19:27:26.697Z",
+      "evidence": "Committed blocker docs at bb149f2. Evidence: no .screenslop/config.json in checkout; configured private dogfood preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify statuses not-run, and pathDisplayMode redacted. Machine leak scan over latest runtime-smoke JSON found no repo path, home path, /Volumes/MyEXT, or /Users/gabel. Studio remains blocked; private real-app verified-fixed dogfood is not claimed."
     },
     {
       "id": "G007-agent-contract-polish-align-screensl",
