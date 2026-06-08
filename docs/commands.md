@@ -10,13 +10,64 @@ Sets up the project connection.
 Use it for:
 
 - runtime checks
-- scheme / workspace / bundle ID detection
+- scheme / workspace / bundle ID configuration
 - Baguette / XcodeBuildMCP / simctl preferences
 - artifact folder config
-- default devices and matrix profiles
-- optional context file creation
+- default device configuration
+- safe migration from the current config shape
 
 This is setup, not design learning.
+
+Current MVP behavior:
+
+```bash
+screenslop init
+screenslop init --json --dry-run
+screenslop init --json --migrate --dry-run
+screenslop init --json --migrate --yes
+screenslop init --scheme RuntimeSmoke --bundle-id dev.example.RuntimeSmoke --source-root Sources
+```
+
+`init` creates or migrates `.screenslop/config.json` with `schemaVersion: 1`.
+That file is ignored because it can contain private app paths. Commit docs or
+templates instead of committing local target config.
+
+The config keeps `artifactsDir` as the canonical artifact-root field. Phase 1
+stores, validates, and resolves it; current `see` capture still writes to the
+default `artifacts/` directory until the shared runtime runner consumes target
+config in the next slice. `sourceHints` stays evidence/source-location metadata;
+it is not a write scope and must not be treated as `sourceRoot`.
+
+Existing fields are preserved or mapped:
+
+- `runtimePreference`
+- `preferredRuntime`
+- `defaultSurface`
+- `defaultScheme`
+- `defaultBundleId`
+- `artifactsDir`
+- `sourceHints`
+
+New target fields:
+
+- `schemaVersion: 1`
+- `workspacePath`
+- `projectPath`
+- `defaultDevice`
+- `sourceRoot`
+
+Safety rules:
+
+- Existing config migration needs `--migrate`; JSON/non-interactive writes also need `--yes`.
+- `--dry-run` never writes.
+- `.screenslop` and `.screenslop/config.json` symlinks are rejected.
+- `sourceRoot` and `artifactsDir` must resolve inside the repo for v0.1.
+- `sourceRoot` must not point at `.git`, `.omx`, `node_modules`, `DerivedData`, `build`, or `artifacts`.
+- `artifactsDir` must not point at `.git`, `.omx`, `node_modules`, `DerivedData`, `build`, or the repo root.
+- `sourceRoot` and `artifactsDir` must not overlap.
+
+The config schema is still provisional until the matrix runner exercises the
+target/profile needs. Freeze or document pre-1.0 instability before a v0.1 tag.
 
 ### `screenslop learn`
 

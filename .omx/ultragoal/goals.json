@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "createdAt": "2026-06-08T12:21:02.686Z",
+  "updatedAt": "2026-06-08T12:21:08.722Z",
+  "briefPath": ".omx/ultragoal/brief.md",
+  "goalsPath": ".omx/ultragoal/goals.json",
+  "ledgerPath": ".omx/ultragoal/ledger.jsonl",
+  "codexGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001-phase-1-config-and-target-model",
+      "title": "Phase 1 — Config and target model",
+      "objective": "Implement schemaVersion: 1 config, safe migration from the current .screenslop/config.json shape, target resolution helpers, init wizard/flags, simulator-free config tests, docs alignment for artifactsDir, and required Phase 1 verification from the approved plan.",
+      "status": "in_progress",
+      "attempt": 1,
+      "createdAt": "2026-06-08T12:21:02.686Z",
+      "updatedAt": "2026-06-08T12:21:08.722Z",
+      "startedAt": "2026-06-08T12:21:08.722Z"
+    },
+    {
+      "id": "G002-phase-2-shared-runtime-smoke-runner",
+      "title": "Phase 2 — Shared runtime smoke runner and user-app dogfood path",
+      "objective": "Extract reusable build/run target orchestration, keep the sample runtime smoke, add configured-target smoke support, preserve JSON stage failures, add negative fresh-capture/fresh-critique tests, and verify with runtime smoke when available.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T12:21:02.686Z",
+      "updatedAt": "2026-06-08T12:21:02.686Z"
+    },
+    {
+      "id": "G003-phase-3-matrix-mvp",
+      "title": "Phase 3 — Matrix MVP",
+      "objective": "Replace the matrix placeholder with a real bounded six-cell matrix report, preserve unavailable/failure evidence per cell including no-config behavior, write linked evidence bundles, and feed profile needs back into the provisional config schema.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T12:21:02.686Z",
+      "updatedAt": "2026-06-08T12:21:02.686Z"
+    },
+    {
+      "id": "G004-phase-4-agent-contract-and-docs-sche",
+      "title": "Phase 4 — Agent contract and docs/schema release polish",
+      "objective": "Update the Screenslop skill, session handoff, command docs, architecture docs, agent integration docs, schemas, README, JSON examples, release checklist, and known limitations so they match shipped behavior.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T12:21:02.686Z",
+      "updatedAt": "2026-06-08T12:21:02.686Z"
+    },
+    {
+      "id": "G005-phase-5-release-boundary-and-packagi",
+      "title": "Phase 5 — Release boundary and packaging check",
+      "objective": "Resolve flat-layout/package migration policy, reconcile repo-strategy drift, handle public apps/mac or Studio-shaped placeholders, freeze or document config schema instability, run npm package smoke, and tag only after all gates pass.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-06-08T12:21:02.686Z",
+      "updatedAt": "2026-06-08T12:21:02.686Z"
+    }
+  ],
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G001-phase-1-config-and-target-model"
+}
