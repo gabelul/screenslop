@@ -37,6 +37,25 @@ test('dogfood redaction checker accepts a public-safe report', () => {
   assert.deepEqual(payload.checks, ['json-parse', 'pathDisplayMode', 'absolute-paths', 'forbid-values']);
 });
 
+test('dogfood redaction checker does not echo private report paths', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'PrivateAppRedaction-'));
+  const reportPath = writeReport(workspace, 'private-app-report.json', {
+    ok: true,
+    pathDisplayMode: 'redacted',
+    summary: {
+      status: 'passed',
+      verifyStatus: 'verified-fixed'
+    }
+  });
+
+  const result = runChecker([reportPath, '--forbid', 'PrivateAppRedaction']);
+  const payload = parseStdout(result);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(payload.report, '<redacted-report-path>');
+  assert.doesNotMatch(result.stdout, /PrivateAppRedaction|private-app-report\.json/);
+});
+
 test('dogfood redaction checker rejects missing redacted path mode', () => {
   const workspace = makeWorkspace();
   const reportPath = writeReport(workspace, 'missing-mode.json', {

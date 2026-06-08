@@ -39,7 +39,7 @@ function runCli(argv) {
       {
         ok: false,
         command: 'check-dogfood-redaction',
-        report: args.reportPath,
+        report: '<redacted-report-path>',
         reason: 'json-parse-error',
         summary: `could not parse JSON report: ${error.message}`,
         issues: [{ code: 'json-parse', path: '$', value: error.message }]
@@ -55,7 +55,7 @@ function runCli(argv) {
       {
         ok: false,
         command: 'check-dogfood-redaction',
-        report: args.reportPath,
+        report: '<redacted-report-path>',
         reason: 'redaction-check-failed',
         pathDisplayMode: report?.pathDisplayMode || null,
         summary: `${issues.length} redaction issue(s) found`,
@@ -70,7 +70,7 @@ function runCli(argv) {
     {
       ok: true,
       command: 'check-dogfood-redaction',
-      report: args.reportPath,
+      report: '<redacted-report-path>',
       pathDisplayMode: report.pathDisplayMode,
       checks: ['json-parse', 'pathDisplayMode', 'absolute-paths', 'forbid-values'],
       checkedStrings: collectStrings(report).length,
