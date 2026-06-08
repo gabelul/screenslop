@@ -83,7 +83,8 @@ test('real runtime smoke can use a configured target from config', async () => {
 
   assert.equal(report.ok, true);
   assert.equal(report.target.kind, 'configured');
-  assert.equal(report.target.bundleId, 'dev.example.ConfiguredApp');
+  assert.equal(report.target.bundleId, '<bundle-id>');
+  assert.equal(report.bundleId, '<bundle-id>');
   assert.equal(report.target.sourceRoot, '<repo>/ConfiguredApp');
   assert.equal(buildCall.args.includes('ConfiguredApp'), true);
   assert.equal(buildCall.args.some((arg) => String(arg).endsWith('ConfiguredApp.xcworkspace')), true);
@@ -91,6 +92,7 @@ test('real runtime smoke can use a configured target from config', async () => {
   assert.equal(seeCall.args.includes('dev.example.ConfiguredApp'), true);
   assert.equal(fixCall.args.some((arg) => String(arg).endsWith('ConfiguredApp')), true);
   assert.equal(JSON.stringify(report).includes(workspace.root), false);
+  assert.equal(JSON.stringify(report).includes('dev.example.ConfiguredApp'), false);
   assert.equal(report.pathDisplayMode, 'redacted');
 });
 

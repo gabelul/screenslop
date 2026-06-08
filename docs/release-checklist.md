@@ -20,4 +20,4 @@ Check these by hand:
 - No private `.screenslop/config.json` or user-app path is committed.
 - `docs/repo-strategy.md` keeps Studio as a wrapper, not a second engine.
 - Decide whether config schemaVersion 1 is frozen for v0.1 or documented as pre-1.0 unstable.
-- Confirm `npm pack --dry-run` excludes `.omx/`, `tests/`, local artifacts, and private config.
+- Confirm `npm pack --dry-run` excludes `.omx/`, local artifacts, private config, and private example-app agent files. Tests and smoke scripts are intentionally shipped so package scripts do not lie.

@@ -38,7 +38,7 @@ screenslop critique  # score current evidence and produce findings
 screenslop fix       # patch selected safe findings
 screenslop verify    # confirm previous findings are fixed
 screenslop matrix    # write a bounded six-cell stress report
-screenslop watch     # live review loop for ongoing UI iteration
+screenslop watch     # future live review loop
 ```
 
 ## Current status
