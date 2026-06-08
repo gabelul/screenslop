@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:27:26.697Z",
+  "updatedAt": "2026-06-08T19:29:58.970Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -83,10 +83,13 @@
       "id": "G007-agent-contract-polish-align-screensl",
       "title": "Agent contract polish: align Screenslop skill/docs with actual CLI be...",
       "objective": "Agent contract polish: align Screenslop skill/docs with actual CLI behavior and add contract-drift checks.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:29:58.970Z",
+      "startedAt": "2026-06-08T19:27:56.261Z",
+      "completedAt": "2026-06-08T19:29:58.970Z",
+      "evidence": "Committed and pushed agent contract lock at 683e064. Files: skills/screenslop/SKILL.md and tests/contracts.test.mjs. Evidence: skill now states verify does not capture fresh evidence, smoke:package is a standard check, and private dogfood needs preflight plus full verified-fixed real-app run; contract tests assert CLI help and skill command set stay aligned and docs keep fallback/dogfood gates explicit. Verification passed: node --check tests/contracts.test.mjs; node --test tests/contracts.test.mjs; node --check bin/screenslop.mjs; node --check scripts/smoke-real-runtime.mjs; cleanup dry-run; doctor; npm test 91/91; smoke:package."
     },
     {
       "id": "G008-release-decision-run-release-checkli",
