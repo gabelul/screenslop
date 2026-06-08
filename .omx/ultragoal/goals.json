@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:05:09.654Z",
+  "updatedAt": "2026-06-08T19:09:23.422Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -23,11 +23,13 @@
       "id": "G002-contract-and-package-locks-golden-js",
       "title": "Contract and package locks: golden JSON/schema tests, package whiteli...",
       "objective": "Contract and package locks: golden JSON/schema tests, package whitelist checks, extracted package smoke.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:05:09.654Z",
-      "startedAt": "2026-06-08T19:05:09.654Z"
+      "updatedAt": "2026-06-08T19:09:23.422Z",
+      "startedAt": "2026-06-08T19:05:09.654Z",
+      "completedAt": "2026-06-08T19:09:23.422Z",
+      "evidence": "Committed and pushed contract/package locks at 6e9727b. Files: tests/contracts.test.mjs, scripts/smoke-package.mjs, package.json, CI workflow, README, release checklist, Ultragoal ledger. Evidence: cleanup dry-run clean; node --check scripts/smoke-package.mjs; node --test tests/contracts.test.mjs passed; npm run --silent smoke:package passed from extracted tarball with forbidden-file check, doctor, see dry-run JSON, matrix dry-run JSON, selected package tests, fixture e2e; npm test passed 88/88; earlier full phase gate also passed doctor, smoke:e2e fixed, matrix dry/profile JSON, npm pack dry-run."
     },
     {
       "id": "G003-runtime-smoke-hardening-stable-smoke",
@@ -84,6 +86,5 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G002-contract-and-package-locks-golden-js"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
