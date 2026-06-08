@@ -54,6 +54,8 @@ test('missing baseline findings fails with JSON error', () => {
   const fresh = path.join(root, 'fresh');
   fs.cpSync(path.join(repoRoot, 'tests/fixtures/evidence/problem'), baseline, { recursive: true });
   fs.cpSync(path.join(repoRoot, 'tests/fixtures/evidence/problem'), fresh, { recursive: true });
+  purgeGeneratedArtifacts(baseline);
+  purgeGeneratedArtifacts(fresh);
 
   const result = spawnSync('node', [path.join(repoRoot, 'bin/screenslop.mjs'), 'verify', baseline, '--fresh-bundle', fresh, '--json'], {
     cwd: root,
@@ -198,6 +200,8 @@ async function verifyWorkspace(options = {}) {
   const fresh = 'fresh';
   fs.cpSync(path.join(repoRoot, 'tests/fixtures/evidence/problem'), path.join(root, baseline), { recursive: true });
   fs.cpSync(path.join(repoRoot, 'tests/fixtures/evidence/problem'), path.join(root, fresh), { recursive: true });
+  purgeGeneratedArtifacts(path.join(root, baseline));
+  purgeGeneratedArtifacts(path.join(root, fresh));
   await collectCritique({ root, bundlePath: baseline });
   if (options.freshCritique !== false) await collectCritique({ root, bundlePath: fresh });
   return { root, baseline, fresh };
@@ -272,4 +276,16 @@ function mutateFindings(file, callback) {
   callback(findings);
   const nextPayload = Array.isArray(payload) ? findings : { ...payload, findings };
   fs.writeFileSync(file, `${JSON.stringify(nextPayload, null, 2)}\n`);
+}
+
+/**
+ * Removes derived reports from copied fixture bundles before tests run.
+ * @param {string} bundle Copied bundle directory.
+ * @returns {void}
+ */
+function purgeGeneratedArtifacts(bundle) {
+  for (const file of ['findings.json', 'critique.md', 'fix-plan.json', 'fix.md', 'fix-session.json', 'verification.json', 'verification.md']) {
+    const artifact = path.join(bundle, file);
+    if (fs.existsSync(artifact)) fs.rmSync(artifact);
+  }
 }

@@ -143,9 +143,43 @@ Statuses:
 
 The MVP does not capture fresh evidence itself. Run `screenslop see`, then `screenslop critique`, then `screenslop verify`. No fresh evidence, no verified claim.
 
+## MVP end-to-end flow
+
+The contract flow is deliberately explicit:
+
+```bash
+screenslop see --surface Settings --json
+screenslop critique artifacts/<baseline-run> --json
+screenslop fix artifacts/<baseline-run> --finding <id> --source-root <app-root> --apply --yes --label "Save settings" --json
+screenslop see --surface Settings --json
+screenslop critique artifacts/<fresh-run> --json
+screenslop verify artifacts/<baseline-run> --fresh-bundle artifacts/<fresh-run> --finding <id> --fix-session artifacts/<baseline-run>/fix-session.json --json
+```
+
+What each step proves:
+
+- `see` proves Screenslop captured a bundle for the current runtime surface.
+- `critique` proves deterministic findings were derived from that bundle.
+- `fix` proves Screenslop planned or applied a selected safe source patch.
+- The second `see` proves there is fresh evidence after the patch.
+- The second `critique` proves the fresh bundle was reviewed independently.
+- `verify` proves the selected baseline finding is gone, still present, changed, or unknown by comparing baseline findings with fresh critique output.
+
+`fix-session.json` is context, not proof. It can show what Screenslop patched, but only fresh capture plus fresh critique can support a `verified-fixed` claim.
+
+For CI and agent contract checks, run the fixture-backed smoke flow:
+
+```bash
+npm run --silent smoke:e2e -- --fresh-mode fixed
+```
+
+That smoke uses copied fixtures and temporary source files. It proves command composition and artifact contracts; it does not prove a real app screen is visually fixed. Real UI claims still require runtime evidence from `screenslop see`.
+
 ### `screenslop matrix`
 
-Runs a surface across devices and settings:
+Placeholder only. The CLI currently prints a planned-but-not-wired message and writes no artifacts.
+
+The future matrix runner should cover:
 
 - iPhone small / large
 - iPad split width
@@ -169,6 +203,6 @@ see       capture evidence
 critique  find issues
 fix       patch selected issues
 verify    prove the fix
-matrix    test the screen under stress
+matrix    future stress runner; placeholder today
 watch     live iteration loop
 ```

@@ -39,3 +39,5 @@ research/findings/
 # Generated critique outputs inside copied test bundles
 tests/fixtures/**/findings.json
 tests/fixtures/**/critique.md
+# macOS sidecars can appear after tracked OMX plan unignore rules
+.omx/plans/._*
