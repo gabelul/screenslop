@@ -5,79 +5,89 @@ import { fileURLToPath } from 'node:url';
 
 const isCli = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
-if (isCli) {
-  runCli(process.argv.slice(2));
-}
+if (isCli) runCli(process.argv.slice(2));
 
 /**
- * Runs the CLI entrypoint.
+ * Runs the dogfood redaction checker CLI.
  *
  * @param {string[]} argv Raw command-line arguments.
  * @returns {void}
  */
 function runCli(argv) {
-  const args = parseArgs(argv);
-
+  let args;
   try {
-  if (!args.reportPath) throw new Error('Usage: node scripts/check-dogfood-redaction.mjs <report.json> [--forbid <value>]...');
-
-  const report = JSON.parse(fs.readFileSync(args.reportPath, 'utf8'));
-  const failures = inspectReport(report, args.forbidden);
-
-  if (failures.length > 0) {
-    console.error(
-      JSON.stringify(
-        {
-          ok: false,
-          command: 'check-dogfood-redaction',
-          report: args.reportPath,
-          failures
-        },
-        null,
-        2
-      )
-    );
-    process.exit(1);
-  }
-
-  console.log(
-    JSON.stringify(
-      {
-        ok: true,
-        command: 'check-dogfood-redaction',
-        report: args.reportPath,
-        checkedStrings: collectStrings(report).length,
-        forbiddenValues: args.forbidden.length
-      },
-      null,
-      2
-    )
-  );
-} catch (error) {
-  console.error(
-    JSON.stringify(
+    args = parseArgs(argv);
+  } catch (error) {
+    writePayload(
       {
         ok: false,
         command: 'check-dogfood-redaction',
-        report: args.reportPath || null,
-        failures: [{ path: '$', reason: error.message }]
+        reason: 'argument-error',
+        summary: error.message,
+        issues: [{ code: 'argument', path: '$', value: error.message }]
       },
-      null,
-      2
-    )
-  );
-  process.exit(1);
+      1
+    );
+    return;
   }
+
+  let report;
+  try {
+    report = JSON.parse(fs.readFileSync(args.reportPath, 'utf8'));
+  } catch (error) {
+    writePayload(
+      {
+        ok: false,
+        command: 'check-dogfood-redaction',
+        report: args.reportPath,
+        reason: 'json-parse-error',
+        summary: `could not parse JSON report: ${error.message}`,
+        issues: [{ code: 'json-parse', path: '$', value: error.message }]
+      },
+      1
+    );
+    return;
+  }
+
+  const issues = inspectReport(report, args.forbidden);
+  if (issues.length > 0) {
+    writePayload(
+      {
+        ok: false,
+        command: 'check-dogfood-redaction',
+        report: args.reportPath,
+        reason: 'redaction-check-failed',
+        pathDisplayMode: report?.pathDisplayMode || null,
+        summary: `${issues.length} redaction issue(s) found`,
+        issues
+      },
+      1
+    );
+    return;
+  }
+
+  writePayload(
+    {
+      ok: true,
+      command: 'check-dogfood-redaction',
+      report: args.reportPath,
+      pathDisplayMode: report.pathDisplayMode,
+      checks: ['json-parse', 'pathDisplayMode', 'absolute-paths', 'forbid-values'],
+      checkedStrings: collectStrings(report).length,
+      forbiddenValues: args.forbidden.length
+    },
+    0
+  );
 }
 
 /**
- * Parses command-line arguments for the dogfood redaction checker.
+ * Parses checker arguments.
  *
  * @param {string[]} argv Raw command-line arguments.
- * @returns {{reportPath: string|null, forbidden: string[]}} Parsed options.
+ * @returns {{reportPath: string, forbidden: string[]}} Parsed options.
  */
 export function parseArgs(argv) {
-  const parsed = { reportPath: null, forbidden: [] };
+  const parsed = { reportPath: '', forbidden: [] };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -86,6 +96,10 @@ export function parseArgs(argv) {
       if (!value) throw new Error('--forbid requires a value');
       parsed.forbidden.push(value);
       index += 1;
+    } else if (arg.startsWith('--forbid=')) {
+      const value = arg.slice('--forbid='.length);
+      if (!value) throw new Error('--forbid requires a value');
+      parsed.forbidden.push(value);
     } else if (arg === '--help' || arg === '-h') {
       throw new Error('Usage: node scripts/check-dogfood-redaction.mjs <report.json> [--forbid <value>]...');
     } else if (!parsed.reportPath) {
@@ -95,64 +109,63 @@ export function parseArgs(argv) {
     }
   }
 
+  if (!parsed.reportPath) throw new Error('Usage: node scripts/check-dogfood-redaction.mjs <report.json> [--forbid <value>]...');
   return parsed;
 }
 
 /**
- * Checks a dogfood report for private values that should not be published.
+ * Inspects a report for public-safety redaction issues.
  *
  * @param {unknown} report Parsed JSON report.
- * @param {string[]} forbidden Explicit private strings to reject.
- * @returns {{path: string, reason: string, value?: string}[]} Redaction failures.
+ * @param {string[]} forbidden Caller-provided private values.
+ * @returns {{code: string, path: string, value: string}[]} Redaction issues.
  */
 export function inspectReport(report, forbidden = []) {
-  const failures = [];
+  const issues = [];
 
   if (!report || typeof report !== 'object' || Array.isArray(report)) {
-    return [{ path: '$', reason: 'report must be a JSON object' }];
+    return [{ code: 'report-shape', path: '$', value: 'report must be a JSON object' }];
   }
 
   if (report.pathDisplayMode !== 'redacted') {
-    failures.push({ path: '$.pathDisplayMode', reason: 'expected pathDisplayMode to be "redacted"' });
+    issues.push({ code: 'path-display-mode', path: '$.pathDisplayMode', value: String(report.pathDisplayMode || '') });
   }
 
-  const normalizedForbidden = forbidden.filter((value) => value && !/^<[^>]+>$/.test(value));
-
+  const forbiddenValues = forbidden.filter((value) => value);
   for (const entry of collectStrings(report)) {
-    for (const privateValue of normalizedForbidden) {
-      if (entry.value.includes(privateValue)) {
-        failures.push({ path: entry.path, reason: 'contains forbidden private value', value: safeSnippet(entry.value) });
+    if (containsRawAbsolutePath(entry.value)) {
+      issues.push({ code: 'absolute-path', path: entry.path, value: '<raw-absolute-path>' });
+    }
+
+    for (const forbiddenValue of forbiddenValues) {
+      if (entry.value.includes(forbiddenValue)) {
+        issues.push({ code: 'forbid-value', path: entry.path, value: '<forbidden-value>' });
       }
     }
-
-    if (containsRawAbsolutePath(entry.value)) {
-      failures.push({ path: entry.path, reason: 'contains raw absolute path', value: safeSnippet(entry.value) });
-    }
   }
 
-  return failures;
+  return issues;
 }
 
 /**
- * Collects every string from a JSON-like value with JSONPath-ish locations.
+ * Collects every string value from a JSON-like payload.
  *
  * @param {unknown} value JSON-like value.
- * @param {string} location Current location.
+ * @param {string} location JSONPath-ish location.
  * @returns {{path: string, value: string}[]} String entries.
  */
 export function collectStrings(value, location = '$') {
   if (typeof value === 'string') return [{ path: location, value }];
   if (Array.isArray(value)) return value.flatMap((entry, index) => collectStrings(entry, `${location}[${index}]`));
   if (!value || typeof value !== 'object') return [];
-
   return Object.entries(value).flatMap(([key, entry]) => collectStrings(entry, `${location}.${key}`));
 }
 
 /**
- * Detects raw absolute filesystem paths in report strings.
+ * Detects raw absolute paths, including file URLs that expose absolute paths.
  *
- * @param {string} value String value to inspect.
- * @returns {boolean} True when the string exposes a raw absolute path.
+ * @param {string} value String to inspect.
+ * @returns {boolean} True when a raw absolute path is present.
  */
 export function containsRawAbsolutePath(value) {
   const text = String(value || '');
@@ -160,6 +173,7 @@ export function containsRawAbsolutePath(value) {
 
   const trimmed = text.trim();
   if (path.isAbsolute(trimmed) && !trimmed.startsWith('/dev/null')) return true;
+  if (/file:\/\/\/(?:private\/)?(?:Applications|Library|System|Users|Volumes|tmp|var)\//.test(text)) return true;
 
   return /(^|[\s"'=:([{,])\/(?:private\/)?(?:Applications|Library|System|Users|Volumes|bin|etc|home|opt|private|sbin|tmp|usr|var)\/[^\s"')\]},]+/.test(
     text
@@ -167,13 +181,13 @@ export function containsRawAbsolutePath(value) {
 }
 
 /**
- * Keeps failure output useful without leaking a full private value again.
+ * Writes a JSON payload to stdout and exits.
  *
- * @param {string} value Raw leaked value.
- * @returns {string} Short diagnostic snippet.
+ * @param {object} payload Output payload.
+ * @param {number} status Process exit status.
+ * @returns {void}
  */
-function safeSnippet(value) {
-  const text = String(value || '');
-  if (text.length <= 80) return text;
-  return `${text.slice(0, 77)}...`;
+function writePayload(payload, status) {
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  process.exit(status);
 }
