@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:17:45.578Z",
+  "updatedAt": "2026-06-08T19:19:04.678Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -59,10 +59,11 @@
       "id": "G005-configured-target-preflight-private",
       "title": "Configured-target preflight: private config validation, redacted pars...",
       "objective": "Configured-target preflight: private config validation, redacted parseable failures, public-safe checklist/docs.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:19:04.678Z",
+      "startedAt": "2026-06-08T19:19:04.678Z"
     },
     {
       "id": "G006-private-dogfood-confidence-proof-rea",
@@ -92,5 +93,6 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G005-configured-target-preflight-private"
 }
