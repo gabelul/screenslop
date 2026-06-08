@@ -31,18 +31,36 @@ function runCli(argv) {
     return;
   }
 
+  let rawReport;
+  try {
+    rawReport = fs.readFileSync(args.reportPath, 'utf8');
+  } catch {
+    writePayload(
+      {
+        ok: false,
+        command: 'check-dogfood-redaction',
+        report: '<redacted-report-path>',
+        reason: 'report-read-error',
+        summary: 'could not read JSON report',
+        issues: [{ code: 'report-read', path: '$', value: '<report-read-error>' }]
+      },
+      1
+    );
+    return;
+  }
+
   let report;
   try {
-    report = JSON.parse(fs.readFileSync(args.reportPath, 'utf8'));
-  } catch (error) {
+    report = JSON.parse(rawReport);
+  } catch {
     writePayload(
       {
         ok: false,
         command: 'check-dogfood-redaction',
         report: '<redacted-report-path>',
         reason: 'json-parse-error',
-        summary: `could not parse JSON report: ${error.message}`,
-        issues: [{ code: 'json-parse', path: '$', value: error.message }]
+        summary: 'could not parse JSON report',
+        issues: [{ code: 'json-parse', path: '$', value: '<json-parse-error>' }]
       },
       1
     );
