@@ -30,8 +30,9 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 - `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.
 - `critique`: score evidence and produce findings.
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
-- `verify`: compare baseline findings with fresh capture plus fresh critique.
 - `matrix`: write a bounded six-cell report with linked evidence bundles.
+- `verify`: compare baseline findings with a fresh bundle; it does not capture
+  new evidence by itself.
 - `watch`: future live review loop; current CLI prints a placeholder.
 
 ## Review rule
@@ -53,7 +54,19 @@ node bin/screenslop.mjs doctor
 npm test
 npm run --silent smoke:e2e -- --fresh-mode fixed
 node bin/screenslop.mjs matrix --dry-run --json
+npm run --silent smoke:package
 ```
 
 Use `npm run smoke:runtime` when Apple simulator tools are available. It proves
 the sample app loop only. User-app claims still need evidence from that app.
+
+For private dogfood, check the target without launching first:
+
+```bash
+node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier <stable-id> --preflight-only
+```
+
+Only a full configured run with fresh capture, fresh critique, and
+`verifyStatus: "verified-fixed"` proves a user-app fix. If the private config is
+missing, record the blocker and keep Studio blocked. The sample app is not a
+get-out-of-jail-free card, sadly.
