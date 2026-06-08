@@ -34,9 +34,18 @@ try {
       assertEqual(payload.summary.total, 6, 'matrix cell count');
     }
   });
-  run('node', ['--test', 'tests/config.test.mjs', 'tests/contracts.test.mjs', 'tests/matrix.test.mjs', 'tests/verify.test.mjs'], {
-    cwd: packageRoot
-  });
+  run(
+    'node',
+    [
+      '--test',
+      'tests/check-dogfood-redaction.test.mjs',
+      'tests/config.test.mjs',
+      'tests/contracts.test.mjs',
+      'tests/matrix.test.mjs',
+      'tests/verify.test.mjs'
+    ],
+    { cwd: packageRoot }
+  );
   run('npm', ['run', '--silent', 'smoke:e2e', '--', '--fresh-mode', 'fixed'], { cwd: packageRoot });
 
   console.log(

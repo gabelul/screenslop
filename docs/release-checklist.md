@@ -35,6 +35,16 @@ node scripts/smoke-real-runtime.mjs \
   --identifier <stable-accessibility-identifier>
 ```
 
+Before copying any private dogfood result into public docs, run the machine leak
+check against the final JSON report:
+
+```bash
+node scripts/check-dogfood-redaction.mjs artifacts/<dogfood-report>.json \
+  --forbid "$HOME" \
+  --forbid "<private-source-root>" \
+  --forbid "<private-bundle-id>"
+```
+
 The second command must finish with these public-safe summary values:
 
 - `summary.status: "passed"`
