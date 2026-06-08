@@ -41,6 +41,19 @@ not in local config.
 The config schema is provisional until matrix capture proves the profile needs.
 Before a v0.1 tag, either freeze this schema or document the pre-1.0 instability.
 
+### Matrix runner
+
+`screenslop matrix` writes a bounded six-cell report plus one evidence bundle per
+cell. The default profile lives in `examples/matrix/default.json` and covers the
+default configured iPhone, one large iPhone, light appearance, dark appearance,
+normal Dynamic Type, and one accessibility Dynamic Type size.
+
+No-config and runtime gaps are first-class cell statuses, not silent omissions.
+When config is present, each live cell builds/runs through XcodeBuildMCP before
+`see` captures evidence. The MVP records requested appearance and Dynamic Type
+in the evidence bundle; it does not claim those settings were applied unless the
+runtime capture succeeds.
+
 ### Runtime drivers
 
 Runtime drivers know how to control the app surface.

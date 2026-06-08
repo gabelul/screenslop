@@ -37,8 +37,9 @@ Success means the loop catches at least one real issue and proves the fix. The f
 
 ## Phase 4: `matrix`
 
-- Capture the same surface across devices and settings.
-- Start with iPhone small, iPhone large, dark/light, Dynamic Type normal/AX.
+- Write a six-cell report for the same configured surface.
+- Preserve no-config, dry-run, unavailable, captured, and failed cell evidence.
+- Start with default iPhone, large iPhone, dark/light, Dynamic Type normal/AX.
 - Add iPad split width and Reduce Motion/Transparency later.
 
 ## Phase 5: Mac app

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -67,18 +68,28 @@ test('screenslop verify still refuses to prove without a fresh bundle', () => {
   assert.match(payload.error, /Missing --fresh-bundle/);
 });
 
-test('screenslop matrix remains a placeholder while e2e flow stays internal', () => {
-  const artifactsDir = path.join(repoRoot, 'artifacts');
-  const before = listFiles(artifactsDir);
-  const result = spawnSync('node', [path.join(repoRoot, 'bin/screenslop.mjs'), 'matrix'], {
-    cwd: repoRoot,
+test('screenslop matrix writes a real no-config report with linked cell evidence', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-matrix-cli-'));
+  const result = spawnSync('node', [
+    path.join(repoRoot, 'bin/screenslop.mjs'),
+    'matrix',
+    '--dry-run',
+    '--profile',
+    path.join(repoRoot, 'examples/matrix/default.json'),
+    '--json'
+  ], {
+    cwd: workspace,
     encoding: 'utf8'
   });
-  const after = listFiles(artifactsDir);
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /screenslop matrix is planned but not wired yet/);
-  assert.deepEqual(after, before);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.command, 'matrix');
+  assert.equal(payload.summary.total, 6);
+  assert.equal(payload.summary.unavailable, 6);
+  assert.equal(payload.cells[0].reason, 'no-config');
+  assert.equal(fs.existsSync(path.join(workspace, payload.artifacts.reportPath)), true);
+  assert.equal(fs.existsSync(path.join(workspace, payload.cells[0].evidence)), true);
 });
 
 /**
