@@ -33,7 +33,7 @@ Success means every finding includes evidence and a plausible source hint.
 - Rebuild and recapture.
 - Mark findings fixed, partial, or failed.
 
-Success means the loop catches at least one real issue and proves the fix.
+Success means the loop catches at least one real issue and proves the fix. The first live proof is `npm run smoke:runtime`, which targets only the public `examples/runtime-smoke-app` sample and keeps user-app verification separate.
 
 ## Phase 4: `matrix`
 

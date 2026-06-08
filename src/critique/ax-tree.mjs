@@ -28,7 +28,20 @@ export function flattenAxTree(root) {
  */
 export function isInteractiveNode(node) {
   const role = String(node.role || '');
-  return interactiveRolePatterns.some((pattern) => pattern.test(role));
+  if (interactiveRolePatterns.some((pattern) => pattern.test(role))) return true;
+  return looksLikeIdentifiedControl(node);
+}
+
+/**
+ * Treats Baguette generic AX nodes with stable control identifiers as actionable.
+ * @param {object} node Flattened AX node.
+ * @returns {boolean} Whether the generic element looks like a control.
+ */
+function looksLikeIdentifiedControl(node) {
+  const role = String(node.role || '');
+  const identifier = String(node.identifier || '');
+  if (!/^AXGenericElement$/i.test(role) || !identifier) return false;
+  return /(?:button|control|toggle|switch|slider|field|link|picker)$/i.test(identifier);
 }
 
 /**

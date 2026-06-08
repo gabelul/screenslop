@@ -12,7 +12,8 @@
     "test": "node --test tests/*.test.mjs",
     "smoke:e2e": "node scripts/smoke-e2e-flow.mjs",
     "cleanup:macos": "node scripts/cleanup-macos-sidecars.mjs",
-    "cleanup:macos:dry": "node scripts/cleanup-macos-sidecars.mjs --dry-run"
+    "cleanup:macos:dry": "node scripts/cleanup-macos-sidecars.mjs --dry-run",
+    "smoke:runtime": "node scripts/smoke-real-runtime.mjs"
   },
   "keywords": [
     "swiftui",
