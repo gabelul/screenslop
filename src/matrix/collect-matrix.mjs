@@ -217,7 +217,7 @@ function writeUnavailableCell({ root, cell, reason, message, status = 'unavailab
   bundle.manifest.matrixCell = { id: cell.id, label: cell.label };
   bundle.manifest.environment = requestedEnvironment(cell);
   bundle.manifest.capture = {
-    status,
+    status: status === 'dryRun' ? 'dry-run' : status,
     steps: [{ name: reason, ok: status === 'dryRun', message }]
   };
   writeEvidenceBundle({ root, dir: bundle.dir, manifestPath: bundle.manifestPath, manifest: bundle.manifest });

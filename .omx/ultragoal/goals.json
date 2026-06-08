@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:10:58.199Z",
+  "updatedAt": "2026-06-08T13:11:18.393Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -47,10 +47,11 @@
       "id": "G004-phase-4-agent-contract-and-docs-sche",
       "title": "Phase 4 — Agent contract and docs/schema release polish",
       "objective": "Update the Screenslop skill, session handoff, command docs, architecture docs, agent integration docs, schemas, README, JSON examples, release checklist, and known limitations so they match shipped behavior.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:21:02.686Z"
+      "updatedAt": "2026-06-08T13:11:18.393Z",
+      "startedAt": "2026-06-08T13:11:18.393Z"
     },
     {
       "id": "G005-phase-5-release-boundary-and-packagi",
@@ -62,5 +63,6 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G004-phase-4-agent-contract-and-docs-sche"
 }

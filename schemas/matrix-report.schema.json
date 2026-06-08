@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booplex.com/screenslop/matrix-report.schema.json",
+  "title": "Screenslop Matrix Report",
+  "type": "object",
+  "required": ["ok", "command", "runId", "profile", "summary", "cells", "artifacts"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "command": { "const": "matrix" },
+    "runId": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "dryRun": { "type": "boolean" },
+    "profile": {
+      "type": "object",
+      "required": ["schemaVersion", "name", "cells"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "name": { "type": "string" },
+        "cells": { "type": "number" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "captured", "dryRun", "unavailable", "failed"],
+      "properties": {
+        "total": { "type": "number" },
+        "captured": { "type": "number" },
+        "dryRun": { "type": "number" },
+        "unavailable": { "type": "number" },
+        "failed": { "type": "number" }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "status", "evidenceBundle", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "status": { "enum": ["captured", "dryRun", "unavailable", "failed"] },
+          "reason": { "type": "string" },
+          "message": { "type": "string" },
+          "requested": { "type": "object" },
+          "build": { "type": "object" },
+          "evidenceBundle": { "type": "string" },
+          "evidence": { "type": "string" },
+          "artifacts": { "type": "object" },
+          "critique": { "type": ["object", "null"] }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["reportPath", "reportMarkdownPath"],
+      "properties": {
+        "reportPath": { "type": "string" },
+        "reportMarkdownPath": { "type": "string" }
+      }
+    },
+    "configFeedback": { "type": "object" }
+  }
+}
