@@ -149,6 +149,63 @@ test('agent playbook stays aligned with shipped command and dogfood contracts', 
   assert.match(playbook, /check-dogfood-redaction\.mjs/);
 });
 
+test('skill installation docs keep CLI, skill, and private config separate', () => {
+  const readme = readText('README.md');
+  const playbook = readText('docs/agent-playbook.md');
+  const install = readText('docs/skill-installation.md');
+  const skill = readText('skills/screenslop/SKILL.md');
+  const installRef = readText('skills/screenslop/reference/install.md');
+  const integrations = readText('docs/agent-integrations.md');
+  const pkg = readJson('package.json');
+
+  assert.ok(pkg.files.includes('docs/skill-installation.md'), 'install doc must ship in npm package');
+  assert.ok(pkg.files.includes('skills/'), 'skill directory must ship in npm package');
+
+  assert.match(readme, /docs\/skill-installation\.md/);
+  assert.match(playbook, /docs\/skill-installation\.md/);
+  assert.match(skill, /reference\/install\.md/);
+  assert.match(installRef, /The Screenslop skill is an instruction layer\. The CLI must also be installed\./);
+
+  for (const ref of ['reference/install.md', 'reference/agent-contract.md', 'reference/dogfood.md']) {
+    assert.ok(fs.existsSync(path.join(repoRoot, 'skills/screenslop', ref)), `${ref} must exist inside the installed skill folder`);
+    assert.match(skill, new RegExp(ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(skill, /skills\/screenslop\/reference/);
+
+  assert.match(install, /Screenslop has two separate pieces/);
+  assert.match(install, /npx skills add gabelul\/screenslop --list/);
+  assert.match(install, /npx skills add gabelul\/screenslop --skill screenslop/);
+  assert.match(install, /~\/\.codex\/skills\/screenslop/);
+  assert.match(install, /~\/\.claude\/skills\/screenslop/);
+  assert.match(install, /~\/\.agents\/skills\/screenslop/);
+  assert.match(install, /\.screenslop\/config\.json/);
+  assert.match(install, /do not commit it/i);
+  assert.match(install, /live `screenslop see` capture still needs Baguette/);
+  assert.match(install, /A sample app smoke proves the sample app only/);
+  assert.match(install, /--config \/path\/to\/private-app\/\.screenslop\/config\.json/);
+  assert.match(install, /verifyStatus: "verified-fixed"/);
+
+  for (const [label, text] of [
+    ['install doc', install],
+    ['playbook', playbook],
+    ['skill', skill],
+    ['install reference', installRef],
+    ['dogfood reference', readText('skills/screenslop/reference/dogfood.md')],
+    ['getting started', readText('docs/getting-started.md')],
+    ['commands', readText('docs/commands.md')],
+    ['release checklist', readText('docs/release-checklist.md')],
+  ]) {
+    assert.doesNotMatch(text, /--config \.screenslop\/config\.json/, `${label} must not imply private config resolves from the Screenslop repo`);
+  }
+
+  assert.match(integrations, /Pixeltamer generates and edits images/);
+  assert.match(integrations, /Pixelslop is the browser\/web visual QA sibling/);
+  assert.match(integrations, /Stitch Kit helps agents design and convert UI/);
+  assert.match(integrations, /Slopbuster cleans prose/);
+  assert.match(integrations, /Claude Code Skill Activator can index the Screenslop skill/);
+  assert.match(integrations, /not replace the capture -> critique -> fix -> fresh capture -> verify loop/);
+});
+
 test('readiness gate contract is reflected in release docs', () => {
   const checklist = readText('docs/release-checklist.md');
   const handoff = readText('docs/session-handoff.md');

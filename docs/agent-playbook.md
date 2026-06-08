@@ -39,6 +39,15 @@ If you are running from a checkout instead of a global install:
 node bin/screenslop.mjs doctor
 ```
 
+If the host supports agent skills, install or point it at the Screenslop skill before asking it to review UI:
+
+```text
+skills/screenslop/SKILL.md
+docs/skill-installation.md
+```
+
+The skill install teaches the agent the loop. It does not create `.screenslop/config.json` and it does not connect a private app.
+
 A healthy runtime prefers this order:
 
 ```text
@@ -187,7 +196,7 @@ Preflight first:
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier> \
   --preflight-only
 ```
@@ -196,7 +205,7 @@ Full configured run:
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier <stable-accessibility-identifier>
 ```
 
@@ -235,6 +244,7 @@ README.md
 docs/getting-started.md
 docs/commands.md
 docs/agent-integrations.md
+docs/skill-installation.md
 skills/screenslop/SKILL.md
 ```
 

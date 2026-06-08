@@ -256,12 +256,14 @@ Failure reports use the same keys with `failed` or `not-run`, plus `reason` and
 array is still there when something goes sideways and you need the messy details.
 
 The default smoke stays pinned to `examples/runtime-smoke-app`. A configured
-target can be supplied for local dogfood without committing private paths:
+target can be supplied for local dogfood without committing private paths. The
+smoke runner resolves `--config` from the Screenslop checkout, so pass an
+absolute private-app config path or a path relative to this checkout:
 
 ```bash
-node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier settings.saveButton
+node scripts/smoke-real-runtime.mjs --config /path/to/private-app/.screenslop/config.json --identifier settings.saveButton
 node scripts/smoke-real-runtime.mjs --workspace App.xcworkspace --scheme App --bundle-id dev.example.App --source-root App --identifier settings.saveButton
-node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifier settings.saveButton --preflight-only
+node scripts/smoke-real-runtime.mjs --config /path/to/private-app/.screenslop/config.json --identifier settings.saveButton --preflight-only
 ```
 
 Configured target requirements:

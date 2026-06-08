@@ -47,11 +47,11 @@ node bin/screenslop.mjs init \
 
 `.screenslop/config.json` is ignored by git because it can contain private paths and bundle IDs.
 
-Before you run a private app, check the config shape without launching anything:
+Before you run a private app from the Screenslop checkout, check the config shape without launching anything. Pass an absolute config path, or a path relative to this checkout:
 
 ```bash
 node scripts/smoke-real-runtime.mjs \
-  --config .screenslop/config.json \
+  --config /path/to/private-app/.screenslop/config.json \
   --identifier settings.saveButton \
   --preflight-only
 ```
