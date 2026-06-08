@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:29:58.970Z",
+  "updatedAt": "2026-06-08T19:36:36.045Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -77,7 +77,9 @@
       "updatedAt": "2026-06-08T19:27:26.697Z",
       "startedAt": "2026-06-08T19:25:22.734Z",
       "completedAt": "2026-06-08T19:27:26.697Z",
-      "evidence": "Committed blocker docs at bb149f2. Evidence: no .screenslop/config.json in checkout; configured private dogfood preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify statuses not-run, and pathDisplayMode redacted. Machine leak scan over latest runtime-smoke JSON found no repo path, home path, /Volumes/MyEXT, or /Users/gabel. Studio remains blocked; private real-app verified-fixed dogfood is not claimed."
+      "evidence": "Committed blocker docs at bb149f2. Evidence: no .screenslop/config.json in checkout; configured private dogfood preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify statuses not-run, and pathDisplayMode redacted. Machine leak scan over latest runtime-smoke JSON found no repo path, home path, /Volumes/MyEXT, or /Users/gabel. Studio remains blocked; private real-app verified-fixed dogfood is not claimed.",
+      "outcome": "recorded-blocker",
+      "outcomeDetail": "Private dogfood proof did not run because .screenslop/config.json is absent; docs and release checklist keep Studio blocked."
     },
     {
       "id": "G007-agent-contract-polish-align-screensl",
@@ -95,11 +97,26 @@
       "id": "G008-release-decision-run-release-checkli",
       "title": "Release decision: run release checklist and tag only after green loca...",
       "objective": "Release decision: run release checklist and tag only after green local plus CI evidence and explicit approval/need.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "review_blocked",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:36:16.173Z",
+      "startedAt": "2026-06-08T19:30:19.084Z",
+      "reviewBlockedAt": "2026-06-08T19:36:16.173Z",
+      "evidence": "Final independent review was not clean: code-reviewer APPROVE with no findings, architect WATCH. Architect concerns: release/agent contract remains split across prose/markdown regex tests rather than one machine-readable source; G006 is complete because blocker recording was allowed, but future automation could misread blocker-recorded as proof-passed. Do not call update_goal until this blocker is resolved and final code-review returns APPROVE plus CLEAR."
+    },
+    {
+      "id": "G009-resolve-final-code-review-blockers",
+      "title": "Resolve final code-review blockers",
+      "objective": "Resolve architect WATCH findings by reducing release/agent contract drift and clarifying blocker-state semantics before final release decision.",
+      "status": "in_progress",
+      "attempt": 1,
+      "createdAt": "2026-06-08T19:36:16.173Z",
+      "updatedAt": "2026-06-08T19:36:36.045Z",
+      "evidence": "Final independent review was not clean: code-reviewer APPROVE with no findings, architect WATCH. Architect concerns: release/agent contract remains split across prose/markdown regex tests rather than one machine-readable source; G006 is complete because blocker recording was allowed, but future automation could misread blocker-recorded as proof-passed. Do not call update_goal until this blocker is resolved and final code-review returns APPROVE plus CLEAR.",
+      "startedAt": "2026-06-08T19:36:36.045Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G009-resolve-final-code-review-blockers"
 }

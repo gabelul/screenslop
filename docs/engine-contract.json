@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    "init",
+    "doctor",
+    "see",
+    "critique",
+    "fix",
+    "matrix",
+    "verify",
+    "watch"
+  ],
+  "readinessGates": [
+    {
+      "id": "json-schema-contracts",
+      "label": "Agent-facing JSON and schemas are covered by contract tests"
+    },
+    {
+      "id": "package-smoke",
+      "label": "The npm package smoke passes outside repo-only assumptions"
+    },
+    {
+      "id": "sample-runtime-smoke",
+      "label": "Sample runtime smoke proves capture, critique, fix, fresh capture, fresh critique, and verify"
+    },
+    {
+      "id": "matrix-setting-status",
+      "label": "Matrix output preserves six cells and reports setting status"
+    },
+    {
+      "id": "configured-target-preflight",
+      "label": "Configured-target preflight fails safely with redacted JSON"
+    },
+    {
+      "id": "private-dogfood-verified-fixed",
+      "label": "Private dogfood proves at least one real-app finding as verified-fixed after fresh capture and critique"
+    },
+    {
+      "id": "private-dogfood-redaction",
+      "label": "Private dogfood summary passes a machine leak check before public lessons are committed"
+    },
+    {
+      "id": "agent-contract-drift",
+      "label": "Agent docs match shipped CLI behavior and do not overclaim fallback capture"
+    }
+  ],
+  "blockerOutcomes": [
+    "passed",
+    "recorded-blocker",
+    "blocked"
+  ],
+  "releaseDecision": {
+    "tagWhen": "all-readiness-gates-passed-and-explicit-approval-or-need",
+    "noTagWhen": "private-dogfood-is-recorded-blocker-or-blocked"
+  }
+}
