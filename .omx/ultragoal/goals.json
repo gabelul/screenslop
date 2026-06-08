@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T13:01:14.020Z",
+  "updatedAt": "2026-06-08T13:10:58.199Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -35,11 +35,13 @@
       "id": "G003-phase-3-matrix-mvp",
       "title": "Phase 3 — Matrix MVP",
       "objective": "Replace the matrix placeholder with a real bounded six-cell matrix report, preserve unavailable/failure evidence per cell including no-config behavior, write linked evidence bundles, and feed profile needs back into the provisional config schema.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T13:01:14.020Z",
-      "startedAt": "2026-06-08T13:01:14.020Z"
+      "updatedAt": "2026-06-08T13:10:58.199Z",
+      "startedAt": "2026-06-08T13:01:14.020Z",
+      "completedAt": "2026-06-08T13:10:58.199Z",
+      "evidence": "Committed and pushed Phase 3 matrix MVP at 22832bc. Evidence: matrix command now writes a six-cell report and linked evidence bundles; no-config cells are explicit unavailable evidence; configured dry-run and live path are covered by tests; node --check all mjs passed; npm test passed 80/80; smoke:e2e fixed passed; matrix dry-run/profile JSON smoke passed; doctor passed; cleanup dry-run clean."
     },
     {
       "id": "G004-phase-4-agent-contract-and-docs-sche",
@@ -60,6 +62,5 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G003-phase-3-matrix-mvp"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
