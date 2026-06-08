@@ -68,5 +68,5 @@ node scripts/smoke-real-runtime.mjs --config .screenslop/config.json --identifie
 
 Only a full configured run with fresh capture, fresh critique, and
 `verifyStatus: "verified-fixed"` proves a user-app fix. If the private config is
-missing, record the blocker and keep Studio blocked. The sample app is not a
-get-out-of-jail-free card, sadly.
+missing, record the outcome as `recorded-blocker` and keep Studio blocked. The
+sample app is not a get-out-of-jail-free card, sadly.
