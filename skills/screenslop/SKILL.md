@@ -32,7 +32,7 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
 - `verify`: compare baseline findings with fresh capture plus fresh critique.
 - `matrix`: write a bounded six-cell report with linked evidence bundles.
-- `watch`: keep a live review loop open while editing.
+- `watch`: future live review loop; current CLI prints a placeholder.
 
 ## Review rule
 

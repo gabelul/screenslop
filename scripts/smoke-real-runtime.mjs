@@ -604,7 +604,10 @@ function finishReport(report, { reason = null, paths, writeReport, repoRoot }) {
   report.reason = reason;
   report.artifacts.report = displayPath(paths.reportPath, repoRoot || defaultRepoRoot);
   report.pathDisplayMode = 'redacted';
-  sanitizeReport(report, { repoRoot: repoRoot || defaultRepoRoot });
+  sanitizeReport(report, {
+    repoRoot: repoRoot || defaultRepoRoot,
+    bundleIds: collectBundleIds(report)
+  });
   if (writeReport) {
     fs.mkdirSync(path.dirname(paths.reportPath), { recursive: true });
     fs.writeFileSync(paths.reportPath, `${JSON.stringify(report, null, 2)}\n`);
@@ -761,30 +764,41 @@ function publicTarget(target, repoRoot) {
  * @returns {object} Redacted report.
  */
 function sanitizeReport(value, context) {
-  if (typeof value === 'string') return redactString(value, context.repoRoot);
+  if (typeof value === 'string') return redactString(value, context);
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) value[index] = sanitizeReport(value[index], context);
     return value;
   }
   if (!value || typeof value !== 'object') return value;
   for (const [key, entry] of Object.entries(value)) {
-    if (typeof entry === 'string') value[key] = redactString(entry, context.repoRoot);
+    if (typeof entry === 'string') value[key] = redactString(entry, context);
     else if (entry && typeof entry === 'object') value[key] = sanitizeReport(entry, context);
   }
   return value;
 }
 
 /**
+ * Collects exact bundle IDs that should not appear in final reports.
+ * @param {object} report Runtime smoke report.
+ * @returns {string[]} Bundle IDs.
+ */
+function collectBundleIds(report) {
+  return [...new Set([report.bundleId, report.target?.bundleId].filter(Boolean))];
+}
+
+/**
  * Redacts path-like string fragments.
  * @param {string} value Raw string.
- * @param {string} repoRoot Repo root.
+ * @param {object} context Redaction context.
  * @returns {string} Redacted string.
  */
-function redactString(value, repoRoot) {
+function redactString(value, context) {
+  const repoRoot = context.repoRoot;
   const replacements = [
     [canonicalizeExistingPath(repoRoot), '<repo>'],
     [repoRoot, '<repo>']
   ];
+  for (const bundleId of context.bundleIds || []) replacements.push([bundleId, '<bundle-id>']);
   const home = process.env.HOME || '';
   if (home) replacements.push([canonicalizeExistingPath(home), '<home>'], [home, '<home>']);
 
