@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T12:21:02.686Z",
-  "updatedAt": "2026-06-08T12:41:05.712Z",
+  "updatedAt": "2026-06-08T13:00:57.644Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -23,11 +23,13 @@
       "id": "G002-phase-2-shared-runtime-smoke-runner",
       "title": "Phase 2 — Shared runtime smoke runner and user-app dogfood path",
       "objective": "Extract reusable build/run target orchestration, keep the sample runtime smoke, add configured-target smoke support, preserve JSON stage failures, add negative fresh-capture/fresh-critique tests, and verify with runtime smoke when available.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-08T12:21:02.686Z",
-      "updatedAt": "2026-06-08T12:41:05.712Z",
-      "startedAt": "2026-06-08T12:41:05.712Z"
+      "updatedAt": "2026-06-08T13:00:57.644Z",
+      "startedAt": "2026-06-08T12:41:05.712Z",
+      "completedAt": "2026-06-08T13:00:57.644Z",
+      "evidence": "Committed and pushed Phase 2 configured runtime smoke target at 0fed772. Evidence: node --check bin/screenslop.mjs plus all src/tests/scripts passed; npm test passed 77/77; smoke:e2e fixed passed; doctor passed; cleanup dry-run clean; npm run smoke:runtime passed with verified-fixed runtime evidence; reviewer blockers fixed with target-config validation and report path redaction tests."
     },
     {
       "id": "G003-phase-3-matrix-mvp",
@@ -57,6 +59,5 @@
       "updatedAt": "2026-06-08T12:21:02.686Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G002-phase-2-shared-runtime-smoke-runner"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
