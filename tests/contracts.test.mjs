@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -6,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
+const cliCommands = ['init', 'doctor', 'see', 'critique', 'fix', 'matrix', 'verify', 'watch'];
 
 test('public JSON examples keep the agent-facing command shape', () => {
   const expectations = {
@@ -99,6 +101,32 @@ test('public schemas reject malformed evidence, findings, and matrix reports', (
   assert.throws(() => validateAgainstSchema(badMatrix, matrixSchema), /command/);
 });
 
+test('CLI help and Screenslop skill advertise the same command set', () => {
+  const help = runCliHelp();
+  const skill = readText('skills/screenslop/SKILL.md');
+  const advertised = extractSkillCommands(skill);
+
+  assert.deepEqual(advertised, cliCommands);
+
+  for (const command of cliCommands) {
+    assert.match(help, new RegExp(`\\n\\s*${command}\\s+`), `CLI help should list ${command}`);
+  }
+});
+
+test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
+  const skill = readText('skills/screenslop/SKILL.md');
+  const limitations = readText('docs/known-limitations.md');
+  const checklist = readText('docs/release-checklist.md');
+
+  assert.match(skill, /non-Baguette capture fallback is future work/);
+  assert.match(skill, /verifyStatus: "verified-fixed"/);
+  assert.match(skill, /sample app is not/i);
+  assert.match(limitations, /private dogfood gate is not complete/i);
+  assert.match(limitations, /not a substitute for a real app capture/i);
+  assert.match(checklist, /summary\.freshCritiqueStatus: "passed"/);
+  assert.match(checklist, /pathDisplayMode: "redacted"/);
+});
+
 /**
  * Reads a repository-local JSON file.
  *
@@ -107,6 +135,41 @@ test('public schemas reject malformed evidence, findings, and matrix reports', (
  */
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'));
+}
+
+/**
+ * Reads a repository-local text file.
+ *
+ * @param {string} relativePath Repo-relative text path.
+ * @returns {string} File contents.
+ */
+function readText(relativePath) {
+  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+}
+
+/**
+ * Runs the side-effect-free top-level CLI help command.
+ *
+ * @returns {string} Help output.
+ */
+function runCliHelp() {
+  const result = spawnSync(process.execPath, ['bin/screenslop.mjs', 'help'], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout;
+}
+
+/**
+ * Extracts the documented command names from the Screenslop agent skill.
+ *
+ * @param {string} skill Skill markdown.
+ * @returns {string[]} Command names in documented order.
+ */
+function extractSkillCommands(skill) {
+  const matches = [...skill.matchAll(/^- `([^`]+)`: /gm)];
+  return matches.map((match) => match[1]);
 }
 
 /**
