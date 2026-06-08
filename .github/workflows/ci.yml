@@ -30,3 +30,4 @@ jobs:
       - run: node bin/screenslop.mjs matrix --dry-run --json
       - run: node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
       - run: npm pack --dry-run
+      - run: npm run --silent smoke:package

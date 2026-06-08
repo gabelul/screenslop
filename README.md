@@ -168,6 +168,7 @@ node bin/screenslop.mjs matrix --dry-run --json
 node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
 npm run cleanup:macos:dry
 npm pack --dry-run
+npm run --silent smoke:package
 ```
 
 When Apple runtime tools are available:

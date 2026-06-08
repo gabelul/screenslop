@@ -51,6 +51,7 @@
     "see": "node bin/screenslop.mjs see --dry-run",
     "test": "node --test tests/*.test.mjs",
     "smoke:e2e": "node scripts/smoke-e2e-flow.mjs",
+    "smoke:package": "node scripts/smoke-package.mjs",
     "cleanup:macos": "node scripts/cleanup-macos-sidecars.mjs",
     "cleanup:macos:dry": "node scripts/cleanup-macos-sidecars.mjs --dry-run",
     "smoke:runtime": "node scripts/smoke-real-runtime.mjs"

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-08T19:01:21.015Z",
-  "updatedAt": "2026-06-08T19:03:58.944Z",
+  "updatedAt": "2026-06-08T19:05:09.654Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -23,10 +23,11 @@
       "id": "G002-contract-and-package-locks-golden-js",
       "title": "Contract and package locks: golden JSON/schema tests, package whiteli...",
       "objective": "Contract and package locks: golden JSON/schema tests, package whitelist checks, extracted package smoke.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-08T19:01:21.015Z",
-      "updatedAt": "2026-06-08T19:01:21.015Z"
+      "updatedAt": "2026-06-08T19:05:09.654Z",
+      "startedAt": "2026-06-08T19:05:09.654Z"
     },
     {
       "id": "G003-runtime-smoke-hardening-stable-smoke",
@@ -83,5 +84,6 @@
       "updatedAt": "2026-06-08T19:01:21.015Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G002-contract-and-package-locks-golden-js"
 }
