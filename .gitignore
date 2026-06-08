@@ -50,3 +50,6 @@ examples/runtime-smoke-app/CLAUDE.md
 
 # Local provider/assistant runtime state
 .omc/
+
+# Local Pixeltamer source layers for final repo assets
+.github/assets/generated/

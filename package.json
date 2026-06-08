@@ -1,7 +1,7 @@
 {
   "name": "screenslop",
   "version": "0.1.0",
-  "description": "Evidence-first design review for Apple apps. See the screen, read the AX tree, fix the slop.",
+  "description": "Evidence-first design review for Apple apps. Capture the screen, read the AX tree, fix the slop.",
   "type": "module",
   "bin": {
     "screenslop": "./bin/screenslop.mjs"
@@ -20,7 +20,15 @@
     "tests/fixtures/source/",
     "schemas/",
     "skills/",
-    "docs/",
+    "docs/agent-integrations.md",
+    "docs/architecture.md",
+    "docs/commands.md",
+    "docs/getting-started.md",
+    "docs/known-limitations.md",
+    "docs/maintenance.md",
+    "docs/release-checklist.md",
+    "docs/repo-strategy.md",
+    "docs/roadmap.md",
     "examples/json/",
     "examples/matrix/",
     "examples/runtime-smoke-app/Config/",
@@ -30,9 +38,13 @@
     "examples/runtime-smoke-app/RuntimeSmoke/",
     "examples/runtime-smoke-app/RuntimeSmokePackage/",
     "examples/runtime-smoke-app/RuntimeSmokeUITests/",
+    ".github/assets/banner.png",
     "README.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md"
   ],
   "scripts": {
     "doctor": "node bin/screenslop.mjs doctor",
@@ -50,11 +62,25 @@
     "design-review",
     "accessibility",
     "baguette",
-    "simulator"
+    "simulator",
+    "apple-ui",
+    "ios-simulator",
+    "ai-agents",
+    "codex-cli",
+    "claude-code",
+    "xcodebuildmcp"
   ],
   "author": "Gabi @ Booplex",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabelul/screenslop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gabelul/screenslop/issues"
+  },
+  "homepage": "https://github.com/gabelul/screenslop#readme"
 }
