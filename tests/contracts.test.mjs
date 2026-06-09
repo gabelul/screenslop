@@ -166,7 +166,7 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(skill, /reference\/install\.md/);
   assert.match(installRef, /The Screenslop skill is an instruction layer\. The CLI must also be installed\./);
 
-  for (const ref of ['reference/install.md', 'reference/agent-contract.md', 'reference/dogfood.md']) {
+  for (const ref of ['reference/install.md', 'reference/agent-contract.md', 'reference/project-setup.md', 'reference/dogfood.md']) {
     assert.ok(fs.existsSync(path.join(repoRoot, 'skills/screenslop', ref)), `${ref} must exist inside the installed skill folder`);
     assert.match(skill, new RegExp(ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -185,11 +185,28 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(install, /--config \/path\/to\/private-app\/\.screenslop\/config\.json/);
   assert.match(install, /verifyStatus: "verified-fixed"/);
 
+  const projectSetup = readText('skills/screenslop/reference/project-setup.md');
+  for (const [label, text] of [
+    ['skill', skill],
+    ['install doc', install],
+    ['playbook', playbook],
+    ['getting started', readText('docs/getting-started.md')],
+    ['commands', readText('docs/commands.md')],
+    ['project setup reference', projectSetup],
+  ]) {
+    const dryRunIndex = text.indexOf('setup --json --dry-run');
+    const yesIndex = text.indexOf('setup --json --yes');
+    assert.notEqual(dryRunIndex, -1, `${label} must document setup dry-run first`);
+    assert.ok(yesIndex === -1 || dryRunIndex < yesIndex, `${label} must mention setup dry-run before setup --yes`);
+    assert.match(text, /Setup is configuration only|setup is configuration only|proof starts/i, `${label} must not treat setup as proof`);
+  }
+
   for (const [label, text] of [
     ['install doc', install],
     ['playbook', playbook],
     ['skill', skill],
     ['install reference', installRef],
+    ['project setup reference', projectSetup],
     ['dogfood reference', readText('skills/screenslop/reference/dogfood.md')],
     ['getting started', readText('docs/getting-started.md')],
     ['commands', readText('docs/commands.md')],
@@ -197,6 +214,9 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   ]) {
     assert.doesNotMatch(text, /--config \.screenslop\/config\.json/, `${label} must not imply private config resolves from the Screenslop repo`);
   }
+
+  assert.doesNotMatch(install, /npx skills add[^\n]+creates? `?\.screenslop\/config\.json`?/i);
+  assert.match(skill, /reference\/project-setup\.md/);
 
   assert.match(integrations, /Pixeltamer generates and edits images/);
   assert.match(integrations, /Pixelslop is the browser\/web visual QA sibling/);

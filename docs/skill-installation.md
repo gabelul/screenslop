@@ -108,6 +108,13 @@ Then run:
 
 ```bash
 screenslop doctor
+screenslop setup --json --dry-run
+```
+
+If setup returns `status: "ready"`, review the planned config and write it only after approval:
+
+```bash
+screenslop setup --json --yes
 ```
 
 If running from a checkout:
@@ -131,8 +138,10 @@ Private target config lives in `.screenslop/config.json` inside the app repo you
 Create or preview config separately from skill installation:
 
 ```bash
-screenslop init --json --dry-run
+screenslop setup --json --dry-run
 ```
+
+`setup` is configuration only. It does not prove the UI is good and it does not run a private dogfood fix loop. Proof starts with runtime capture.
 
 For private dogfood, use a local ignored config in the app repo and pass its path explicitly from the Screenslop checkout. The smoke runner resolves `--config` from the Screenslop repo, so use an absolute path or a relative path from this checkout:
 

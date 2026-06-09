@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "commands": [
+    "setup",
     "init",
     "doctor",
     "see",

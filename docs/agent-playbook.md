@@ -46,7 +46,7 @@ skills/screenslop/SKILL.md
 docs/skill-installation.md
 ```
 
-The skill install teaches the agent the loop. It does not create `.screenslop/config.json` and it does not connect a private app.
+The skill install teaches the agent the loop. It does not create `.screenslop/config.json` and it does not connect a private app. On first use inside an app repo, run `screenslop setup --json --dry-run`, show the planned config, and write only after approval with `screenslop setup --json --yes`. Setup is configuration only; proof starts with runtime capture.
 
 A healthy runtime prefers this order:
 
@@ -61,6 +61,8 @@ If Baguette is missing, stop and fix runtime setup or use manual evidence. Do no
 This is the loop every agent should follow:
 
 ```bash
+screenslop setup --json --dry-run
+screenslop doctor
 screenslop see --surface <surface> --json
 screenslop critique artifacts/<baseline-run> --json
 
