@@ -61,7 +61,7 @@ Manual paths and scope notes live in [Skill installation](docs/skill-installatio
 
 Screenslop is the boring, scriptable engine that sits between AI agents and real Apple UI evidence.
 
-1. **Configure the target** — create or migrate `.screenslop/config.json` with scheme, bundle ID, source root, device, and artifact folder settings.
+1. **Set up the target** — detect project metadata with `screenslop setup`, then create or migrate `.screenslop/config.json` with scheme, bundle ID, source root, device, surface, and artifact folder settings.
 2. **Capture the screen** — use Baguette for the shipped live capture path to write screenshot, AX tree, logs, manifest, and summary files.
 3. **Critique the evidence** — produce deterministic findings with proof, not vague taste complaints.
 4. **Fix selected findings** — patch only narrow, high-confidence SwiftUI issues.
@@ -75,7 +75,8 @@ The current MVP is intentionally conservative. It does not pretend a fixture tes
 ## Core workflow
 
 ```bash
-screenslop init --json --dry-run
+screenslop setup --json --dry-run
+screenslop setup --json --yes
 screenslop doctor
 
 screenslop see --surface Settings --json

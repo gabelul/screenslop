@@ -5,6 +5,7 @@ Agents use Screenslop through the CLI. The caller can be Codex, Claude Code, Cur
 ## Required loop
 
 ```bash
+screenslop setup --json --dry-run
 screenslop doctor
 screenslop see --surface <surface> --json
 screenslop critique artifacts/<baseline-run> --json
@@ -15,6 +16,8 @@ screenslop verify artifacts/<baseline-run> --fresh-bundle artifacts/<fresh-run> 
 ```
 
 `verify` compares against a fresh bundle. It does not capture one.
+
+`setup` is configuration only. If it returns `status: "ready"`, ask before writing with `screenslop setup --json --yes`.
 
 ## Stop rules
 

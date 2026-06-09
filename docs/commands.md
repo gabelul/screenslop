@@ -4,6 +4,27 @@ Screenslop should not copy Impeccable's command names. The workflow is different
 
 ## Core commands
 
+### `screenslop setup`
+
+Detects first-use Apple project metadata, prepares `.screenslop/config.json`, and writes only after explicit confirmation. This is the Pixeltamer-style first invocation step for Screenslop, but it stays project-local because app config can contain private paths and bundle IDs.
+
+Use it for:
+
+- first-run project detection
+- safe config dry-runs
+- ambiguous target reporting
+- explicit config writes after approval
+
+Current behavior:
+
+```bash
+screenslop setup --json --dry-run
+screenslop setup --json --yes
+screenslop setup --project MyApp.xcodeproj --scheme MyApp --bundle-id com.example.MyApp --source-root MyApp --surface Settings --json --dry-run
+```
+
+`setup` refuses to write when project, scheme, bundle ID, or source root detection is ambiguous. Setup is configuration only; proof starts with runtime capture at `screenslop see`.
+
 ### `screenslop init`
 
 Sets up the project connection.
