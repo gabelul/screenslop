@@ -25,27 +25,32 @@ Baguette is the best path for current iOS simulator evidence because it can capt
 
 ## 2. Create project config
 
-Start with a dry run:
+Start with setup dry-run from the app repo. It detects the Xcode project, scheme, bundle ID, and source root when there is one safe answer:
 
 ```bash
-node bin/screenslop.mjs init --json --dry-run
+node bin/screenslop.mjs setup --json --dry-run
 ```
 
-Then create or migrate the local config when you are ready:
+If the dry run says `status: "ready"`, write the local config when you are ready:
 
 ```bash
-node bin/screenslop.mjs init \
-  --workspace MyApp.xcworkspace \
+node bin/screenslop.mjs setup --json --yes
+```
+
+If setup says `status: "needs-selection"`, pass the target fields explicitly and dry-run again:
+
+```bash
+node bin/screenslop.mjs setup \
+  --project MyApp.xcodeproj \
   --scheme MyApp \
   --bundle-id com.example.MyApp \
   --source-root MyApp \
   --surface Settings \
-  --device "iPhone 17" \
   --json \
-  --yes
+  --dry-run
 ```
 
-`.screenslop/config.json` is ignored by git because it can contain private paths and bundle IDs.
+`.screenslop/config.json` is ignored by git because it can contain private paths and bundle IDs. Setup is configuration only; proof starts with runtime capture.
 
 Before you run a private app from the Screenslop checkout, check the config shape without launching anything. Pass an absolute config path, or a path relative to this checkout:
 

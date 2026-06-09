@@ -8,6 +8,7 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
+import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
 import {
   createDefaultConfig,
   planInitConfig,
@@ -27,6 +28,9 @@ switch (command) {
     break;
   case 'doctor':
     await doctor();
+    break;
+  case 'setup':
+    await setupProject();
     break;
   case 'init':
     await initProject();
@@ -63,6 +67,7 @@ Usage:
   screenslop <command> [options]
 
 Commands:
+  setup      Detect project metadata and plan first-use config
   init       Create .screenslop/config.json
   doctor     Check Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node
              Use --install-baguette to install after confirmation
@@ -159,6 +164,304 @@ function ask(prompt) {
   });
 }
 
+
+/** Detects app metadata and creates project config after explicit confirmation. */
+async function setupProject() {
+  const options = parseOptions(args);
+  if (options.flags.has('help') || options.flags.has('h')) {
+    printSetupHelp();
+    return;
+  }
+
+  const detection = detectAppleProject(process.cwd());
+  const choice = chooseSetupDefaults(detection, options.values);
+  const wantsJson = options.flags.has('json');
+
+  if (!choice.ok) {
+    printSetupResult({
+      ok: false,
+      command: 'setup',
+      status: 'needs-selection',
+      wrote: false,
+      dryRun: options.flags.has('dry-run'),
+      detection,
+      missing: choice.missing,
+      ambiguous: choice.ambiguous,
+      values: choice.values,
+      next: setupSelectionNext(choice)
+    }, wantsJson);
+    process.exitCode = 1;
+    return;
+  }
+
+  const plan = planInitConfig({
+    root: process.cwd(),
+    detected: detectRuntimes(),
+    values: choice.values
+  });
+
+  try {
+    if (!plan.ok) throw new Error(plan.error);
+
+    const shouldWrite = await shouldWriteSetupConfig(plan, options);
+    if (shouldWrite) writeProjectConfig(process.cwd(), plan.config);
+
+    const refusedWrite = plan.action !== 'exists' && !shouldWrite && !options.flags.has('dry-run');
+    printSetupResult({
+      ...plan,
+      ok: !refusedWrite,
+      command: 'setup',
+      status: refusedWrite ? 'requires-write-confirmation' : 'ready',
+      wrote: shouldWrite,
+      dryRun: options.flags.has('dry-run'),
+      detection,
+      missing: [],
+      ambiguous: {},
+      values: choice.values,
+      next: setupReadyNext(plan.config)
+    }, wantsJson);
+
+    if (refusedWrite) process.exitCode = 1;
+  } catch (error) {
+    printSetupResult({
+      ok: false,
+      command: 'setup',
+      action: plan.action,
+      status: 'failed',
+      error: error.message,
+      file: plan.file,
+      config: plan.config || null,
+      wrote: false,
+      dryRun: options.flags.has('dry-run'),
+      detection,
+      missing: [],
+      ambiguous: {},
+      values: choice.values,
+      next: []
+    }, wantsJson);
+    process.exitCode = 1;
+  }
+}
+
+/** Prints setup-specific options. */
+function printSetupHelp() {
+  console.log(`Screenslop setup
+
+Usage:
+  screenslop setup [options]
+
+Options:
+  --json                 Print machine-readable output
+  --dry-run              Show the config plan without writing files
+  --yes                  Skip interactive confirmation for writes
+  --workspace <path>     Xcode workspace path
+  --project <path>       Xcode project path
+  --scheme <name>        Default scheme
+  --bundle-id <id>       Default app bundle ID
+  --device <name>        Default simulator device
+  --source-root <path>   Source root for future apply flows
+  --surface <name>       Default surface name for capture/report context
+  --artifacts-dir <path> Artifact output directory
+`);
+}
+
+/**
+ * Decides whether setup may write project config.
+ * @param {object} plan Init plan.
+ * @param {{flags:Set<string>}} options Parsed CLI options.
+ * @returns {Promise<boolean>} True when writing is allowed.
+ */
+async function shouldWriteSetupConfig(plan, options) {
+  if (options.flags.has('dry-run')) return false;
+  if (plan.action === 'exists') return false;
+  if (options.flags.has('yes')) return true;
+  if (options.flags.has('json')) return false;
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+
+  const answer = await ask(`Write .screenslop/config.json for ${plan.config.defaultScheme || 'this app'} now? [y/N] `);
+  return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+/**
+ * Builds next-step commands for a ready setup plan.
+ * @param {object} config Planned config.
+ * @returns {string[]} Human/agent next commands.
+ */
+function setupReadyNext(config) {
+  const surface = config?.defaultSurface || '<surface>';
+  return [
+    'screenslop doctor',
+    `screenslop see --surface ${surface} --boot --json`,
+    'screenslop critique artifacts/<run-id> --json'
+  ];
+}
+
+/**
+ * Builds selection guidance when setup cannot choose one target safely.
+ * @param {object} choice Setup default choice result.
+ * @returns {string[]} Suggested commands.
+ */
+function setupSelectionNext(choice) {
+  const project = choice.detection.projects[0] || '<App.xcodeproj>';
+  const workspace = choice.detection.workspaces[0] || '<App.xcworkspace>';
+  const scheme = choice.detection.schemes[0] || '<Scheme>';
+  const sourceRoot = choice.detection.sourceRoots[0] || '<SourceRoot>';
+  const targetFlag = choice.detection.workspaces.length && !choice.detection.projects.length
+    ? `--workspace ${workspace}`
+    : `--project ${project}`;
+  return [
+    'screenslop setup --json --dry-run --project <App.xcodeproj> --scheme <Scheme> --bundle-id <bundle-id> --source-root <SourceRoot> --surface <surface>',
+    'or: screenslop setup --json --dry-run --workspace <App.xcworkspace> --scheme <Scheme> --bundle-id <bundle-id> --source-root <SourceRoot> --surface <surface>',
+    `example: screenslop setup --json --dry-run ${targetFlag} --scheme ${scheme} --bundle-id <bundle-id> --source-root ${sourceRoot} --surface <surface>`
+  ];
+}
+
+/**
+ * Prints setup output for humans or agents.
+ * @param {object} result Setup result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printSetupResult(result, json) {
+  const payload = redactSetupJson(result);
+  if (json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  if (!payload.ok) {
+    console.error(`screenslop setup needs selection: ${payload.missing?.join(', ') || payload.error || payload.status}`);
+    for (const command of payload.next || []) console.error(`- ${command}`);
+    return;
+  }
+
+  console.log(`${payload.wrote ? 'Created' : 'Prepared'} .screenslop/config.json`);
+  console.log(`Detection: ${payload.detection.status}`);
+  console.log(`Project: ${payload.values.project || payload.values.workspace || '<missing>'}`);
+  console.log(`Scheme: ${payload.values.scheme || '<missing>'}`);
+  console.log(`Bundle ID: ${payload.values['bundle-id'] ? '<bundle-id>' : '<missing>'}`);
+  console.log(`Source root: ${payload.values['source-root'] || '<missing>'}`);
+  console.log('Next:');
+  for (const command of payload.next || []) console.log(`- ${command}`);
+}
+
+/**
+ * Redacts setup JSON fields that can expose private app details.
+ * @param {object} payload Setup payload.
+ * @returns {object} Redacted setup payload.
+ */
+function redactSetupJson(payload) {
+  const redacted = redactInitJson({
+    ...payload,
+    config: redactSetupConfig(payload.config),
+    detection: redactDetection(payload.detection),
+    values: redactSetupValues(payload.values || {}),
+    ambiguous: redactAmbiguous(payload.ambiguous || {}),
+    next: redactSetupNext(payload.next || [])
+  });
+  if (redacted.config) redacted.config = redactSetupConfig(redacted.config);
+  return redacted;
+}
+
+/**
+ * Redacts project-identifying setup config fields in agent-facing JSON.
+ * @param {object|null|undefined} config Config payload.
+ * @returns {object|null|undefined} Redacted config.
+ */
+function redactSetupConfig(config) {
+  if (!config) return config;
+  return {
+    ...config,
+    defaultSurface: config.defaultSurface ? '<surface>' : config.defaultSurface,
+    defaultScheme: config.defaultScheme ? '<scheme>' : config.defaultScheme,
+    defaultBundleId: config.defaultBundleId ? '<bundle-id>' : config.defaultBundleId,
+    defaultDevice: config.defaultDevice ? '<device>' : config.defaultDevice,
+    workspacePath: config.workspacePath ? '<workspace>' : config.workspacePath,
+    projectPath: config.projectPath ? '<project>' : config.projectPath,
+    sourceRoot: config.sourceRoot ? '<source-root>' : config.sourceRoot,
+    artifactsDir: config.artifactsDir ? '<artifacts-dir>' : config.artifactsDir
+  };
+}
+
+/**
+ * Redacts detection candidate values for agent-facing setup output.
+ * @param {object} detection Detection payload.
+ * @returns {object} Redacted detection payload.
+ */
+function redactDetection(detection) {
+  if (!detection) return detection;
+  return {
+    ...detection,
+    root: redactPath(detection.root),
+    projects: (detection.projects || []).map(() => '<project>'),
+    workspaces: (detection.workspaces || []).map(() => '<workspace>'),
+    schemes: (detection.schemes || []).map(() => '<scheme>'),
+    sourceRoots: (detection.sourceRoots || []).map(() => '<source-root>'),
+    bundleIds: (detection.bundleIds || []).map(() => '<bundle-id>')
+  };
+}
+
+/**
+ * Redacts setup choice values.
+ * @param {Record<string,string>} values Setup values.
+ * @returns {Record<string,string>} Redacted values.
+ */
+function redactSetupValues(values) {
+  return {
+    ...values,
+    surface: values.surface ? '<surface>' : values.surface,
+    workspace: values.workspace ? '<workspace>' : values.workspace,
+    project: values.project ? '<project>' : values.project,
+    scheme: values.scheme ? '<scheme>' : values.scheme,
+    device: values.device ? '<device>' : values.device,
+    'source-root': values['source-root'] ? '<source-root>' : values['source-root'],
+    'artifacts-dir': values['artifacts-dir'] ? '<artifacts-dir>' : values['artifacts-dir'],
+    'bundle-id': values['bundle-id'] ? '<bundle-id>' : values['bundle-id']
+  };
+}
+
+/**
+ * Redacts suggested setup commands for agent-facing JSON.
+ * @param {string[]} commands Suggested commands.
+ * @returns {string[]} Redacted suggested commands.
+ */
+function redactSetupNext(commands) {
+  return commands.map((command) => command
+    .replace(/--surface\s+\S+/g, '--surface <surface>')
+    .replace(/--scheme\s+\S+/g, '--scheme <Scheme>')
+    .replace(/--project\s+\S+/g, '--project <App.xcodeproj>')
+    .replace(/--workspace\s+\S+/g, '--workspace <App.xcworkspace>')
+    .replace(/--source-root\s+\S+/g, '--source-root <SourceRoot>')
+    .replace(/critique\s+\S+/g, 'critique artifacts/<run-id>'));
+}
+
+/**
+ * Redacts ambiguous setup candidate values.
+ * @param {Record<string,string[]>} ambiguous Ambiguity map.
+ * @returns {Record<string,string[]>} Redacted ambiguity map.
+ */
+function redactAmbiguous(ambiguous) {
+  return Object.fromEntries(Object.entries(ambiguous).map(([key, values]) => [
+    key,
+    values.map(() => redactSetupCandidate(key))
+  ]));
+}
+
+/**
+ * Returns the placeholder for an ambiguous setup candidate.
+ * @param {string} key Ambiguity key.
+ * @returns {string} Candidate placeholder.
+ */
+function redactSetupCandidate(key) {
+  if (key === 'bundle-id') return '<bundle-id>';
+  if (key === 'scheme') return '<scheme>';
+  if (key === 'source-root') return '<source-root>';
+  if (key === 'workspace') return '<workspace>';
+  if (key === 'project') return '<project>';
+  if (key === 'workspace-or-project') return '<project-or-workspace>';
+  return '<candidate>';
+}
+
 /** Creates or migrates project config after explicit confirmation. */
 async function initProject() {
   const options = parseOptions(args);
@@ -229,6 +532,7 @@ Options:
   --bundle-id <id>       Default app bundle ID
   --device <name>        Default simulator device
   --source-root <path>   Source root for future apply flows
+  --surface <name>       Default surface name for capture/report context
   --artifacts-dir <path> Artifact output directory
 `);
 }

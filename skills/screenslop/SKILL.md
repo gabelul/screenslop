@@ -1,7 +1,7 @@
 ---
 name: screenslop
 description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop captures Baguette-backed simulator evidence, produces evidence-backed findings, applies narrow fixes, and verifies against fresh captures. XcodeBuildMCP is used for build/run support; non-Baguette capture fallback is future work.
-argument-hint: "[init|doctor|see|critique|fix|matrix|verify|watch] [target]"
+argument-hint: "[setup|init|doctor|see|critique|fix|matrix|verify|watch] [target]"
 user-invocable: true
 allowed-tools:
   - Bash(node *)
@@ -25,6 +25,7 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 ## Commands
 
+- `setup`: detect project metadata and plan first-use `.screenslop/config.json`.
 - `init`: create or migrate `.screenslop/config.json` with target metadata.
 - `doctor`: check runtime availability.
 - `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.
@@ -45,7 +46,26 @@ file:
 
 - `reference/install.md` for CLI-vs-skill install notes.
 - `reference/agent-contract.md` for the compact command contract.
+- `reference/project-setup.md` for first-use config setup inside an app repo.
 - `reference/dogfood.md` for the private real-app dogfood gate and redaction check.
+
+## First use in a project
+
+Skill install is file placement. It does not create private target config.
+
+When `.screenslop/config.json` is missing in an iOS project, run setup as a dry run first:
+
+```bash
+screenslop setup --json --dry-run
+```
+
+If setup returns `status: "ready"`, show the planned config and ask before writing:
+
+```bash
+screenslop setup --json --yes
+```
+
+If setup returns `status: "needs-selection"`, pass explicit `--project`, `--scheme`, `--bundle-id`, `--source-root`, and `--surface` values, then dry-run again. Setup is configuration only; proof starts at `screenslop see`.
 
 ## Review rule
 
