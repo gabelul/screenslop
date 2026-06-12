@@ -104,6 +104,13 @@ skills/screenslop/SKILL.md
 docs/agent-playbook.md
 ```
 
+If the agent host does not auto-load skills, ask it to run the shipped
+bootstrap contract instead of pasting rules by hand:
+
+```bash
+screenslop instructions --agent codex
+```
+
 Then run:
 
 ```bash

@@ -132,6 +132,42 @@ test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
   assert.match(checklist, /recorded-blocker/);
 });
 
+test('screenslop instructions prints a self-contained agent contract', () => {
+  const result = spawnSync(process.execPath, [
+    'bin/screenslop.mjs',
+    'instructions',
+    '--agent',
+    'codex',
+    '--json'
+  ], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.stdout.includes(repoRoot), false);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, 'instructions');
+  assert.equal(payload.agent, 'codex');
+  assert.equal(payload.cli.name, 'screenslop');
+  assert.match(payload.cli.packagePath, /^<repo>/);
+  assert.match(payload.prompt, /Use the Screenslop skill/);
+  assert.match(payload.prompt, /Do not replace Screenslop with source-only SwiftUI review/);
+  assert.match(payload.prompt, /fresh capture, fresh critique, and screenslop verify/);
+  assert.ok(payload.commands.includes('screenslop setup --json --dry-run'));
+  assert.ok(payload.commands.some((command) => command.startsWith('screenslop verify ')));
+  assert.ok(['missing', 'installed', 'installed-different'].includes(payload.skill.status));
+
+  const alias = spawnSync(process.execPath, ['bin/screenslop.mjs', 'agent-bootstrap', '--json'], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+  assert.equal(alias.status, 0, alias.stderr || alias.stdout);
+  assert.equal(JSON.parse(alias.stdout).command, 'instructions');
+});
+
 
 test('agent playbook stays aligned with shipped command and dogfood contracts', () => {
   const playbook = readText('docs/agent-playbook.md');

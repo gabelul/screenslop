@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "commands": [
     "setup",
+    "instructions",
     "init",
     "doctor",
     "see",

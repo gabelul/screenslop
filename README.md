@@ -108,6 +108,8 @@ No fresh capture means no verified fix claim. That rule saves a lot of nonsense.
 
 | Command | Status | What it does |
 | --- | --- | --- |
+| `screenslop setup` | MVP | Detects project metadata and plans first-use private config. |
+| `screenslop instructions` | MVP | Prints the coding-agent contract and local skill status. |
 | `screenslop init` | MVP | Creates or migrates local project config. |
 | `screenslop doctor` | MVP | Checks Baguette, XcodeBuildMCP, Xcode, simctl, Swift, and Node. |
 | `screenslop see` | MVP | Captures screenshot, accessibility tree, logs, manifest, and summary. |
