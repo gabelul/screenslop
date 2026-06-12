@@ -1,71 +1,23 @@
 {
   "version": 1,
-  "createdAt": "2026-06-08T20:20:43.035Z",
-  "updatedAt": "2026-06-08T20:43:24.501Z",
+  "createdAt": "2026-06-12T14:24:58.498Z",
+  "updatedAt": "2026-06-12T14:36:01.253Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
   "codexGoalMode": "aggregate",
   "goals": [
     {
-      "id": "G001-ship-and-package-the-agent-playbook",
-      "title": "Ship and package the agent playbook for Codex, Claude Code, Cursor/ge...",
-      "objective": "Ship and package the agent playbook for Codex, Claude Code, Cursor/generic agents, and terminal workflows. Update README/package docs map as needed.",
+      "id": "G001-execute-the-approved-baguette-farm-d",
+      "title": "Execute the approved Baguette farm docs plan from the current chat. S...",
+      "objective": "Execute the approved Baguette farm docs plan from the current chat. Scope is docs/contracts/package only: document Baguette device farm for Screenslop and Studio-facing boundaries; verify upstream/local Baguette farm facts before documenting; add docs/baguette-farm.md to package files; link it from docs/getting-started.md, docs/agent-playbook.md, skills/screenslop/SKILL.md; update standalone skill runtime reference; update architecture/commands/agent-integrations plus Studio boundary docs only; do not edit docs/roadmap.md; add minimal contract tests; run required verification; commit and push.",
       "status": "complete",
       "attempt": 1,
-      "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:23:58.230Z",
-      "startedAt": "2026-06-08T20:23:58.115Z",
-      "completedAt": "2026-06-08T20:23:58.230Z",
-      "evidence": "Shipped and packaged the agent playbook through commits b67e93d and ba98102. docs/agent-playbook.md covers Codex, Claude Code, Cursor/generic IDE agents, terminal usage, runtime-first rule, capture->critique->fix->recapture->verify, sample smoke vs private dogfood, and placeholder-only dogfood commands. README docs map and package.json files include it. CI 27164314674 passed on Node 20 and 24."
-    },
-    {
-      "id": "G002-polish-the-screenslop-skill-referenc",
-      "title": "Polish the Screenslop skill/reference docs so agents know the runtime...",
-      "objective": "Polish the Screenslop skill/reference docs so agents know the runtime-first contract, fresh-bundle verify rule, and private dogfood gate without overclaiming fallback capture.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:23:58.469Z",
-      "startedAt": "2026-06-08T20:23:58.348Z",
-      "completedAt": "2026-06-08T20:23:58.469Z",
-      "evidence": "Polished Screenslop skill/reference docs in commit 573d662. skills/screenslop/SKILL.md now points to docs/agent-playbook.md plus compact agent-contract and dogfood references; it keeps the runtime-first rule, fresh-bundle verify rule, and no overclaim for non-Baguette capture fallback."
-    },
-    {
-      "id": "G003-add-validate-the-dogfood-redaction-c",
-      "title": "Add/validate the dogfood redaction checker, contract tests, and packa...",
-      "objective": "Add/validate the dogfood redaction checker, contract tests, and package-smoke coverage.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:23:58.716Z",
-      "startedAt": "2026-06-08T20:23:58.591Z",
-      "completedAt": "2026-06-08T20:23:58.716Z",
-      "evidence": "Added and validated dogfood redaction checks through commits c230345, 49eff17, and 573d662. check-dogfood-redaction is packaged, package smoke runs redaction tests, docs/release-checklist.md documents the checker, contract tests cover the agent playbook, and the checker emits placeholder issue values instead of raw private paths. Verification passed locally: cleanup dry-run, doctor, npm test 103/103, smoke:e2e fixed, matrix dry-run/profile, npm pack --dry-run, and smoke:package."
-    },
-    {
-      "id": "G004-run-private-real-app-dogfood-preflig",
-      "title": "Run private real-app dogfood preflight/full smoke if .screenslop/conf...",
-      "objective": "Run private real-app dogfood preflight/full smoke if .screenslop/config.json exists; otherwise record recorded-blocker with redacted preflight evidence and keep Studio blocked.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:25:18.809Z",
-      "startedAt": "2026-06-08T20:24:23.819Z",
-      "completedAt": "2026-06-08T20:25:18.809Z",
-      "evidence": "Recorded private dogfood blocker instead of claiming sample proof. .screenslop/config.json is missing. Documented preflight command exited 1 with reason target-config-invalid, failedStage target-config, all capture/fix/fresh/verify stages not-run, and pathDisplayMode redacted. check-dogfood-redaction passed against <redacted-preflight-report> with HOME, a redacted volume marker, and selector strings forbidden. Studio remains blocked until a real configured app reaches verified-fixed."
-    },
-    {
-      "id": "G005-run-final-verification-review-commit",
-      "title": "Run final verification, review, commit, push, and checkpoint durable...",
-      "objective": "Run final verification, review, commit, push, and checkpoint durable evidence.",
-      "status": "complete",
-      "attempt": 1,
-      "createdAt": "2026-06-08T20:20:43.035Z",
-      "updatedAt": "2026-06-08T20:43:24.501Z",
-      "startedAt": "2026-06-08T20:27:16.915Z",
-      "evidence": "Completed G005-run-final-verification-review-commit. Final commit 42f5bbe was pushed to origin/main. Verification: cleanup dry-run clean; doctor passed; targeted redaction tests 19/19; missing-report repro redacted; npm test 105/105; smoke:package ok; CI 27165683864 passed on Node 20 and Node 24. Review: code-reviewer APPROVE and architect CLEAR. Private dogfood remains a recorded blocker because .screenslop/config.json is absent; Studio remains blocked until a configured real app reaches verified-fixed.",
-      "completedAt": "2026-06-08T20:43:24.501Z"
+      "createdAt": "2026-06-12T14:24:58.498Z",
+      "updatedAt": "2026-06-12T14:36:01.253Z",
+      "startedAt": "2026-06-12T14:25:04.320Z",
+      "evidence": "Completed Baguette farm docs plan. Added docs/baguette-farm.md; linked from getting-started, agent playbook, skill, runtime reference, commands, integrations, architecture, repo-strategy, session handoff, and known limitations; package whitelist includes the doc; contract tests cover package inclusion and proof boundary. Verification passed: Baguette upstream/local probes, contracts 11/11, smoke:package, npm test 115/115, doctor, diff check, pack dry-run. Independent code-reviewer APPROVE and architect CLEAR. Sidecars found by cleanup dry-run but not deleted.",
+      "completedAt": "2026-06-12T14:36:01.253Z"
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."

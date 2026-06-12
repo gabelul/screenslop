@@ -58,6 +58,8 @@ Baguette -> XcodeBuildMCP -> xcodebuild/simctl -> manual evidence
 
 If Baguette is missing, stop and fix runtime setup or use manual evidence. Do not quietly swap in source-only critique and call it the same thing.
 
+When several simulators are booted, `http://localhost:8421/farm` can help you watch the fleet in wall, grid, or list form. Read `docs/baguette-farm.md` before using it: farm is an operator view, not proof. You still need `screenslop see`, `critique`, and fresh-bundle `verify` for claims.
+
 ## The safe loop
 
 This is the loop every agent should follow:

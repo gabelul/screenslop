@@ -31,7 +31,9 @@ Studio owns the experience.
 
 Do not start Screenslop Studio work from this repo yet. No `apps/mac/`
 placeholder, no private wrapper scaffold, and no second copy of critique,
-runtime, schema, or fix logic.
+runtime, schema, or fix logic. Baguette farm is useful context for future
+matrix visualization and Studio-style multi-device previews, but it does not
+unblock Studio by itself.
 
 The engine has to pass the proof ladder first:
 

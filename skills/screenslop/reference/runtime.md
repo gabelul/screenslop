@@ -13,6 +13,18 @@ baguette describe-ui --udid <UDID> --output artifacts/<run>/accessibility.json
 baguette logs --udid <UDID> --style ndjson --bundle-id <bundle-id>
 ```
 
+## Baguette farm
+
+When `baguette serve` is running, Baguette exposes a device farm at:
+
+```text
+http://localhost:8421/farm
+```
+
+Use it as a live operator view across booted simulators. It can help compare small, normal, and large phones, then focus a tile for streaming and input. It is not proof by itself. Screenslop proof still comes from `screenslop see`, `screenslop critique`, and fresh-bundle `screenslop verify`.
+
+If this skill is being used from the Screenslop repo or npm package, read `docs/baguette-farm.md` for the full boundary.
+
 ## Fallbacks
 
 If Baguette is missing:

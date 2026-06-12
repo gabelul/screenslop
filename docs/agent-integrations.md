@@ -70,6 +70,8 @@ Every agent integration follows the same rules:
 - Do not patch everything by default. Pick the highest-value findings first.
 - Always recapture and critique after edits before calling a fix verified.
 
+Agents may use Baguette's `http://localhost:8421/farm` page to observe several booted simulators or focus one device for input. See `docs/baguette-farm.md` for the full boundary. That is observation only. Any critique, fix, or verification claim still needs Screenslop capture, findings, and fresh-bundle verify artifacts.
+
 ## Sibling tool compatibility
 
 Screenslop should play nicely with the other agent tools, but it should not become a launcher for all of them. Keep the boundary boring:

@@ -7,6 +7,7 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 - Baguette is the preferred capture path. XcodeBuildMCP is used for build/run in the real-runtime and matrix paths.
 - `screenslop see` has no full fallback capture path when Baguette is unavailable.
 - Matrix records requested appearance and Dynamic Type metadata, but those settings are not yet forced at runtime.
+- Screenslop does not start or open Baguette farm automatically. Run `baguette serve` yourself and open `http://localhost:8421/farm` when you want the upstream operator dashboard.
 
 ## Fixing
 
