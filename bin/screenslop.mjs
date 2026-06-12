@@ -8,6 +8,7 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
+import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
 import {
   createDefaultConfig,
@@ -31,6 +32,10 @@ switch (command) {
     break;
   case 'setup':
     await setupProject();
+    break;
+  case 'instructions':
+  case 'agent-bootstrap':
+    instructions();
     break;
   case 'init':
     await initProject();
@@ -68,6 +73,7 @@ Usage:
 
 Commands:
   setup      Detect project metadata and plan first-use config
+  instructions Print the coding-agent contract and skill status
   init       Create .screenslop/config.json
   doctor     Check Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node
              Use --install-baguette to install after confirmation
@@ -78,6 +84,16 @@ Commands:
   verify     Compare previous findings with fresh evidence
   watch      Live review loop (coming next)
 `);
+}
+
+/** Prints the Screenslop coding-agent contract. */
+function instructions() {
+  const options = parseOptions(args);
+  const payload = buildAgentInstructions({
+    agent: options.values.agent || 'generic',
+    root: process.cwd()
+  });
+  process.stdout.write(formatAgentInstructions(payload, options.flags.has('json')));
 }
 
 /** Captures or scaffolds a bounded matrix report. */

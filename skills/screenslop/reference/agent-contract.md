@@ -2,6 +2,14 @@
 
 Agents use Screenslop through the CLI. The caller can be Codex, Claude Code, Cursor, or a terminal script; the evidence contract is the same.
 
+If an agent host does not auto-load this skill, run:
+
+```bash
+screenslop instructions --agent codex
+```
+
+That command prints this contract from the shipped CLI and reports local skill status.
+
 ## Required loop
 
 ```bash
