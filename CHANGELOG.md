@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/gabelul/screenslop/compare/v0.1.1...v0.1.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* keep npm CLI binary in package ([a84d099](https://github.com/gabelul/screenslop/commit/a84d099ac2194f2d48a384cad53442cdfcea321f))
+
 ## [0.1.1](https://github.com/gabelul/screenslop/compare/v0.1.0...v0.1.1) (2026-06-12)
 
 
