@@ -10,6 +10,7 @@ Screenslop keeps research repos in ignored folders. When a pattern graduates int
 - **Mobile-screen-eval finding shape**: findings should explain the element, the observation, why it matters, the fix, and how to verify it.
 - **Apple mobile thresholds**: the first deterministic checks use evidence that current bundles can prove, especially AX names and 44pt hit targets.
 - **Baguette AX frames**: Baguette reports frames in device points, so critique rules treat touch targets and screen bounds as point-based.
+- **Report tone**: report copy should be direct, specific, and grounded in runtime evidence.
 
 ### Deferred
 

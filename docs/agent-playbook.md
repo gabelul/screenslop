@@ -172,6 +172,22 @@ screenslop verify artifacts/<baseline-run> \
   --json
 ```
 
+## Multi-device phone checks
+
+When the user asks whether a screen works on different phone sizes, do not open the farm unless you need the visual wall. Use the matrix profile as the headless evidence path:
+
+```bash
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
+```
+
+That profile checks small, normal, and large iPhone classes. If a cell fails because the simulator name is missing, run:
+
+```bash
+baguette list --json
+```
+
+Then copy `examples/matrix/phone-sizes.json`, replace only the `device` values with installed simulator names, and rerun the matrix. Use the resulting evidence bundles and findings to choose one high-confidence fix, then recapture and verify. Baguette farm can help you watch the same devices, but it is optional and not proof.
+
 ## Contract checks without a simulator
 
 Agents can check the command/artifact contract without Apple runtime tools:

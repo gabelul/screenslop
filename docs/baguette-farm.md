@@ -67,7 +67,7 @@ For iPhone UI work, prefer a small / normal / large spread instead of only the n
 - Normal: the team's default iPhone target.
 - Large: Pro Max class, useful for stretched layouts and weak hierarchy.
 
-Screenslop's shipped matrix command has its own profile and report contract. The Baguette farm is the live dashboard beside that work; it does not replace the matrix report or its evidence bundles.
+Screenslop's shipped matrix command has its own profile and report contract. Use `examples/matrix/phone-sizes.json` for a headless small / normal / large phone run. The Baguette farm is the live dashboard beside that work; it does not replace the matrix report or its evidence bundles.
 
 ## Studio boundary
 

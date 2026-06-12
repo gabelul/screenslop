@@ -12,6 +12,7 @@ These folders are intentionally untracked. They are for learning, not shipping.
 
 Good candidates:
 
+- Prior Apple UI review notes and runtime tooling experiments.
 - Pixelslop, for evidence-first browser review workflow.
 - Baguette, for iOS simulator runtime control.
 - XcodeBuildMCP, for agent-native Xcode fallback workflows.

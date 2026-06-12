@@ -1,5 +1,6 @@
 # Command Model
 
+Screenslop uses its own command model because the workflow starts from runtime evidence.
 
 ## Core commands
 
@@ -112,6 +113,7 @@ future 0.x releases may change it with an explicit migration path.
 
 Learns the app's design system from evidence and code.
 
+This is the Screenslop design-learning path: stronger than source-only documentation because it can use real screens.
 
 Use it for:
 
@@ -332,6 +334,7 @@ MVP usage:
 ```bash
 screenslop matrix --dry-run --json
 screenslop matrix --profile examples/matrix/default.json --json
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
 screenslop matrix --critique --json
 ```
 
@@ -344,6 +347,14 @@ The built-in profile has six fixed cells:
 - normal Dynamic Type
 - accessibility Dynamic Type
 
+The packaged `examples/matrix/phone-sizes.json` profile is for non-interactive mobile-size checks:
+
+- small iPhone: `iPhone 17e`
+- normal iPhone: `iPhone 17`
+- large iPhone: `iPhone 17 Pro`
+
+Agents should use that profile when the task is “check this screen on small, normal, and large phones.” If those simulator names are not installed, run `baguette list --json`, copy the profile, and replace only the `device` values before capturing.
+
 When `.screenslop/config.json` is missing, the report still keeps all cells and
 marks them unavailable with no-config evidence bundles. With config present,
 `--dry-run` writes the same cell bundles without runtime capture. Live capture
@@ -351,7 +362,7 @@ builds and launches the configured target through XcodeBuildMCP, then captures
 with the configured `defaultSurface`, `defaultBundleId`, and default/device cell
 preference. `--critique` runs critique after a successful cell capture.
 
-Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles.
+Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles. Agents do not need the farm for headless checks; `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json` is the non-interactive path.
 
 The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
 cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
