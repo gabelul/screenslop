@@ -23,6 +23,8 @@ The preferred stack is:
 
 Baguette is the best path for current iOS simulator evidence because it can capture the screenshot, AX tree, and logs from the live surface.
 
+If you are checking several booted simulators, Baguette also has a device farm at `http://localhost:8421/farm`. See `docs/baguette-farm.md` for the boundary: farm is useful for observation, while Screenslop bundles remain the proof.
+
 ## 2. Create project config
 
 Start with setup dry-run from the app repo. It detects the Xcode project, scheme, bundle ID, and source root when there is one safe answer:

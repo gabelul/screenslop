@@ -351,6 +351,8 @@ builds and launches the configured target through XcodeBuildMCP, then captures
 with the configured `defaultSurface`, `defaultBundleId`, and default/device cell
 preference. `--critique` runs critique after a successful cell capture.
 
+Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles.
+
 The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
 cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
 `surface`. Appearance and Dynamic Type now have explicit per-cell

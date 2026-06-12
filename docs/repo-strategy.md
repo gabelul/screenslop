@@ -84,7 +84,7 @@ The clean model:
 - **Screenslop Core + CLI + agent integrations:** public/open source. This attracts builders, lets agents use it, and gives other people room to add drivers, rules, and integrations.
 - **Screenslop Studio:** private commercial Mac app. This is the polished product: visual triage, device matrix, before/after diffs, AX inspector, onboarding, and guided fixes.
 
-The Mac app should import or call the same public core. No separate critique logic. No duplicate schemas. No second runtime stack.
+The Mac app should import or call the same public core. No separate critique logic. No duplicate schemas. No second runtime stack. A Studio device wall can feel like Baguette farm, but it should wrap the public engine and public runtime evidence flow instead of inventing a private proof layer.
 
 This gives the public project exposure and contribution surface without giving away the whole paid product.
 

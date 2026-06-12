@@ -79,7 +79,7 @@ Drivers are ordered by capability:
 3. `SimctlDriver`
 4. `ManualDriver`
 
-Baguette is preferred because it can stream the simulator, inspect the on-screen AX tree, dispatch input, and collect logs from the same runtime surface. XcodeBuildMCP is the next fallback because it is agent-native: it gives build, run, test, simulator, screenshot, and inspection workflows through an MCP server and CLI instead of forcing Screenslop to manually stitch every Xcode command together.
+Baguette is preferred because it can stream the simulator, inspect the on-screen AX tree, dispatch input, and collect logs from the same runtime surface. Its `/farm` page is an upstream web UI for watching and focusing booted simulators; Screenslop treats that as an operator surface, not as a Screenslop command or proof artifact. XcodeBuildMCP is the next fallback because it is agent-native: it gives build, run, test, simulator, screenshot, and inspection workflows through an MCP server and CLI instead of forcing Screenslop to manually stitch every Xcode command together.
 
 ### Evidence collector
 

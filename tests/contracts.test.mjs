@@ -202,7 +202,13 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(skill, /reference\/install\.md/);
   assert.match(installRef, /The Screenslop skill is an instruction layer\. The CLI must also be installed\./);
 
-  for (const ref of ['reference/install.md', 'reference/agent-contract.md', 'reference/project-setup.md', 'reference/dogfood.md']) {
+  for (const ref of [
+    'reference/install.md',
+    'reference/agent-contract.md',
+    'reference/project-setup.md',
+    'reference/runtime.md',
+    'reference/dogfood.md'
+  ]) {
     assert.ok(fs.existsSync(path.join(repoRoot, 'skills/screenslop', ref)), `${ref} must exist inside the installed skill folder`);
     assert.match(skill, new RegExp(ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -260,6 +266,43 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(integrations, /Slopbuster cleans prose/);
   assert.match(integrations, /Claude Code Skill Activator can index the Screenslop skill/);
   assert.match(integrations, /not replace the capture -> critique -> fix -> fresh capture -> verify loop/);
+});
+
+test('Baguette farm docs ship with the operator-surface proof boundary', () => {
+  const pkg = readJson('package.json');
+  const farm = readText('docs/baguette-farm.md');
+  const gettingStarted = readText('docs/getting-started.md');
+  const playbook = readText('docs/agent-playbook.md');
+  const skill = readText('skills/screenslop/SKILL.md');
+  const runtimeRef = readText('skills/screenslop/reference/runtime.md');
+  const commands = readText('docs/commands.md');
+  const integrations = readText('docs/agent-integrations.md');
+  const limitations = readText('docs/known-limitations.md');
+
+  assert.ok(pkg.files.includes('docs/baguette-farm.md'), 'Baguette farm doc must ship in npm package');
+  assert.ok(fs.existsSync(path.join(repoRoot, 'docs/baguette-farm.md')), 'Baguette farm doc must exist');
+
+  for (const [label, text] of [
+    ['getting started', gettingStarted],
+    ['agent playbook', playbook],
+    ['skill', skill],
+    ['runtime reference', runtimeRef],
+    ['commands', commands],
+    ['agent integrations', integrations]
+  ]) {
+    assert.match(text, /docs\/baguette-farm\.md|Baguette farm/i, `${label} must point to the farm boundary`);
+  }
+
+  assert.match(skill, /reference\/runtime\.md/);
+  assert.match(farm, /baguette serve/);
+  assert.match(farm, /http:\/\/localhost:8421\/farm/);
+  assert.match(farm, /GET \/simulators\.json/);
+  assert.match(farm, /small, normal, and large iPhones/i);
+  assert.match(farm, /farm is not Screenslop proof/i);
+  assert.match(farm, /Screenslop proof is still the bundle/i);
+  assert.match(commands, /does not ship a `--open-farm` command/);
+  assert.match(integrations, /observation only/);
+  assert.match(limitations, /does not start or open Baguette farm automatically/);
 });
 
 test('readiness gate contract is reflected in release docs', () => {

@@ -39,8 +39,9 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 ## Longer references
 
-If you are in the Screenslop repo checkout, read `docs/agent-playbook.md` and
-`docs/skill-installation.md` for the full agent workflow and install notes.
+If you are in the Screenslop repo checkout, read `docs/agent-playbook.md`,
+`docs/skill-installation.md`, and `docs/baguette-farm.md` for the full agent
+workflow, install notes, and Baguette farm boundary.
 
 If this skill was installed by itself, use the bundled references next to this
 file:
@@ -48,6 +49,7 @@ file:
 - `reference/install.md` for CLI-vs-skill install notes.
 - `reference/agent-contract.md` for the compact command contract.
 - `reference/project-setup.md` for first-use config setup inside an app repo.
+- `reference/runtime.md` for runtime capture, Baguette farm, and fallback notes.
 - `reference/dogfood.md` for the private real-app dogfood gate and redaction check.
 
 ## First use in a project
