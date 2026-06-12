@@ -79,7 +79,7 @@ Check these by hand:
 Release automation:
 
 - `.github/workflows/release.yml` runs on pushes to `main`.
-- Release Please opens a draft release PR using `release-please-config.json`
+- Release Please opens a release PR using `release-please-config.json`
   and `.release-please-manifest.json`.
 - Merging that release PR creates the GitHub release and tag.
 - The same workflow publishes to npm with trusted publishing:
