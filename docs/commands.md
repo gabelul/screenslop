@@ -24,6 +24,25 @@ screenslop setup --project MyApp.xcodeproj --scheme MyApp --bundle-id com.exampl
 
 `setup` refuses to write when project, scheme, bundle ID, or source root detection is ambiguous. Setup is configuration only; proof starts with runtime capture at `screenslop see`.
 
+### `screenslop instructions`
+
+Prints the compact coding-agent contract from the shipped CLI. Use this when an
+agent host does not auto-load the installed Screenslop skill, or when you want
+to check whether the local skill install matches the current CLI checkout.
+
+Current behavior:
+
+```bash
+screenslop instructions
+screenslop instructions --agent codex
+screenslop instructions --agent claude --json
+```
+
+The output includes the dry-run-first setup rule, the runtime-evidence loop,
+the fresh-bundle verify rule, private artifact stop rules, CLI package version,
+and local skill status. This command does not inspect, capture, write config, or
+change the app.
+
 ### `screenslop init`
 
 Sets up the project connection.

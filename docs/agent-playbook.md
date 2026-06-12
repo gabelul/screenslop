@@ -48,6 +48,8 @@ docs/skill-installation.md
 
 The skill install teaches the agent the loop. It does not create `.screenslop/config.json` and it does not connect a private app. On first use inside an app repo, run `screenslop setup --json --dry-run`, show the planned config, and write only after approval with `screenslop setup --json --yes`. Setup is configuration only; proof starts with runtime capture.
 
+If an agent host does not auto-load skills, run `screenslop instructions --agent codex` and paste that output into the agent instead of rewriting the guardrails by hand.
+
 A healthy runtime prefers this order:
 
 ```text

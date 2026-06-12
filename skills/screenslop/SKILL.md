@@ -1,7 +1,7 @@
 ---
 name: screenslop
 description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop captures Baguette-backed simulator evidence, produces evidence-backed findings, applies narrow fixes, and verifies against fresh captures. XcodeBuildMCP is used for build/run support; non-Baguette capture fallback is future work.
-argument-hint: "[setup|init|doctor|see|critique|fix|matrix|verify|watch] [target]"
+argument-hint: "[setup|instructions|init|doctor|see|critique|fix|matrix|verify|watch] [target]"
 user-invocable: true
 allowed-tools:
   - Bash(node *)
@@ -26,6 +26,7 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 ## Commands
 
 - `setup`: detect project metadata and plan first-use `.screenslop/config.json`.
+- `instructions`: print the coding-agent contract and local skill status.
 - `init`: create or migrate `.screenslop/config.json` with target metadata.
 - `doctor`: check runtime availability.
 - `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.

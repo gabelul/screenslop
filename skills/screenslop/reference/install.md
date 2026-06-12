@@ -9,9 +9,11 @@ npm install -g github:gabelul/screenslop#v0.1.0
 screenslop doctor
 npx skills add gabelul/screenslop --list
 npx skills add gabelul/screenslop --skill screenslop
+screenslop instructions --agent codex
 ```
 
 `--list` is the safe preview. It should show one skill named `screenslop`.
+`screenslop instructions` prints the same agent contract from the shipped CLI when a host does not auto-load the skill.
 
 ## Manual paths
 
