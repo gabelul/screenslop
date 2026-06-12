@@ -19,6 +19,7 @@ try {
   run('tar', ['-xzf', tarballPath, '-C', tempRoot], { cwd: repoRoot });
 
   const packageRoot = path.join(tempRoot, 'package');
+  assertPackageBinary(packageRoot);
   run('node', ['bin/screenslop.mjs', 'doctor'], { cwd: packageRoot });
   runJson('node', ['bin/screenslop.mjs', 'see', '--dry-run', '--json'], {
     cwd: packageRoot,
@@ -55,7 +56,15 @@ try {
         command: 'package-smoke',
         package: packed.filename,
         files: files.length,
-        checks: ['forbidden-files', 'doctor', 'see-dry-run-json', 'matrix-dry-run-json', 'package-tests', 'fixture-e2e']
+        checks: [
+          'forbidden-files',
+          'package-bin',
+          'doctor',
+          'see-dry-run-json',
+          'matrix-dry-run-json',
+          'package-tests',
+          'fixture-e2e'
+        ]
       },
       null,
       2
@@ -64,6 +73,22 @@ try {
 } finally {
   if (!process.argv.includes('--keep')) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Ensures the packed npm package keeps the public CLI binary intact.
+ *
+ * @param {string} packageRoot Extracted package root.
+ * @returns {void}
+ */
+function assertPackageBinary(packageRoot) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+  assertEqual(manifest.bin?.screenslop, 'bin/screenslop.mjs', 'package bin.screenslop');
+
+  const binary = fs.readFileSync(path.join(packageRoot, manifest.bin.screenslop), 'utf8');
+  if (!binary.startsWith('#!/usr/bin/env node')) {
+    throw new Error('package bin.screenslop must keep the node shebang');
   }
 }
 

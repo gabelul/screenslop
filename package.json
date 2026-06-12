@@ -4,7 +4,7 @@
   "description": "Evidence-first design review for Apple apps. Capture the screen, read the AX tree, fix the slop.",
   "type": "module",
   "bin": {
-    "screenslop": "./bin/screenslop.mjs"
+    "screenslop": "bin/screenslop.mjs"
   },
   "files": [
     "bin/",
