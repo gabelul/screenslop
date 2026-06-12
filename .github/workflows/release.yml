@@ -1,25 +1,76 @@
+# release.yml — Screenslop automated releases + npm publish
+#
+# Uses release-please to automate versioning from conventional commits.
+# Flow:
+#   1. Pushes to main update or create a Release PR.
+#   2. Merging the Release PR creates the GitHub release and tag.
+#   3. When a release is created, CI publishes to npm with trusted publishing.
+#
+# npm publishing uses OIDC trusted publishing. No NPM_TOKEN is required.
+# One-time npm setup:
+#   1. Create or claim the screenslop package on npm.
+#   2. Go to https://www.npmjs.com/package/screenslop/access
+#   3. Add trusted publisher:
+#      owner=gabelul, repo=screenslop, workflow=release.yml, environment=npm
+
 name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Force publish current package version to npm'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  github-release:
+  release-please:
+    name: Create or update release PR
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+    steps:
+      - uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          draft-pull-request: true
+
+  publish-npm:
+    name: Publish to npm
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
       - run: npm install
+      - run: node --check bin/screenslop.mjs
+      - run: |
+          find src tests scripts -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - run: npm test
       - run: npm pack --dry-run
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+      - run: npm run --silent smoke:package
+
+      - name: Update npm for trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Publish package
+        run: npm publish --provenance --access public
