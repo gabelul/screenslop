@@ -278,6 +278,33 @@ test('readiness gate contract is reflected in release docs', () => {
   assert.match(handoff, /recorded-blocker/);
 });
 
+test('release workflow opens Release Please PRs and publishes to npm', (t) => {
+  if (!fileExists('.github/workflows/release.yml')) {
+    t.skip('release workflow is repository-only and is not shipped in the npm package');
+    return;
+  }
+
+  const releaseWorkflow = readText('.github/workflows/release.yml');
+  const releaseConfig = readJson('release-please-config.json');
+  const releaseManifest = readJson('.release-please-manifest.json');
+  const checklist = readText('docs/release-checklist.md');
+
+  assert.match(releaseWorkflow, /googleapis\/release-please-action/);
+  assert.match(releaseWorkflow, /release-please-config\.json/);
+  assert.match(releaseWorkflow, /\.release-please-manifest\.json/);
+  assert.match(releaseWorkflow, /id-token: write/);
+  assert.match(releaseWorkflow, /environment: npm/);
+  assert.match(releaseWorkflow, /package-manager-cache: false/);
+  assert.match(releaseWorkflow, /npm publish --provenance --access public/);
+  assert.match(releaseWorkflow, /release_created == 'true'/);
+  assert.match(releaseWorkflow, /workflow_dispatch/);
+  assert.equal(releaseConfig.packages['.']['release-type'], 'node');
+  assert.equal(releaseConfig.packages['.']['include-component-in-tag'], false);
+  assert.equal(releaseManifest['.'], readJson('package.json').version);
+  assert.match(checklist, /Release Please opens a draft release PR/);
+  assert.match(checklist, /trusted publisher/);
+});
+
 /**
  * Extracts Screenslop command names used in shell snippets.
  *
@@ -310,6 +337,16 @@ function readJson(relativePath) {
  */
 function readText(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+}
+
+/**
+ * Checks if a repository-local path exists before reading optional repo-only files.
+ *
+ * @param {string} relativePath Repo-relative path.
+ * @returns {boolean} True when the path exists.
+ */
+function fileExists(relativePath) {
+  return fs.existsSync(path.join(repoRoot, relativePath));
 }
 
 /**

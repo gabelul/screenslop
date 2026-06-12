@@ -1,6 +1,6 @@
 # Release Checklist
 
-Run these before a v0.1 tag or release cut:
+Run these before merging a Release Please PR:
 
 ```bash
 node bin/screenslop.mjs doctor
@@ -76,11 +76,25 @@ Check these by hand:
 - Confirm `npm pack --dry-run` excludes `.omx/`, local artifacts, private config, and private example-app agent files. `npm run --silent smoke:package` extracts the tarball and runs doctor, dry-run command JSON, selected package tests, and the fixture smoke from inside the package.
 - Confirm GitHub issue templates, PR template, CI workflow, README, changelog, contribution notes, security notes, and `.github/assets/social-preview.png` match the release.
 
-Tag the release after the tree is clean and pushed:
+Release automation:
 
-```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
-```
+- `.github/workflows/release.yml` runs on pushes to `main`.
+- Release Please opens a draft release PR using `release-please-config.json`
+  and `.release-please-manifest.json`.
+- Merging that release PR creates the GitHub release and tag.
+- The same workflow publishes to npm with trusted publishing:
+  `npm publish --provenance --access public`.
+- Manual retry is available from GitHub Actions with `workflow_dispatch` and
+  `publish: true` when the GitHub release exists but npm publish failed.
 
-The tag workflow creates a GitHub release after `npm test` and `npm pack --dry-run` pass on GitHub Actions. Upload `.github/assets/social-preview.png` manually in GitHub Settings if the preview needs refreshing.
+One-time npm setup:
+
+1. Create or claim the `screenslop` package on npm.
+2. Open `https://www.npmjs.com/package/screenslop/access`.
+3. Add trusted publisher with:
+   - owner: `gabelul`
+   - repository: `screenslop`
+   - workflow: `release.yml`
+   - environment: `npm`
+
+Upload `.github/assets/social-preview.png` manually in GitHub Settings if the preview needs refreshing.
