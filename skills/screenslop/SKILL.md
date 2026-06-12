@@ -89,8 +89,11 @@ node bin/screenslop.mjs doctor
 npm test
 npm run --silent smoke:e2e -- --fresh-mode fixed
 node bin/screenslop.mjs matrix --dry-run --json
+node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --dry-run --json
 npm run --silent smoke:package
 ```
+
+For small / normal / large phone checks, run `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json`. If device names are missing, inspect `baguette list --json`, copy the profile, and adjust only the `device` values.
 
 Use `npm run smoke:runtime` when Apple simulator tools are available. It proves
 the sample app loop only. User-app claims still need evidence from that app.

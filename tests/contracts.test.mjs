@@ -305,6 +305,68 @@ test('Baguette farm docs ship with the operator-surface proof boundary', () => {
   assert.match(limitations, /does not start or open Baguette farm automatically/);
 });
 
+test('phone-size matrix profile teaches agents headless mobile checks', () => {
+  const profile = readJson('examples/matrix/phone-sizes.json');
+  const readme = readText('README.md');
+  const commands = readText('docs/commands.md');
+  const playbook = readText('docs/agent-playbook.md');
+  const skill = readText('skills/screenslop/SKILL.md');
+  const farm = readText('docs/baguette-farm.md');
+  const runtimeRef = readText('skills/screenslop/reference/runtime.md');
+
+  assert.equal(profile.schemaVersion, 1);
+  assert.equal(profile.name, 'phone-size-check');
+  assert.deepEqual(profile.cells.map((cell) => cell.id), ['small-iphone', 'normal-iphone', 'large-iphone']);
+  assert.deepEqual(profile.cells.map((cell) => cell.device), ['iPhone 17e', 'iPhone 17', 'iPhone 17 Pro']);
+
+  for (const [label, text] of [
+    ['README', readme],
+    ['commands', commands],
+    ['agent playbook', playbook],
+    ['skill', skill],
+    ['farm doc', farm],
+    ['runtime reference', runtimeRef]
+  ]) {
+    assert.match(text, /examples\/matrix\/phone-sizes\.json/, `${label} must mention the phone-size matrix profile`);
+  }
+
+  assert.match(commands, /Agents do not need the farm for headless checks/);
+  assert.match(playbook, /copy `examples\/matrix\/phone-sizes\.json`, replace only the `device` values/);
+  assert.match(skill, /small \/ normal \/ large phone checks/);
+});
+
+test('public docs credit current dependencies without banned legacy references', () => {
+  const readme = readText('README.md');
+  const notice = readText('NOTICE');
+
+  assert.match(readme, /## Acknowledgements/);
+  assert.match(readme, /Baguette/);
+  assert.match(readme, /XcodeBuildMCP/);
+  assert.match(readme, /Pixelslop/);
+  assert.match(notice, /Baguette: https:\/\/github\.com\/tddworks\/baguette/);
+  assert.match(notice, /XcodeBuildMCP: https:\/\/github\.com\/cameroncooke\/XcodeBuildMCP/);
+
+  const bannedLegacyReference = new RegExp(['imp', 'eccable'].join(''), 'i');
+
+  const shippedDocs = [
+    ['README', readme],
+    ['NOTICE', notice],
+    ['commands', readText('docs/commands.md')]
+  ];
+  const repoOnlyDocs = [
+    ['research workspace', 'docs/research-workspace.md'],
+    ['research adoptions', 'docs/research-adoptions.md']
+  ];
+
+  for (const [label, pathName] of repoOnlyDocs) {
+    if (fileExists(pathName)) shippedDocs.push([label, readText(pathName)]);
+  }
+
+  for (const [label, text] of shippedDocs) {
+    assert.doesNotMatch(text, bannedLegacyReference, `${label} must not mention banned legacy reference`);
+  }
+});
+
 test('readiness gate contract is reflected in release docs', () => {
   const checklist = readText('docs/release-checklist.md');
   const handoff = readText('docs/session-handoff.md');

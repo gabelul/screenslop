@@ -187,6 +187,7 @@ npm test
 npm run --silent smoke:e2e -- --fresh-mode fixed
 node bin/screenslop.mjs matrix --dry-run --json
 node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
+node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --json
 npm run cleanup:macos:dry
 npm pack --dry-run
 npm run --silent smoke:package
@@ -199,6 +200,14 @@ npm run smoke:runtime
 ```
 
 That smoke builds and launches `examples/runtime-smoke-app`, captures Baguette-backed baseline and fresh evidence, applies one narrow fix, and verifies the selected finding. It proves the sample app loop. Your app still needs its own capture because reality insists on being specific.
+
+For non-interactive mobile-size checks, use the phone-size matrix profile:
+
+```bash
+node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --critique --json
+```
+
+That profile targets small, normal, and large iPhone classes. If the exact simulator names are not installed, copy the profile and update the `device` values from `baguette list --json`.
 
 ---
 
@@ -246,6 +255,18 @@ Read more in [docs/repo-strategy.md](docs/repo-strategy.md).
 - [Known limitations](docs/known-limitations.md)
 - [Release checklist](docs/release-checklist.md)
 - [Changelog](CHANGELOG.md)
+
+---
+
+## Acknowledgements
+
+Screenslop stands on practical runtime tooling and sibling quality tools:
+
+- **[Baguette](https://github.com/tddworks/baguette)** — iOS simulator capture, runtime control, and device-farm work.
+- **[XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP)** — agent-native Xcode build/run support.
+- **[Pixelslop](https://github.com/gabelul/pixelslop)** — browser-first visual QA sibling.
+
+Formal credit lives in [NOTICE](NOTICE).
 
 ---
 

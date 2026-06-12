@@ -21,7 +21,7 @@ When `baguette serve` is running, Baguette exposes a device farm at:
 http://localhost:8421/farm
 ```
 
-Use it as a live operator view across booted simulators. It can help compare small, normal, and large phones, then focus a tile for streaming and input. It is not proof by itself. Screenslop proof still comes from `screenslop see`, `screenslop critique`, and fresh-bundle `screenslop verify`.
+Use it as a live operator view across booted simulators. It can help compare small, normal, and large phones, then focus a tile for streaming and input. It is not proof by itself. Screenslop proof still comes from `screenslop see`, `screenslop critique`, and fresh-bundle `screenslop verify`. For non-interactive phone-size proof, use `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json` instead of opening the farm.
 
 If this skill is being used from the Screenslop repo or npm package, read `docs/baguette-farm.md` for the full boundary.
 

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "name": "phone-size-check",
+  "cells": [
+    {
+      "id": "small-iphone",
+      "label": "Small iPhone",
+      "device": "iPhone 17e",
+      "appearance": "unspecified",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "normal-iphone",
+      "label": "Normal iPhone",
+      "device": "iPhone 17",
+      "appearance": "unspecified",
+      "dynamicType": "unspecified"
+    },
+    {
+      "id": "large-iphone",
+      "label": "Large iPhone",
+      "device": "iPhone 17 Pro",
+      "appearance": "unspecified",
+      "dynamicType": "unspecified"
+    }
+  ]
+}
