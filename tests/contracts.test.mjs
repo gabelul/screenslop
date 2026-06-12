@@ -301,7 +301,7 @@ test('release workflow opens Release Please PRs and publishes to npm', (t) => {
   assert.equal(releaseConfig.packages['.']['release-type'], 'node');
   assert.equal(releaseConfig.packages['.']['include-component-in-tag'], false);
   assert.equal(releaseManifest['.'], readJson('package.json').version);
-  assert.match(checklist, /Release Please opens a draft release PR/);
+  assert.match(checklist, /Release Please opens a release PR/);
   assert.match(checklist, /trusted publisher/);
 });
 
