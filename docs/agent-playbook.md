@@ -188,6 +188,8 @@ baguette list --json
 
 Then copy `examples/matrix/phone-sizes.json`, replace only the `device` values with installed simulator names, and rerun the matrix. Use the resulting evidence bundles and findings to choose one high-confidence fix, then recapture and verify. Baguette farm can help you watch the same devices, but it is optional and not proof.
 
+Do not call layout-sensitive UI work done until the phone-size matrix has passed, or until you have written the exact reason it could not run. This applies to SwiftUI spacing, onboarding, paywalls, checkout, settings, full-screen flows, compact sheets, tab bars, scroll views, Dynamic Type-sensitive layouts, and anything where a small phone or large phone could change the result. A single `screenslop see` capture is enough for a narrow copy/icon/a11y fix, but it is not enough for responsive layout confidence.
+
 ## Contract checks without a simulator
 
 Agents can check the command/artifact contract without Apple runtime tools:

@@ -209,6 +209,8 @@ node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --crit
 
 That profile targets small, normal, and large iPhone classes. If the exact simulator names are not installed, copy the profile and update the `device` values from `baguette list --json`.
 
+Use that matrix before calling layout-sensitive UI work done. One `see` capture is fine for a tiny copy, icon, or accessibility fix; it is not enough for SwiftUI spacing, onboarding, paywalls, checkout, settings, compact sheets, tab bars, scroll views, or anything where small and large phones can disagree with each other. Phones are annoying like that.
+
 ---
 
 ## Repo boundary

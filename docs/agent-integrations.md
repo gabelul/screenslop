@@ -25,6 +25,7 @@ Ship a Codex-friendly skill that tells the agent to:
 5. Run `screenslop see` again after edits.
 6. Run `screenslop critique` on the fresh bundle.
 7. Run `screenslop verify <baseline> --fresh-bundle <fresh>` for selected findings.
+8. For layout-sensitive work, run `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json` before calling the fix done.
 
 Codex can also use XcodeBuildMCP tools directly when available, but Screenslop should still own the evidence schema and report format.
 
@@ -69,6 +70,7 @@ Every agent integration follows the same rules:
 - Do not install dependencies without explicit user confirmation.
 - Do not patch everything by default. Pick the highest-value findings first.
 - Always recapture and critique after edits before calling a fix verified.
+- For SwiftUI spacing, onboarding, paywalls, checkout, settings, compact sheets, tab bars, scroll views, Dynamic Type-sensitive layouts, and similar responsive UI work, run the phone-size matrix before saying the work is done.
 
 Agents may use Baguette's `http://localhost:8421/farm` page to observe several booted simulators or focus one device for input. See `docs/baguette-farm.md` for the full boundary. That is observation only. Any critique, fix, or verification claim still needs Screenslop capture, findings, and fresh-bundle verify artifacts.
 

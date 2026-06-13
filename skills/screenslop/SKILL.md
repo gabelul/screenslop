@@ -95,6 +95,8 @@ npm run --silent smoke:package
 
 For small / normal / large phone checks, run `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json`. If device names are missing, inspect `baguette list --json`, copy the profile, and adjust only the `device` values.
 
+Before calling layout-sensitive UI work done, run that phone-size matrix or state the exact blocker. This is required for SwiftUI spacing, onboarding, paywalls, checkout, settings, full-screen flows, compact sheets, tab bars, scroll views, Dynamic Type-sensitive layouts, and any screen where a small or large phone could change the result. A single `screenslop see` capture is acceptable for narrow copy, icon, or accessibility fixes, but not for responsive layout confidence.
+
 Use `npm run smoke:runtime` when Apple simulator tools are available. It proves
 the sample app loop only. User-app claims still need evidence from that app.
 

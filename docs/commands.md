@@ -353,7 +353,7 @@ The packaged `examples/matrix/phone-sizes.json` profile is for non-interactive m
 - normal iPhone: `iPhone 17`
 - large iPhone: `iPhone 17 Pro`
 
-Agents should use that profile when the task is “check this screen on small, normal, and large phones.” If those simulator names are not installed, run `baguette list --json`, copy the profile, and replace only the `device` values before capturing.
+Agents should use that profile when the task is “check this screen on small, normal, and large phones.” They should also run it before calling layout-sensitive UI work done: SwiftUI spacing, onboarding, paywalls, checkout, settings, full-screen flows, compact sheets, tab bars, scroll views, Dynamic Type-sensitive layouts, and any screen where a small or large phone could change the result. If those simulator names are not installed, run `baguette list --json`, copy the profile, and replace only the `device` values before capturing.
 
 When `.screenslop/config.json` is missing, the report still keeps all cells and
 marks them unavailable with no-config evidence bundles. With config present,

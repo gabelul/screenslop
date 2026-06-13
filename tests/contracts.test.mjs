@@ -331,8 +331,12 @@ test('phone-size matrix profile teaches agents headless mobile checks', () => {
   }
 
   assert.match(commands, /Agents do not need the farm for headless checks/);
+  assert.match(commands, /layout-sensitive UI work done/);
   assert.match(playbook, /copy `examples\/matrix\/phone-sizes\.json`, replace only the `device` values/);
+  assert.match(playbook, /Do not call layout-sensitive UI work done until the phone-size matrix has passed/);
   assert.match(skill, /small \/ normal \/ large phone checks/);
+  assert.match(skill, /Before calling layout-sensitive UI work done/);
+  assert.match(runtimeRef, /Run that matrix before calling layout-sensitive SwiftUI or Apple UI work done/);
 });
 
 test('public docs credit current dependencies without banned legacy references', () => {
