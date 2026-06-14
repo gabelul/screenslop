@@ -33,4 +33,4 @@ The repository now ships `screenslop learn` for private design-profile plan/writ
 
 The private design profile path is `.screenslop/design-profile.json`. It is ignored by default because project tone, product semantics, source paths, and copied design rules can be private. A stale or missing profile should block design claims, not deterministic measured critique.
 
-Design findings are not automatic `verified-fixed` proof. They need fresh evidence, a fresh design pass, and a proof label such as `profile-informed` or `agent-judgment`.
+Design findings are not automatic `verified-fixed` proof. They need fresh evidence, a fresh design pass, and a proof label such as `profile-informed` or `agent-judgment`; verification reports them as `improved`, `unchanged`, `regressed`, or `needs-human-review`.

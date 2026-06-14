@@ -35,7 +35,7 @@ export function renderVerificationMarkdown(result) {
     `Fresh bundle: ${result.freshBundle}`,
     `Created: ${result.createdAt}`,
     '',
-    'Verification compares previous deterministic findings against fresh critique output. `verified-fixed` means the same issue was not found again; it does not mean the whole screen is clean.',
+    'Verification compares previous findings against fresh critique output. `verified-fixed` is reserved for deterministic measured findings. Design findings use `improved`, `unchanged`, `regressed`, or `needs-human-review`.',
     '',
     '## Summary',
     '',
@@ -44,11 +44,15 @@ export function renderVerificationMarkdown(result) {
     `- still-present: ${result.summary.stillPresent}`,
     `- changed: ${result.summary.changed}`,
     `- unknown: ${result.summary.unknown}`,
+    `- improved: ${result.summary.improved || 0}`,
+    `- unchanged: ${result.summary.unchanged || 0}`,
+    `- regressed: ${result.summary.regressed || 0}`,
+    `- needs-human-review: ${result.summary.needsHumanReview || 0}`,
     `- missing-baseline: ${result.summary.missingBaseline}`,
     ''
   ];
 
-  for (const status of ['still-present', 'verified-fixed', 'changed', 'unknown', 'missing-baseline']) {
+  for (const status of ['still-present', 'verified-fixed', 'changed', 'unknown', 'improved', 'unchanged', 'regressed', 'needs-human-review', 'missing-baseline']) {
     const items = result.items.filter((item) => item.status === status);
     if (items.length === 0) continue;
     lines.push(`## ${status}`);

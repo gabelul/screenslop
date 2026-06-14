@@ -52,6 +52,10 @@ export function summarizeVerification(items) {
     stillPresent: 0,
     changed: 0,
     unknown: 0,
+    improved: 0,
+    unchanged: 0,
+    regressed: 0,
+    needsHumanReview: 0,
     notSelected: 0,
     missingBaseline: 0,
     unverified: 0
@@ -62,6 +66,10 @@ export function summarizeVerification(items) {
     'still-present': 'stillPresent',
     changed: 'changed',
     unknown: 'unknown',
+    improved: 'improved',
+    unchanged: 'unchanged',
+    regressed: 'regressed',
+    'needs-human-review': 'needsHumanReview',
     'not-selected': 'notSelected',
     'missing-baseline': 'missingBaseline',
     unverified: 'unverified'
@@ -81,6 +89,8 @@ export function summarizeVerification(items) {
  * @returns {object} Verification item.
  */
 function matchFinding({ baseline, freshFindings, fixSession }) {
+  if (isDesignFinding(baseline)) return matchDesignFinding({ baseline, freshFindings, fixSession });
+
   const baselineKeys = strongKeys(baseline);
   const sameRule = freshFindings.filter((finding) => finding.ruleId === baseline.ruleId);
   const fixSessionItem = findFixSessionItem(fixSession, baseline.id);
@@ -138,6 +148,113 @@ function matchFinding({ baseline, freshFindings, fixSession }) {
     reason: 'Baseline finding lacks a stable evidence key and related fresh findings remain.',
     fixSessionItem
   });
+}
+
+
+/**
+ * Matches subjective design findings without using deterministic verified-fixed status.
+ * @param {object} options Match options.
+ * @param {object} options.baseline Baseline design finding.
+ * @param {object[]} options.freshFindings Fresh findings.
+ * @param {object|null} options.fixSession Optional fix session.
+ * @returns {object} Verification item.
+ */
+function matchDesignFinding({ baseline, freshFindings, fixSession }) {
+  const related = freshFindings.filter((finding) => isDesignFinding(finding) && designMatchKey(finding) === designMatchKey(baseline));
+  const fixSessionItem = findFixSessionItem(fixSession, baseline.id);
+  const matchKey = designMatchKey(baseline);
+
+  if (related.length === 0) {
+    return item({
+      baseline,
+      status: 'improved',
+      matchKey,
+      freshFinding: null,
+      confidence: baseline.proofLevel === 'agent-judgment' ? 'medium' : 'high',
+      reason: 'Fresh design review no longer reports this design finding. This is improvement evidence, not deterministic verified-fixed proof.',
+      fixSessionItem
+    });
+  }
+
+  const fresh = related[0];
+  if (severityRank(fresh.severity) < severityRank(baseline.severity)) {
+    return item({
+      baseline,
+      status: 'regressed',
+      matchKey,
+      freshFinding: fresh,
+      confidence: 'medium',
+      reason: 'Fresh design review reports the same design finding with higher severity.',
+      fixSessionItem
+    });
+  }
+
+  if (designText(fresh) === designText(baseline) && fresh.severity === baseline.severity) {
+    return item({
+      baseline,
+      status: 'unchanged',
+      matchKey,
+      freshFinding: fresh,
+      confidence: 'medium',
+      reason: 'Fresh design review still reports the same design finding.',
+      fixSessionItem
+    });
+  }
+
+  return item({
+    baseline,
+    status: 'needs-human-review',
+    matchKey,
+    freshFinding: fresh,
+    confidence: 'low',
+    reason: 'Fresh design review still has a related design finding, but the judgment changed enough to need human review.',
+    fixSessionItem
+  });
+}
+
+/**
+ * Checks whether a finding is subjective design-layer output.
+ * @param {object} finding Finding.
+ * @returns {boolean} True for non-measured design findings.
+ */
+function isDesignFinding(finding) {
+  return ['design', 'product-logic', 'profile-gap'].includes(finding.kind) && finding.proofLevel !== 'measured';
+}
+
+/**
+ * Returns a stable key for design finding comparison.
+ * @param {object} finding Finding.
+ * @returns {string} Match key.
+ */
+function designMatchKey(finding) {
+  return [
+    `kind=${finding.kind || 'design'}`,
+    `profileRuleId=${finding.profileRuleId || ''}`,
+    `ruleId=${finding.ruleId || ''}`,
+    `title=${finding.title || ''}`
+  ].join(';');
+}
+
+/**
+ * Builds normalized text for subjective comparison.
+ * @param {object} finding Finding.
+ * @returns {string} Normalized text.
+ */
+function designText(finding) {
+  return [finding.judgment, finding.detail, finding.suggestedFix]
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Ranks severity where lower is more severe.
+ * @param {string} value Severity label.
+ * @returns {number} Rank.
+ */
+function severityRank(value) {
+  return { P0: 0, P1: 1, P2: 2, P3: 3 }[value] ?? 99;
 }
 
 /**

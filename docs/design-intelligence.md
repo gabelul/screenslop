@@ -37,7 +37,7 @@ Design findings also carry a `proofLevel`:
 - `profile-informed`
 - `agent-judgment`
 
-Only measured findings can become `verified-fixed` automatically. Design findings can become `improved`, `unchanged`, `regressed`, or `needs-human-review` after fresh evidence and a fresh design review.
+Only measured findings can become `verified-fixed` automatically. Design findings can become `improved`, `unchanged`, `regressed`, or `needs-human-review` after fresh evidence and a fresh design review. They do not become `verified-fixed` automatically.
 
 ## Agent packet
 

@@ -118,6 +118,7 @@ test('design intelligence contracts are documented without overclaiming shipped 
   assert.match(designDoc, /--design-profile/);
   assert.match(designDoc, /agent-packet/);
   assert.match(designDoc, /Only measured findings can become `verified-fixed` automatically/);
+  assert.match(designDoc, /needs-human-review/);
   assert.match(profileDoc, /\.screenslop\/design-profile\.json/);
   assert.match(profileDoc, /refresh/i);
   if (gitignore) {
@@ -131,6 +132,7 @@ test('design intelligence contracts are documented without overclaiming shipped 
   assert.match(commands, /--agent-packet/);
   assert.match(commands, /--import-design-findings/);
   assert.match(commands, /--design --agent-packet/);
+  assert.match(commands, /Design findings never use this automatic status/);
   assert.match(integrations, /Design profile integration boundary/);
   assert.match(integrations, /agent packet/);
   assert.match(playbook, /Design Intelligence profile path/);

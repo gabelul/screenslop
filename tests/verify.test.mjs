@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
+import { matchFindings, summarizeVerification } from '../src/verify/match-findings.mjs';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const missingId = 'ax-missing-name-a21707c7';
@@ -188,6 +189,40 @@ test('external bundle paths remain absolute in JSON artifacts', async () => {
   assert.equal(path.isAbsolute(result.artifacts.verificationPath), true);
 });
 
+
+test('design findings use improved instead of verified-fixed when absent from fresh review', () => {
+  const [baseline] = designFindings();
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [] });
+  const summary = summarizeVerification(items);
+
+  assert.equal(items[0].status, 'improved');
+  assert.equal(summary.improved, 1);
+  assert.equal(summary.verifiedFixed, 0);
+});
+
+test('design findings report unchanged when the same judgment remains', () => {
+  const [baseline, fresh] = designFindings();
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+
+  assert.equal(items[0].status, 'unchanged');
+});
+
+test('design findings report regressed when fresh severity is higher', () => {
+  const [baseline, fresh] = designFindings({ fresh: { severity: 'P1' } });
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+
+  assert.equal(items[0].status, 'regressed');
+});
+
+test('design findings request human review when related judgment changes', () => {
+  const [baseline, fresh] = designFindings({ fresh: { judgment: 'The badge now conflicts in a different way.' } });
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+  const summary = summarizeVerification(items);
+
+  assert.equal(items[0].status, 'needs-human-review');
+  assert.equal(summary.needsHumanReview, 1);
+});
+
 /**
  * Creates temp baseline/fresh bundles with baseline critique artifacts.
  * @param {object} [options] Fixture options.
@@ -288,4 +323,33 @@ function purgeGeneratedArtifacts(bundle) {
     const artifact = path.join(bundle, file);
     if (fs.existsSync(artifact)) fs.rmSync(artifact);
   }
+}
+
+/**
+ * Builds matching baseline/fresh design findings for verification semantics tests.
+ * @param {object} [options] Overrides.
+ * @param {object} [options.baseline] Baseline override.
+ * @param {object} [options.fresh] Fresh override.
+ * @returns {object[]} Baseline and fresh findings.
+ */
+function designFindings(options = {}) {
+  const baseline = {
+    id: 'design-badge-state',
+    ruleId: 'design.product-state.copy-match',
+    kind: 'product-logic',
+    proofLevel: 'agent-judgment',
+    severity: 'P2',
+    pillar: 'slop',
+    title: 'Badge contradicts visible state',
+    detail: 'The badge says complete while setup is still required.',
+    judgment: 'Visible badge copy and state do not agree.',
+    evidence: { artifact: 'design-review-packet.json' },
+    suggestedFix: 'Make the badge match the visible state.',
+    verification: 'Run fresh design review.',
+    confidence: 'medium',
+    effort: 'low',
+    ...options.baseline
+  };
+  const fresh = { ...baseline, id: 'design-badge-state-fresh', ...options.fresh };
+  return [baseline, fresh];
 }

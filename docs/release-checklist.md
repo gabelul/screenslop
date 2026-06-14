@@ -110,3 +110,4 @@ Before shipping design-aware work:
 - Confirm `.screenslop/design-profile.json` remains ignored unless a project explicitly exports a redacted public profile.
 - Confirm `screenslop learn --json --dry-run`, `--write --yes`, `--check`, and `--refresh --dry-run` pass in a temp project.
 - Confirm `critique --design --agent-packet` and `--import-design-findings` write parseable artifacts without changing measured proof semantics.
+- Confirm design verification statuses stay out of `verified-fixed`: `improved`, `unchanged`, `regressed`, and `needs-human-review`.

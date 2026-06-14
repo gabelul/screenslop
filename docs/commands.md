@@ -202,7 +202,7 @@ MVP auto-fixes are deliberately narrow:
 
 Unsupported or ambiguous findings still appear in the fix plan, but Screenslop does not edit source for them. `layout.offscreen-frame`, `logs.*`, evidence-quality findings, visible-label-only matches, and duplicate source matches are manual in this MVP.
 
-No fresh evidence means no verified fix claim. A passed `--verify-command` is recorded as `verify-passed`; only a future recapture/critique loop should use `recapture-passed`.
+No fresh evidence means no verified fix claim. Design findings need fresh evidence plus a fresh design review before they can be called `improved`, `unchanged`, `regressed`, or `needs-human-review`. A passed `--verify-command` is recorded as `verify-passed`; only a future recapture/critique loop should use `recapture-passed`.
 
 ### `screenslop verify`
 
@@ -231,10 +231,14 @@ Outputs are written into the baseline bundle:
 
 Statuses:
 
-- `verified-fixed`: fresh critique no longer reports the same issue by stable evidence keys.
-- `still-present`: fresh critique still reports the same rule and stable evidence key.
-- `changed`: the same rule remains, but the stable evidence key changed.
-- `unknown`: the baseline finding lacks enough stable evidence to prove fixed or still present.
+- `verified-fixed`: fresh critique no longer reports the same measured issue by stable evidence keys. Design findings never use this automatic status.
+- `still-present`: fresh critique still reports the same measured rule and stable evidence key.
+- `changed`: the same measured rule remains, but the stable evidence key changed.
+- `unknown`: the baseline measured finding lacks enough stable evidence to prove fixed or still present.
+- `improved`: fresh design review no longer reports the same design finding.
+- `unchanged`: fresh design review still reports the same design finding.
+- `regressed`: fresh design review reports the related design finding with higher severity.
+- `needs-human-review`: fresh design review changed in a way the tool should not decide alone.
 - `missing-baseline`: a requested finding ID was not in the baseline findings.
 
 The MVP does not capture fresh evidence itself. Run `screenslop see`, then `screenslop critique`, then `screenslop verify`. No fresh evidence, no verified claim.
@@ -367,8 +371,12 @@ builds and launches the configured target through XcodeBuildMCP, then captures
 with the configured `defaultSurface`, `defaultBundleId`, and default/device cell
 preference. `--critique` runs deterministic critique after a successful cell capture. `--design` also runs the design-review layer after each successful cell critique, records per-cell design summaries, and writes matrix-level design consistency notes. Use `--agent-packet` with `--design` when each cell should emit a packet for agent judgment.
 
-Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles. Agents do not need the farm for headless checks; `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
-screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json` is the non-interactive path.
+Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles. Agents do not need the farm for headless checks; these are the non-interactive paths:
+
+```sh
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
+```
 
 The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
 cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
