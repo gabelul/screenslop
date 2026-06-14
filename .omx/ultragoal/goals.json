@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:46:11.127Z",
+  "updatedAt": "2026-06-14T11:51:53.740Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -167,22 +167,25 @@
       "id": "G014-verify-semantics-for-design-findings",
       "title": "Verify semantics for design findings: improved/unchanged/regressed/ne...",
       "objective": "Verify semantics for design findings: improved/unchanged/regressed/needs-human-review statuses, deterministic verified-fixed boundary, before/after design report tests.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:46:11.127Z",
-      "startedAt": "2026-06-14T11:46:11.127Z"
+      "updatedAt": "2026-06-14T11:51:53.447Z",
+      "startedAt": "2026-06-14T11:46:11.127Z",
+      "completedAt": "2026-06-14T11:51:53.447Z",
+      "evidence": "Commit ec51401 added design verification semantics: improved/unchanged/regressed/needs-human-review for non-measured design findings, preserved verified-fixed for measured findings only, updated verification report/docs, and added tests. Verification passed: node --check src/verify/match-findings.mjs; node --check src/verify/verification-report.mjs; node --check tests/verify.test.mjs; node --test tests/contracts.test.mjs tests/verify.test.mjs; npm test; node bin/screenslop.mjs doctor; npm run --silent smoke:package; git diff --check."
     },
     {
       "id": "G015-final-hardening-and-dogfood-boundary",
       "title": "Final hardening and dogfood boundary: local gates, package smoke, ai-...",
       "objective": "Final hardening and dogfood boundary: local gates, package smoke, ai-slop/docs polish, independent review, redacted BoardingReady dogfood plan or blocker note if private runtime cannot be safely run.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:51:53.740Z",
+      "startedAt": "2026-06-14T11:51:53.740Z"
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G014-verify-semantics-for-design-findings"
+  "activeGoalId": "G015-final-hardening-and-dogfood-boundary"
 }
