@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:10:47.534Z",
+  "updatedAt": "2026-06-14T11:13:16.169Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -23,10 +23,11 @@
       "id": "G002-add-design-intelligence-as-a-separat",
       "title": "Add Design Intelligence as a separate module under src/design/.",
       "objective": "Add Design Intelligence as a separate module under src/design/.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:13:16.169Z",
+      "startedAt": "2026-06-14T11:13:16.169Z"
     },
     {
       "id": "G003-do-not-bake-boardingready-specific-r",
@@ -146,5 +147,6 @@
       "updatedAt": "2026-06-14T11:09:51.342Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G002-add-design-intelligence-as-a-separat"
 }
