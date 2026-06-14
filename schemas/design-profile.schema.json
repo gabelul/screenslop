@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booplex.com/screenslop/design-profile.schema.json",
+  "title": "Screenslop Design Profile",
+  "type": "object",
+  "required": ["schemaVersion", "project", "tokens", "components", "screenTypes", "stateSemantics", "reviewRules", "freshness"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object",
+      "required": ["name", "platform"],
+      "properties": {
+        "name": { "type": "string" },
+        "platform": { "enum": ["ios", "macos", "watchos", "tvos", "visionos", "apple"] },
+        "appCategory": { "type": ["string", "null"] },
+        "audience": { "type": "array", "items": { "type": "string" } },
+        "tone": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind", "hash"],
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "type": "string" },
+          "hash": { "type": "string" },
+          "lastSeenAt": { "type": "string" }
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "required": ["colors", "typography", "spacing", "cornerRadii", "materials", "icons"],
+      "properties": {
+        "colors": { "type": "array" },
+        "typography": { "type": "array" },
+        "spacing": { "type": "array" },
+        "cornerRadii": { "type": "array" },
+        "materials": { "type": "array" },
+        "icons": { "type": "array" }
+      }
+    },
+    "components": { "type": "array", "items": { "type": "object" } },
+    "screenTypes": { "type": "array", "items": { "type": "object" } },
+    "stateSemantics": { "type": "array", "items": { "type": "object" } },
+    "reviewRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pillar", "severity", "description"],
+        "properties": {
+          "id": { "type": "string" },
+          "pillar": { "enum": ["accessibility", "hierarchy", "typography", "color", "layout", "interaction", "motion", "platform", "performance", "slop"] },
+          "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "required": ["createdAt", "updatedAt", "sourceHash", "status"],
+      "properties": {
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "sourceHash": { "type": "string" },
+        "status": { "enum": ["current", "stale", "missing-sources", "needs-review"] }
+      }
+    }
+  }
+}

@@ -294,3 +294,20 @@ Stop and report the blocker when:
 - The redaction check finds private strings or raw absolute paths.
 
 Do not smooth over these. The whole product is built around evidence, so the blocker is evidence too.
+
+## Design Intelligence when shipped
+
+This is the future design-aware path. Do not run these as proof until the CLI help exposes the design commands.
+
+1. Run deterministic Screenslop first: doctor, see, critique, fix, fresh see, fresh critique, verify.
+2. Check the project design profile freshness before design claims.
+3. If the profile is stale, preview the refresh delta and ask before writing `.screenslop/design-profile.json`.
+4. Run the opt-in design pass or agent packet only after runtime evidence exists.
+5. Keep measured and subjective output separate:
+   - `measured`: deterministic finding, eligible for fresh-bundle `verified-fixed`.
+   - `design`: visual/design recommendation from the profile and screenshot.
+   - `product-logic`: visible copy or state contradiction.
+   - `profile-gap`: missing or stale design context.
+6. Do not call layout-sensitive or design-sensitive work done until the relevant phone-size matrix cells have passed when the screen can change across small, normal, and large phones.
+
+Manual fallback while this is planned: read `docs/design-profile-format.md`, use any private project design docs supplied by the app, review the captured screenshot and AX summary, then label subjective feedback as agent judgment rather than Screenslop proof.

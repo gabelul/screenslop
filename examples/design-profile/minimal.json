@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "ExampleApp",
+    "platform": "ios",
+    "appCategory": "utility",
+    "audience": ["people using the app"],
+    "tone": ["clear", "calm", "practical"]
+  },
+  "sources": [
+    {
+      "path": "Sources/ExampleApp/SettingsView.swift",
+      "kind": "swiftui-source",
+      "hash": "sha256:example",
+      "lastSeenAt": "2026-06-14T00:00:00.000Z"
+    }
+  ],
+  "tokens": {
+    "colors": [],
+    "typography": [],
+    "spacing": [],
+    "cornerRadii": [],
+    "materials": [],
+    "icons": []
+  },
+  "components": [
+    {
+      "name": "PrimaryCTA",
+      "purpose": "Main action on a screen",
+      "expectedTraits": ["visually dominant", "single obvious primary action"]
+    }
+  ],
+  "screenTypes": [
+    {
+      "name": "settings",
+      "goals": ["make account and app controls easy to scan"],
+      "rules": ["group related actions", "keep destructive actions visually secondary"]
+    }
+  ],
+  "stateSemantics": [
+    {
+      "name": "status badge",
+      "rules": ["badge copy must match the real screen state"]
+    }
+  ],
+  "reviewRules": [
+    {
+      "id": "design.cta.weak-primary-action",
+      "pillar": "hierarchy",
+      "severity": "P2",
+      "description": "The intended primary action should be visually dominant and not compete with secondary actions."
+    }
+  ],
+  "freshness": {
+    "createdAt": "2026-06-14T00:00:00.000Z",
+    "updatedAt": "2026-06-14T00:00:00.000Z",
+    "sourceHash": "sha256:example",
+    "status": "current"
+  }
+}

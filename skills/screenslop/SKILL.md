@@ -110,3 +110,17 @@ Only a full configured run with fresh capture, fresh critique, and
 `verifyStatus: "verified-fixed"` proves a user-app fix. If the private config is
 missing, record the outcome as `recorded-blocker` and keep Studio blocked. The
 sample app is not a get-out-of-jail-free card, sadly.
+
+## Design Intelligence planned path
+
+Design Intelligence is planned, not shipped as a runnable CLI path until `screenslop help` lists it. Do not invent command support.
+
+When it ships, use this order:
+
+1. Run the normal deterministic loop first.
+2. Check or refresh `.screenslop/design-profile.json` before design claims.
+3. Use the design review packet for subjective findings.
+4. Keep `measured`, `design`, `product-logic`, and `profile-gap` findings separate.
+5. Only measured findings can become `verifyStatus: "verified-fixed"` automatically.
+
+Until then, treat `docs/design-profile-format.md` and `docs/design-intelligence.md` as manual context. If you review hierarchy, typography, color, emotional fit, or product-state logic yourself, say it is agent judgment and keep it out of the deterministic proof lane.

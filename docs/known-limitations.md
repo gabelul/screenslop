@@ -26,3 +26,11 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 - Studio work is blocked until the engine passes the documented readiness gates: contract tests, package smoke, sample runtime smoke, matrix setting status, configured-target preflight, private dogfood `verified-fixed` proof, redaction proof, and agent contract drift checks.
 - The private dogfood gate outcome is `recorded-blocker` in this checkout because no private `.screenslop/config.json` is present. The preflight failure is redacted and parseable, but it is not a substitute for a real app capture, fix, fresh capture, fresh critique, and `verified-fixed` result.
 - This repo should not grow `apps/mac/`, private wrapper scaffolding, or duplicate runtime/critique/fix logic while those gates are still open.
+
+## Design Intelligence is not shipped yet
+
+The repository now defines the Design Intelligence boundary, schemas, examples, and docs, but the CLI does not yet run `learn`, `--design`, `--agent-packet`, or design finding import. Treat those as planned contracts until `screenslop help` exposes them.
+
+The private design profile path is `.screenslop/design-profile.json`. It is ignored by default because project tone, product semantics, source paths, and copied design rules can be private. A stale or missing profile should block design claims, not deterministic measured critique.
+
+Design findings are not automatic `verified-fixed` proof. They need fresh evidence, a fresh design pass, and a proof label such as `profile-informed` or `agent-judgment`.

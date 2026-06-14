@@ -43,6 +43,8 @@ test('public schemas accept shipped examples and fixture evidence', () => {
     readJson('schemas/evidence.schema.json')
   );
   validateAgainstSchema(readJson('examples/json/matrix.json'), readJson('schemas/matrix-report.schema.json'));
+  validateAgainstSchema(readJson('examples/design-profile/minimal.json'), readJson('schemas/design-profile.schema.json'));
+  validateAgainstSchema(readJson('examples/json/design-review-packet.json'), readJson('schemas/design-review.schema.json'));
 
   const findingSchema = readJson('schemas/finding.schema.json');
   validateAgainstSchema(
@@ -64,6 +66,78 @@ test('public schemas accept shipped examples and fixture evidence', () => {
     },
     findingSchema
   );
+  validateAgainstSchema(
+    {
+      id: 'design-weak-primary-action-example',
+      ruleId: 'design.cta.weak-primary-action',
+      severity: 'P2',
+      pillar: 'hierarchy',
+      title: 'Primary action is visually weak',
+      detail: 'The captured screen makes the secondary action feel stronger than the intended primary action.',
+      evidence: {
+        artifact: 'artifacts/example-settings/design-review-packet.json',
+        sourceHint: 'SettingsView.primaryCTA',
+        note: 'Runtime-informed design judgment from the design profile.'
+      },
+      suggestedFix: 'Make the primary CTA visually dominant and keep secondary actions quieter.',
+      verification: 'Recapture the screen and run a fresh design review against the same profile rule.',
+      confidence: 'medium',
+      effort: 'medium',
+      kind: 'design',
+      proofLevel: 'profile-informed',
+      requiresHumanReview: true,
+      profileRuleId: 'design.cta.weak-primary-action',
+      judgment: 'The hierarchy does not match the profile expectation for a single obvious primary action.',
+      alternatives: ['Move the secondary action below the primary CTA.', 'Use a quieter secondary button style.']
+    },
+    findingSchema
+  );
+});
+
+test('design intelligence contracts are documented without overclaiming shipped CLI support', () => {
+  const pkg = readJson('package.json');
+  const readme = readText('README.md');
+  const commands = readText('docs/commands.md');
+  const integrations = readText('docs/agent-integrations.md');
+  const playbook = readText('docs/agent-playbook.md');
+  const skill = readText('skills/screenslop/SKILL.md');
+  const limitations = readText('docs/known-limitations.md');
+  const checklist = readText('docs/release-checklist.md');
+  const designDoc = readText('docs/design-intelligence.md');
+  const profileDoc = readText('docs/design-profile-format.md');
+  const gitignore = fileExists('.gitignore') ? readText('.gitignore') : '';
+
+  for (const requiredFile of [
+    'docs/design-intelligence.md',
+    'docs/design-profile-format.md',
+    'examples/design-profile/'
+  ]) {
+    assert.ok(pkg.files.includes(requiredFile), `${requiredFile} must ship in npm package`);
+  }
+
+  assert.match(designDoc, /--design-profile/);
+  assert.match(designDoc, /agent-packet/);
+  assert.match(designDoc, /Only measured findings can become `verified-fixed` automatically/);
+  assert.match(profileDoc, /\.screenslop\/design-profile\.json/);
+  assert.match(profileDoc, /refresh/i);
+  if (gitignore) {
+    assert.match(gitignore, /\.screenslop\/design-profile\.json/);
+  }
+
+  assert.match(readme, /Design Intelligence \(planned\)/);
+  assert.match(readme, /`screenslop learn` \| Future/);
+  assert.match(commands, /Design Intelligence command boundary/);
+  assert.match(commands, /planned, not shipped/);
+  assert.match(commands, /--agent-packet/);
+  assert.match(integrations, /Design profile integration boundary/);
+  assert.match(integrations, /agent packet/);
+  assert.match(playbook, /Design Intelligence when shipped/);
+  assert.match(playbook, /Do not run these as proof until the CLI help exposes the design commands/);
+  assert.match(skill, /Design Intelligence planned path/);
+  assert.match(skill, /Do not invent command support/);
+  assert.match(limitations, /Design Intelligence is not shipped yet/);
+  assert.match(checklist, /Design Intelligence contract checks/);
+  assert.match(checklist, /examples\/design-profile\/minimal\.json/);
 });
 
 test('public schemas reject malformed evidence, findings, and matrix reports', () => {

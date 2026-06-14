@@ -99,6 +99,37 @@
         "medium",
         "high"
       ]
+    },
+    "kind": {
+      "enum": [
+        "measured",
+        "design",
+        "product-logic",
+        "profile-gap"
+      ]
+    },
+    "proofLevel": {
+      "enum": [
+        "measured",
+        "runtime-informed",
+        "profile-informed",
+        "agent-judgment"
+      ]
+    },
+    "requiresHumanReview": {
+      "type": "boolean"
+    },
+    "profileRuleId": {
+      "type": "string"
+    },
+    "judgment": {
+      "type": "string"
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

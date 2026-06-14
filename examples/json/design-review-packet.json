@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "design-review-packet",
+  "bundle": "artifacts/example-settings",
+  "profile": {
+    "schemaVersion": 1,
+    "project": {
+      "name": "ExampleApp",
+      "platform": "ios"
+    }
+  },
+  "screenshot": "artifacts/example-settings/screenshot.jpg",
+  "accessibilitySummary": {
+    "visibleControls": 4,
+    "labels": ["Settings", "Save", "Cancel"]
+  },
+  "deterministicSummary": {
+    "total": 0,
+    "bySeverity": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 }
+  },
+  "matrixCell": null,
+  "questions": [
+    "Does the hierarchy match the project profile?",
+    "Does any badge or status copy contradict the visible state?"
+  ],
+  "findings": [],
+  "outputSchema": {
+    "findingKind": ["design", "product-logic", "profile-gap"],
+    "proofLevel": ["runtime-informed", "profile-informed", "agent-judgment"]
+  }
+}

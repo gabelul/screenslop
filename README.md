@@ -117,6 +117,7 @@ No fresh capture means no verified fix claim. That rule saves a lot of nonsense.
 | `screenslop fix` | MVP | Plans or applies selected safe SwiftUI fixes. |
 | `screenslop verify` | MVP | Compares baseline findings against fresh critique output. |
 | `screenslop matrix` | MVP | Writes a bounded six-cell matrix report and evidence bundles. |
+| `screenslop learn` | Future | Planned design-profile learn/check/refresh path. |
 | `screenslop watch` | Future | Placeholder for the live review loop. Not shipped yet. |
 
 Full command notes live in [docs/commands.md](docs/commands.md).
@@ -286,3 +287,13 @@ Other tools for agents that care about quality:
 Apache-2.0.
 
 Built by Gabi @ [Booplex.com](https://booplex.com) because AI-generated UI should still have to pass the "does this feel like a real app?" test.
+
+## Design Intelligence (planned)
+
+The current shipped engine stays deterministic by default. It measures runtime evidence and reports findings that can be proved again after a fresh capture.
+
+Design Intelligence is the next module boundary. It will add a project-local design profile at `.screenslop/design-profile.json`, a design review packet for coding agents, and optional design-aware critique output. That layer is for app-specific judgment: hierarchy that feels weak for the product, typography that drifts from the app language, copy or badges that contradict visible state, and stale or missing design-system context.
+
+The proof rule stays the same: only measured findings can become `verified-fixed` automatically. Design findings must carry their kind and proof level, and any subjective fix needs fresh evidence plus a fresh design review before anyone calls it improved.
+
+Read the contracts in `docs/design-intelligence.md` and `docs/design-profile-format.md`.

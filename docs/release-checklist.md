@@ -98,3 +98,14 @@ One-time npm setup:
    - environment: `npm`
 
 Upload `.github/assets/social-preview.png` manually in GitHub Settings if the preview needs refreshing.
+
+## Design Intelligence contract checks
+
+Before shipping design-aware work:
+
+- Validate `schemas/design-profile.schema.json` against `examples/design-profile/minimal.json`.
+- Validate `schemas/design-review.schema.json` against `examples/json/design-review-packet.json`.
+- Confirm `schemas/finding.schema.json` accepts optional design fields without changing required measured fields.
+- Confirm `package.json` ships `docs/design-intelligence.md`, `docs/design-profile-format.md`, and `examples/design-profile/`.
+- Confirm `.screenslop/design-profile.json` remains ignored unless a project explicitly exports a redacted public profile.
+- Confirm docs and the skill mark planned design commands as planned until the CLI help ships them.

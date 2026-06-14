@@ -111,9 +111,10 @@ future 0.x releases may change it with an explicit migration path.
 
 ### `screenslop learn`
 
-Learns the app's design system from evidence and code.
+Planned design-profile learn/check/refresh path. This command is not shipped
+until `screenslop help` lists it.
 
-This is the Screenslop design-learning path: stronger than source-only documentation because it can use real screens.
+This is the future Screenslop design-learning path: stronger than source-only documentation because it can use real screens.
 
 Use it for:
 
@@ -130,7 +131,13 @@ Possible future flow:
 screenslop learn --surface Settings
 screenslop learn --from-artifacts artifacts/<run-id>
 screenslop learn --tokens path/to/tokens.json
+screenslop learn --check --json
+screenslop learn --refresh --json --dry-run
+screenslop learn --write --yes --json
 ```
+
+The private default output is `.screenslop/design-profile.json`. It should stay
+ignored unless a project exports a redacted public profile.
 
 `tokextract` may fit here as a token-source adapter:
 
@@ -406,3 +413,19 @@ Agent-facing examples live in `examples/json/`:
 
 Schemas live in `schemas/`. The matrix report contract is
 `schemas/matrix-report.schema.json`.
+
+## Design Intelligence command boundary
+
+Design Intelligence is planned, not shipped as a CLI command in this release. Until the top-level help lists it, agents must treat the commands below as contract notes, not runnable proof:
+
+- `learn --check --json`: future profile freshness check for `.screenslop/design-profile.json`.
+- `learn --refresh --json --dry-run`: future refresh preview for changed docs, tokens, SwiftUI files, and evidence sources.
+- `learn --write --yes --json`: future explicit write path for a refreshed private profile.
+- `critique --design --json`: future opt-in design pass after deterministic critique.
+- `critique --design-profile <path> --json`: future profile override for a design pass.
+- `critique --design --agent-packet --json`: future packet writer for a coding agent or local reviewer.
+- `critique --import-design-findings <path> --json`: future import path for agent-produced design findings.
+
+The deterministic `critique` command remains the default. A design-aware pass must preserve the measured finding schema and add optional fields only: `kind`, `proofLevel`, `requiresHumanReview`, `profileRuleId`, `judgment`, and `alternatives`.
+
+Profile refresh is not proof. If a profile is stale, run a dry-run refresh, review the delta, then write only with explicit confirmation. Design findings should use `design`, `product-logic`, or `profile-gap`; measured findings use `measured` and keep the existing fresh-bundle `verified-fixed` semantics.
