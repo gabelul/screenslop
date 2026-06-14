@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/gabelul/screenslop/compare/v0.1.3...v0.1.4) (2026-06-14)
+
+
+### Bug Fixes
+
+* show CLI version in doctor ([0959fed](https://github.com/gabelul/screenslop/commit/0959fed23e5b576e2987b4deca5dc1311650f2fa))
+* warn when Screenslop CLI is stale ([3cc380c](https://github.com/gabelul/screenslop/commit/3cc380c08eb98a00e98f152805ffd4ba12e6197c))
+
 ## [0.1.3](https://github.com/gabelul/screenslop/compare/v0.1.2...v0.1.3) (2026-06-14)
 
 
