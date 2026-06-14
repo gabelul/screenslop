@@ -49,6 +49,7 @@ try {
       'tests/check-dogfood-redaction.test.mjs',
       'tests/config.test.mjs',
       'tests/contracts.test.mjs',
+      'tests/design-review.test.mjs',
       'tests/learn.test.mjs',
       'tests/matrix.test.mjs',
       'tests/verify.test.mjs'

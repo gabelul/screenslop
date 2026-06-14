@@ -29,7 +29,7 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 
 ## Design Intelligence is partially shipped
 
-The repository now ships `screenslop learn` for private design-profile plan/write/check/refresh. The CLI does not yet run `--design`, `--agent-packet`, or design finding import. Treat those as planned contracts until `screenslop help` exposes them.
+The repository now ships `screenslop learn` for private design-profile plan/write/check/refresh and `critique --design` plumbing for profile gaps, agent packets, and imported design findings. It does not yet run a built-in visual-design scorer or hosted LLM review.
 
 The private design profile path is `.screenslop/design-profile.json`. It is ignored by default because project tone, product semantics, source paths, and copied design rules can be private. A stale or missing profile should block design claims, not deterministic measured critique.
 

@@ -292,7 +292,7 @@ Built by Gabi @ [Booplex.com](https://booplex.com) because AI-generated UI shoul
 
 The current shipped engine stays deterministic by default. It measures runtime evidence and reports findings that can be proved again after a fresh capture.
 
-Design Intelligence is the next module boundary. The `learn` command now writes and refreshes a project-local design profile at `.screenslop/design-profile.json`; agent packets and optional design-aware critique output come next. That layer is for app-specific judgment: hierarchy that feels weak for the product, typography that drifts from the app language, copy or badges that contradict visible state, and stale or missing design-system context.
+Design Intelligence is the next module boundary. The `learn` command now writes and refreshes a project-local design profile at `.screenslop/design-profile.json`; `critique --design` can load that profile, report profile gaps, write an agent packet, and import agent-produced design findings. That layer is for app-specific judgment: hierarchy that feels weak for the product, typography that drifts from the app language, copy or badges that contradict visible state, and stale or missing design-system context.
 
 The proof rule stays the same: only measured findings can become `verified-fixed` automatically. Design findings must carry their kind and proof level, and any subjective fix needs fresh evidence plus a fresh design review before anyone calls it improved.
 

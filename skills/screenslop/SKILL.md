@@ -114,15 +114,15 @@ sample app is not a get-out-of-jail-free card, sadly.
 
 ## Design Intelligence profile path
 
-Design Intelligence is partially shipped. `learn` is runnable when `screenslop help` lists it; design-aware `critique --design` and agent-packet import remain planned. Do not invent unsupported flags.
+Design Intelligence is partially shipped. `learn`, `critique --design`, `--agent-packet`, and `--import-design-findings` are runnable when `screenslop help` accepts them. Do not invent unsupported flags.
 
 Use this order:
 
 1. Run the normal deterministic loop first.
 2. Run `screenslop learn --check --json` before design claims.
 3. If stale, run `screenslop learn --refresh --json --dry-run`, inspect the delta, then write with `--write --yes`.
-4. Use the planned design review packet for subjective findings.
+4. Use `critique --design --agent-packet --json` to create a packet for subjective findings, or import reviewed findings with `--import-design-findings`.
 5. Keep `measured`, `design`, `product-logic`, and `profile-gap` findings separate.
 6. Only measured findings can become `verifyStatus: "verified-fixed"` automatically.
 
-For planned critique features, treat `docs/design-profile-format.md` and `docs/design-intelligence.md` as manual context. If you review hierarchy, typography, color, emotional fit, or product-state logic yourself, say it is agent judgment and keep it out of the deterministic proof lane.
+For deeper subjective critique beyond imported findings, treat `docs/design-profile-format.md` and `docs/design-intelligence.md` as manual context. If you review hierarchy, typography, color, emotional fit, or product-state logic yourself, say it is agent judgment and keep it out of the deterministic proof lane.

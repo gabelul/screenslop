@@ -109,4 +109,4 @@ Before shipping design-aware work:
 - Confirm `package.json` ships `docs/design-intelligence.md`, `docs/design-profile-format.md`, and `examples/design-profile/`.
 - Confirm `.screenslop/design-profile.json` remains ignored unless a project explicitly exports a redacted public profile.
 - Confirm `screenslop learn --json --dry-run`, `--write --yes`, `--check`, and `--refresh --dry-run` pass in a temp project.
-- Confirm docs and the skill mark planned design-critique commands as planned until the CLI help ships them.
+- Confirm `critique --design --agent-packet` and `--import-design-findings` write parseable artifacts without changing measured proof semantics.

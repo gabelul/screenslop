@@ -30,7 +30,7 @@ export function collectDesignProfile(options) {
 
   if (options.check) return checkDesignProfile({ root, profilePath, current });
 
-  const existing = readDesignProfile(profilePath);
+  const existing = loadDesignProfile(profilePath);
   if (existing.error) {
     return failure('read-failed', existing.error, { root, profilePath, action: options.refresh ? 'refresh' : 'plan' });
   }
@@ -172,7 +172,7 @@ export function resolveDesignProfilePath(root, configuredPath = DEFAULT_DESIGN_P
  * @returns {object} Check result.
  */
 function checkDesignProfile(options) {
-  const existing = readDesignProfile(options.profilePath);
+  const existing = loadDesignProfile(options.profilePath);
   if (existing.error) return failure('read-failed', existing.error, { root: options.root, profilePath: options.profilePath, action: 'check' });
   if (!existing.profile) {
     return {
@@ -233,7 +233,7 @@ function compareProfileWithContext(profile, context) {
  * @param {string} file Absolute profile path.
  * @returns {{profile:object|null,error:string|null}}
  */
-function readDesignProfile(file) {
+export function loadDesignProfile(file) {
   if (!fs.existsSync(file)) return { profile: null, error: null };
   try {
     return { profile: JSON.parse(fs.readFileSync(file, 'utf8')), error: null };

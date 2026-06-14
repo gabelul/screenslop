@@ -413,12 +413,12 @@ Schemas live in `schemas/`. The matrix report contract is
 
 ## Design Intelligence command boundary
 
-Design Intelligence is split into shipped profile learning and planned design critique. `screenslop learn` is shipped; the flags below are still future design-critique contracts until the top-level help exposes them:
+Design Intelligence is split between shipped profile learning and shipped design-review plumbing. These critique flags are opt-in:
 
-- `critique --design --json`: future opt-in design pass after deterministic critique.
-- `critique --design-profile <path> --json`: future profile override for a design pass.
-- `critique --design --agent-packet --json`: future packet writer for a coding agent or local reviewer.
-- `critique --import-design-findings <path> --json`: future import path for agent-produced design findings.
+- `critique --design --json`: opt-in design pass after deterministic critique.
+- `critique --design-profile <path> --json`: profile override for a design pass.
+- `critique --design --agent-packet --json`: packet writer for a coding agent or local reviewer.
+- `critique --import-design-findings <path> --json`: import path for agent-produced design findings.
 
 The deterministic `critique` command remains the default. A design-aware pass must preserve the measured finding schema and add optional fields only: `kind`, `proofLevel`, `requiresHumanReview`, `profileRuleId`, `judgment`, and `alternatives`.
 

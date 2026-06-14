@@ -9,6 +9,7 @@ import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
 import { collectDesignProfile } from '../src/design/profile.mjs';
+import { collectDesignReview } from '../src/design/review.mjs';
 import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
 import {
@@ -920,10 +921,21 @@ async function critique() {
   const bundlePath = firstPositional(args);
 
   try {
-    const result = await collectCritique({
+    let result = await collectCritique({
       root: process.cwd(),
       bundlePath
     });
+
+    if (wantsDesignReview(options)) {
+      result = collectDesignReview({
+        root: process.cwd(),
+        bundlePath,
+        critiqueResult: result,
+        profilePath: options.values['design-profile'] || null,
+        agentPacket: options.flags.has('agent-packet'),
+        importPath: options.values['import-design-findings'] || null
+      });
+    }
 
     printCritiqueResult(result, options.flags.has('json'));
   } catch (error) {
@@ -938,6 +950,16 @@ async function critique() {
     }
     process.exitCode = 1;
   }
+}
+
+
+/**
+ * Checks whether critique should add the design-review layer.
+ * @param {{flags:Set<string>,values:Record<string,string>}} options Parsed options.
+ * @returns {boolean} True when design review is requested.
+ */
+function wantsDesignReview(options) {
+  return options.flags.has('design') || options.flags.has('agent-packet') || Boolean(options.values['import-design-findings']);
 }
 
 /**
@@ -1102,7 +1124,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['apply', 'boot', 'check', 'critique', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -1134,7 +1156,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['apply', 'boot', 'check', 'critique', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;

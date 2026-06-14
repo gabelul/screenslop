@@ -127,8 +127,9 @@ test('design intelligence contracts are documented without overclaiming shipped 
   assert.match(readme, /Design Intelligence profile/);
   assert.match(readme, /`screenslop learn` \| MVP/);
   assert.match(commands, /Design Intelligence command boundary/);
-  assert.match(commands, /shipped profile learning and planned design critique/);
+  assert.match(commands, /shipped profile learning and shipped design-review plumbing/);
   assert.match(commands, /--agent-packet/);
+  assert.match(commands, /--import-design-findings/);
   assert.match(integrations, /Design profile integration boundary/);
   assert.match(integrations, /agent packet/);
   assert.match(playbook, /Design Intelligence profile path/);

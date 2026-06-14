@@ -297,7 +297,7 @@ Do not smooth over these. The whole product is built around evidence, so the blo
 
 ## Design Intelligence profile path
 
-`screenslop learn` is the shipped profile path. Design-aware critique flags are still planned, so do not run those as proof until the CLI help exposes them.
+`screenslop learn` is the shipped profile path. `critique --design` is opt-in design-review plumbing; it can report profile gaps, write an agent packet, and import reviewed design findings.
 
 1. Run deterministic Screenslop first: doctor, see, critique, fix, fresh see, fresh critique, verify.
 2. Run `screenslop learn --check --json` before design claims.

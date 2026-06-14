@@ -16,13 +16,13 @@ screenslop learn --check --json
 screenslop learn --refresh --json --dry-run
 screenslop learn --refresh --write --yes --json
 
-# planned design critique flags
 screenslop critique artifacts/<run> --design --json
 screenslop critique artifacts/<run> --design-profile .screenslop/design-profile.json --json
 screenslop critique artifacts/<run> --design --agent-packet --json
+screenslop critique artifacts/<run> --import-design-findings design-findings.json --json
 ```
 
-The shipped `learn` command only manages the private profile. Planned `--design` critique should never weaken the proof boundary. Design findings must say what kind of judgment they are:
+The shipped design critique path loads the private profile, can write an agent packet, and can import agent-produced findings. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:
 
 - `measured`: deterministic, tool-measured proof.
 - `design`: app-aware design recommendation.
@@ -40,7 +40,7 @@ Only measured findings can become `verified-fixed` automatically. Design finding
 
 ## Agent packet
 
-The first implementation should not require a hosted LLM. When a coding agent can do the subjective review, Screenslop can write a packet:
+This implementation does not require a hosted LLM. When a coding agent can do the subjective review, Screenslop can write a packet:
 
 ```text
 artifacts/<run>/design-review-packet.json
