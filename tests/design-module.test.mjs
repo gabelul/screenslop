@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -30,4 +31,14 @@ test('deterministic critique does not import design intelligence by default', ()
 
   assert.equal(source.includes('../design'), false);
   assert.equal(source.includes('src/design'), false);
+});
+
+test('default design profile stays private by git default', () => {
+  const result = spawnSync('git', ['check-ignore', defaultDesignProfilePath()], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\.screenslop\/design-profile\.json/);
 });

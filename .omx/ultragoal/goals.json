@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:15:52.800Z",
+  "updatedAt": "2026-06-14T11:19:22.786Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -35,46 +35,61 @@
       "id": "G003-do-not-bake-boardingready-specific-r",
       "title": "Do not bake BoardingReady-specific rules into the public engine.",
       "objective": "Do not bake BoardingReady-specific rules into the public engine.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:16:32.742Z",
+      "startedAt": "2026-06-14T11:16:15.428Z",
+      "completedAt": "2026-06-14T11:16:32.742Z",
+      "evidence": "Confirmed the new public src/design/index.mjs module contains generic design intelligence constants/helpers only. Search across src/design and tests/design-module.test.mjs found no BoardingReady, PetPacket, boarding, pet-care, provider, or private app-specific rules. No code changes required beyond cf9c776."
     },
     {
       "id": "G004-do-not-require-a-hosted-llm-for-the",
       "title": "Do not require a hosted LLM for the basic CLI.",
       "objective": "Do not require a hosted LLM for the basic CLI.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:17:05.791Z",
+      "startedAt": "2026-06-14T11:16:32.868Z",
+      "completedAt": "2026-06-14T11:17:05.791Z",
+      "evidence": "The basic CLI and new src/design module require no hosted LLM. package.json has no dependencies/devDependencies, src/design/index.mjs contains only local constants/helpers, and provider scan found no OpenAI/Anthropic/Gemini/API-key/fetch usage in src/design or the basic CLI path. No code changes required."
     },
     {
       "id": "G005-do-not-auto-edit-subjective-design-f",
       "title": "Do not auto-edit subjective design findings in the first implementation.",
       "objective": "Do not auto-edit subjective design findings in the first implementation.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:17:35.925Z",
+      "startedAt": "2026-06-14T11:17:16.063Z",
+      "completedAt": "2026-06-14T11:17:35.925Z",
+      "evidence": "Confirmed subjective design findings are not auto-editable in this first slice. src/design/index.mjs only defines design-specific kinds/proof levels; rg across src/fix, src/verify, and src/design shows no fix pipeline integration for design/product-logic/profile-gap findings. Full tests passed after the module boundary change."
     },
     {
       "id": "G006-do-not-call-subjective-design-findin",
       "title": "Do not call subjective design findings verified-fixed unless they hav...",
       "objective": "Do not call subjective design findings verified-fixed unless they have deterministic measurable proof.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:18:04.147Z",
+      "startedAt": "2026-06-14T11:17:36.118Z",
+      "completedAt": "2026-06-14T11:18:04.147Z",
+      "evidence": "Confirmed subjective design findings cannot be called verified-fixed in the current implementation. src/design/index.mjs has design-specific proof levels only and tests assert design helpers reject measured proof concepts; src/verify remains untouched and still handles deterministic findings only. Full tests passed after the boundary change."
     },
     {
       "id": "G007-keep-private-screenslop-design-profi",
       "title": "Keep private .screenslop/design-profile.json uncommitted by default.",
       "objective": "Keep private .screenslop/design-profile.json uncommitted by default.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "complete",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:19:22.786Z",
+      "startedAt": "2026-06-14T11:18:04.374Z",
+      "completedAt": "2026-06-14T11:19:22.786Z",
+      "evidence": "Added .screenslop/design-profile.json to .gitignore and locked it with tests/design-module.test.mjs using git check-ignore. Verification passed: node --test tests/design-module.test.mjs, npm test (121 passed), node bin/screenslop.mjs doctor, git check-ignore .screenslop/design-profile.json, git diff --check."
     },
     {
       "id": "G008-update-cli-docs-readme-skill-agent-i",

@@ -6,6 +6,7 @@ artifacts/**
 !artifacts/.gitkeep
 .screenslop/config.json
 .screenslop/local.json
+.screenslop/design-profile.json
 
 # Local research workspace, intentionally untracked
 research/repos/
