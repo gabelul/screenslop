@@ -4,7 +4,7 @@ import { flattenAxTree } from '../critique/ax-tree.mjs';
 import { createFinding, sortFindings, summarizeFindings } from '../critique/findings.mjs';
 import { loadEvidenceBundle, displayPath } from '../critique/load-evidence.mjs';
 import { writeCritiqueArtifacts } from '../critique/report.mjs';
-import { collectDesignProfile, loadDesignProfile, resolveDesignProfilePath } from './profile.mjs';
+import { collectDesignProfile, loadDesignProfile, resolveDesignProfilePath, resolveProjectContainedPath } from './profile.mjs';
 
 const designKinds = new Set(['design', 'product-logic', 'profile-gap']);
 const proofLevels = new Set(['runtime-informed', 'profile-informed', 'agent-judgment']);
@@ -19,6 +19,7 @@ const proofLevels = new Set(['runtime-informed', 'profile-informed', 'agent-judg
  * @param {string|null} [options.profilePath] Optional profile path override.
  * @param {boolean} [options.agentPacket] Whether to write agent packet artifacts.
  * @param {string|null} [options.importPath] Optional imported design findings path.
+ * @param {boolean} [options.strictMissingProfile] Whether a missing profile should fail.
  * @returns {object} Updated critique result.
  */
 export function collectDesignReview(options) {
@@ -27,15 +28,26 @@ export function collectDesignReview(options) {
   const profilePath = resolveDesignProfilePath(root, options.profilePath || undefined);
   const profileRead = loadDesignProfile(profilePath);
   const profileCheck = collectDesignProfile({ root, profilePath, check: true });
+  if (options.strictMissingProfile && profileCheck.status === 'missing-profile') {
+    throw new Error('missing-design-profile: run screenslop learn --json --dry-run, review the profile, then write with --write --yes.');
+  }
   const localFindings = buildProfileFindings({ context, profileCheck });
   const importedFindings = options.importPath ? loadImportedDesignFindings({ root, importPath: options.importPath, context }) : [];
   const designFindings = sortFindings([...localFindings, ...importedFindings]);
   const allFindings = sortFindings([...(options.critiqueResult.findings || []), ...designFindings]);
   const summary = summarizeFindings(allFindings);
-  const written = writeCritiqueArtifacts(context, allFindings, summary);
   const packet = options.agentPacket
     ? writeAgentPacket({ context, critiqueResult: options.critiqueResult, profile: profileRead.profile, profileCheck })
     : null;
+  const written = writeCritiqueArtifacts(context, allFindings, summary, {
+    designReview: {
+      ran: true,
+      profileStatus: profileCheck.status,
+      importedFindings: importedFindings.length,
+      localFindings: localFindings.length,
+      agentPacket: Boolean(packet)
+    }
+  });
 
   return {
     ...options.critiqueResult,
@@ -111,8 +123,7 @@ function buildProfileFindings(options) {
  * @returns {object[]} Imported findings normalized to Screenslop schema.
  */
 function loadImportedDesignFindings(options) {
-  const file = path.resolve(options.root, options.importPath);
-  if (!isPathInside(options.root, file)) throw new Error('Imported design findings path must resolve inside the project root.');
+  const file = resolveProjectContainedPath(options.root, options.importPath, 'Imported design findings');
   const payload = JSON.parse(fs.readFileSync(file, 'utf8'));
   const rawFindings = Array.isArray(payload) ? payload : payload.findings;
   if (!Array.isArray(rawFindings)) throw new Error('Imported design findings must be an array or an object with findings[].');
@@ -194,7 +205,7 @@ function buildAgentPacket(options) {
     schemaVersion: 1,
     kind: 'design-review-packet',
     bundle: options.context.bundle,
-    profile: options.profile,
+    profileSummary: summarizeProfile(options.profile),
     profileStatus: options.profileCheck.status,
     screenshot: options.context.artifacts.screenshot.displayPath,
     accessibilitySummary: summarizeAccessibility(options.context),
@@ -212,6 +223,27 @@ function buildAgentPacket(options) {
       proofLevel: ['runtime-informed', 'profile-informed', 'agent-judgment'],
       requiredFields: ['kind', 'proofLevel', 'severity', 'pillar', 'title', 'detail', 'judgment']
     }
+  };
+}
+
+/**
+ * Summarizes a private profile without copying project-specific rules into packets.
+ * @param {object|null} profile Loaded design profile.
+ * @returns {object} Redacted profile summary.
+ */
+function summarizeProfile(profile) {
+  if (!profile) return { available: false };
+  return {
+    available: true,
+    schemaVersion: profile.schemaVersion || null,
+    platform: profile.project?.platform || null,
+    sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
+    tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
+    componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
+    screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
+    stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,
+    reviewRuleCount: Array.isArray(profile.reviewRules) ? profile.reviewRules.length : 0,
+    freshnessStatus: profile.freshness?.status || null
   };
 }
 
@@ -251,16 +283,4 @@ function summarizeAccessibility(context) {
  */
 function withDesignFields(finding, fields) {
   return Object.fromEntries(Object.entries({ ...finding, ...fields }).filter(([, value]) => value !== undefined));
-}
-
-/**
- * Checks whether a path is inside the root.
- *
- * @param {string} root Project root.
- * @param {string} candidate Candidate path.
- * @returns {boolean} True when inside.
- */
-function isPathInside(root, candidate) {
-  const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }

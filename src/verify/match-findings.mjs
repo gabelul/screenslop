@@ -6,6 +6,7 @@ const evidenceQualityPrefix = 'evidence.';
  * @param {object[]} options.baselineFindings Baseline findings.
  * @param {object[]} options.freshFindings Fresh findings.
  * @param {string[]} [options.selectedIds] Selected baseline IDs.
+ * @param {boolean} [options.freshHasDesignReview] Whether fresh findings came from a design-review pass.
  * @param {object|null} [options.fixSession] Optional fix session wrapper.
  * @returns {object[]} Verification items.
  */
@@ -15,9 +16,11 @@ export function matchFindings(options) {
   const selected = selectedIds.length > 0
     ? selectedIds.map((id) => byBaselineId.get(id)).filter(Boolean)
     : options.baselineFindings;
+  const freshHasDesignReview = options.freshHasDesignReview ?? options.freshFindings.some((finding) => isDesignFinding(finding));
   const items = selected.map((finding) => matchFinding({
     baseline: finding,
     freshFindings: options.freshFindings,
+    freshHasDesignReview,
     fixSession: options.fixSession || null
   }));
 
@@ -88,8 +91,8 @@ export function summarizeVerification(items) {
  * @param {object} options Match options.
  * @returns {object} Verification item.
  */
-function matchFinding({ baseline, freshFindings, fixSession }) {
-  if (isDesignFinding(baseline)) return matchDesignFinding({ baseline, freshFindings, fixSession });
+function matchFinding({ baseline, freshFindings, freshHasDesignReview, fixSession }) {
+  if (isDesignFinding(baseline)) return matchDesignFinding({ baseline, freshFindings, freshHasDesignReview, fixSession });
 
   const baselineKeys = strongKeys(baseline);
   const sameRule = freshFindings.filter((finding) => finding.ruleId === baseline.ruleId);
@@ -156,13 +159,26 @@ function matchFinding({ baseline, freshFindings, fixSession }) {
  * @param {object} options Match options.
  * @param {object} options.baseline Baseline design finding.
  * @param {object[]} options.freshFindings Fresh findings.
+ * @param {boolean} options.freshHasDesignReview Whether fresh design-review provenance exists.
  * @param {object|null} options.fixSession Optional fix session.
  * @returns {object} Verification item.
  */
-function matchDesignFinding({ baseline, freshFindings, fixSession }) {
+function matchDesignFinding({ baseline, freshFindings, freshHasDesignReview, fixSession }) {
   const related = freshFindings.filter((finding) => isDesignFinding(finding) && designMatchKey(finding) === designMatchKey(baseline));
   const fixSessionItem = findFixSessionItem(fixSession, baseline.id);
   const matchKey = designMatchKey(baseline);
+
+  if (!freshHasDesignReview) {
+    return item({
+      baseline,
+      status: 'needs-human-review',
+      matchKey,
+      freshFinding: null,
+      confidence: 'low',
+      reason: 'Fresh bundle does not include a fresh design review, so subjective improvement cannot be decided.',
+      fixSessionItem
+    });
+  }
 
   if (related.length === 0) {
     return item({

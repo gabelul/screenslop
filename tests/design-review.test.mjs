@@ -8,17 +8,14 @@ import test from 'node:test';
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const cliPath = path.join(repoRoot, 'bin/screenslop.mjs');
 
-test('critique --design reports a profile gap when the design profile is missing', () => {
+test('critique --design --json fails when the design profile is missing', () => {
   const root = createProjectWithBundle('clean');
   const result = runScreenslop(root, ['critique', 'artifacts/clean', '--design', '--json']);
 
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.status, 1);
   const payload = JSON.parse(result.stdout);
-  assert.equal(payload.design.enabled, true);
-  assert.equal(payload.design.profileStatus, 'missing-profile');
-  assert.equal(payload.design.localFindings, 1);
-  assert.ok(payload.findings.some((finding) => finding.kind === 'profile-gap'));
-  assert.ok(payload.findings.some((finding) => finding.proofLevel === 'profile-informed'));
+  assert.equal(payload.ok, false);
+  assert.match(payload.error, /missing-design-profile/);
 });
 
 test('critique --design --agent-packet writes a packet with profile and evidence summaries', () => {
@@ -36,10 +33,30 @@ test('critique --design --agent-packet writes a packet with profile and evidence
 
   const packet = JSON.parse(fs.readFileSync(path.join(root, payload.artifacts.designPacketPath), 'utf8'));
   assert.equal(packet.kind, 'design-review-packet');
-  assert.equal(packet.profile.project.name, path.basename(root));
+  assert.equal(packet.profile, undefined);
+  assert.equal(packet.profileSummary.available, true);
+  assert.equal(packet.profileSummary.componentCount >= 1, true);
   assert.equal(packet.accessibilitySummary.available, true);
   assert.ok(packet.accessibilitySummary.nodeCount > 0);
   assert.equal(packet.outputSchema.findingKind.includes('product-logic'), true);
+});
+
+test('critique --design-profile implies the design review layer', () => {
+  const root = createProjectWithBundle('problem');
+  assert.equal(runScreenslop(root, ['learn', '--write', '--yes', '--json']).status, 0);
+
+  const result = runScreenslop(root, [
+    'critique',
+    'artifacts/problem',
+    '--design-profile',
+    '.screenslop/design-profile.json',
+    '--agent-packet',
+    '--json'
+  ]);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.design.enabled, true);
+  assert.equal(payload.design.profileStatus, 'current');
 });
 
 test('critique imports agent-produced design findings without calling them measured', () => {
@@ -76,6 +93,24 @@ test('critique imports agent-produced design findings without calling them measu
   assert.equal(imported.requiresHumanReview, true);
   assert.notEqual(imported.proofLevel, 'measured');
   assert.deepEqual(imported.alternatives, ['Use Pending', 'Hide the badge until setup finishes']);
+});
+
+test('critique import rejects symlink ancestor escapes', () => {
+  const root = createProjectWithBundle('clean');
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-import-outside-'));
+  fs.writeFileSync(path.join(outside, 'design-findings.json'), `${JSON.stringify({ findings: [] })}\n`);
+  fs.symlinkSync(outside, path.join(root, 'linked-outside'), 'dir');
+
+  const result = runScreenslop(root, [
+    'critique',
+    'artifacts/clean',
+    '--import-design-findings',
+    'linked-outside/design-findings.json',
+    '--json'
+  ]);
+  assert.equal(result.status, 1);
+  const payload = JSON.parse(result.stdout);
+  assert.match(payload.error, /symlinks|project root/);
 });
 
 /**

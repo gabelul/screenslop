@@ -26,7 +26,12 @@ const MAX_SOURCE_FILES = 80;
 export function collectDesignProfile(options) {
   const root = canonicalRoot(options.root || process.cwd());
   const profilePath = resolveDesignProfilePath(root, options.profilePath || DEFAULT_DESIGN_PROFILE_PATH);
-  const current = collectProjectDesignContext({ root, surface: options.surface || null });
+  let current;
+  try {
+    current = collectProjectDesignContext({ root, surface: options.surface || null });
+  } catch (error) {
+    return failure('config-invalid', error.message, { root, profilePath, action: options.check ? 'check' : (options.refresh ? 'refresh' : 'plan') });
+  }
 
   if (options.check) return checkDesignProfile({ root, profilePath, current });
 
@@ -85,8 +90,9 @@ export function collectDesignProfile(options) {
 export function collectProjectDesignContext(options) {
   const root = canonicalRoot(options.root || process.cwd());
   const configRead = readProjectConfig(root);
+  if (configRead.error) throw new Error(`Invalid Screenslop config: ${configRead.error}`);
   const config = configRead.config || null;
-  const target = config ? safeResolveTargetConfig(config, root) : null;
+  const target = config ? resolveTargetConfig(config, { root }) : null;
   const sourceRoot = target?.sourceRoot || inferSourceRoot(root);
   const sources = scanDesignSources(root, sourceRoot);
   const sourceHash = hashSources(sources);
@@ -149,17 +155,7 @@ export function buildDesignProfile(options) {
  * @returns {string} Absolute profile path.
  */
 export function resolveDesignProfilePath(root, configuredPath = DEFAULT_DESIGN_PROFILE_PATH) {
-  if (!configuredPath || configuredPath.includes('\0')) throw new Error('Design profile path must be a safe string.');
-  const resolved = path.isAbsolute(configuredPath) ? path.resolve(configuredPath) : path.resolve(root, configuredPath);
-  if (!isPathInside(root, resolved)) throw new Error('Design profile path must resolve inside the project root.');
-  if (fs.existsSync(resolved) && fs.lstatSync(resolved).isSymbolicLink()) {
-    throw new Error('.screenslop/design-profile.json must not be a symlink.');
-  }
-  const dir = path.dirname(resolved);
-  if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) {
-    throw new Error('.screenslop must not be a symlink.');
-  }
-  return resolved;
+  return resolveProjectContainedPath(root, configuredPath, 'Design profile');
 }
 
 /**
@@ -271,7 +267,7 @@ function scanDesignSources(root, sourceRoot) {
   const seen = new Set();
   walk(sourceRoot, files, root);
   for (const candidate of designDocCandidates(root)) {
-    if (fs.existsSync(candidate)) files.push(candidate);
+    if (isSafeSourceFile(root, candidate)) files.push(candidate);
   }
   const uniqueFiles = files.filter((file) => {
     const relative = path.relative(root, file);
@@ -318,7 +314,7 @@ function walk(dir, files, root) {
   const stat = fs.lstatSync(dir);
   if (stat.isSymbolicLink()) return;
   if (stat.isFile()) {
-    if (SCANNED_EXTENSIONS.has(path.extname(dir))) files.push(dir);
+    if (SCANNED_EXTENSIONS.has(path.extname(dir)) && isSafeSourceFile(root, dir)) files.push(dir);
     return;
   }
   if (!stat.isDirectory()) return;
@@ -332,6 +328,19 @@ function walk(dir, files, root) {
     walk(path.join(dir, entry), files, root);
     if (files.length >= MAX_SOURCE_FILES) return;
   }
+}
+
+/**
+ * Checks that a source file exists, is not a symlink, and realpaths under root.
+ * @param {string} root Project root.
+ * @param {string} file Candidate source file.
+ * @returns {boolean} True when safe to read.
+ */
+function isSafeSourceFile(root, file) {
+  if (!fs.existsSync(file)) return false;
+  const stat = fs.lstatSync(file);
+  if (stat.isSymbolicLink() || !stat.isFile()) return false;
+  return isPathInside(root, fs.realpathSync.native(file));
 }
 
 /**
@@ -373,21 +382,6 @@ function inferSourceRoot(root) {
     if (fs.existsSync(resolved)) return resolved;
   }
   return root;
-}
-
-/**
- * Resolves target config without letting invalid config block profile planning.
- *
- * @param {object} config Screenslop config.
- * @param {string} root Project root.
- * @returns {object|null} Target config or null.
- */
-function safeResolveTargetConfig(config, root) {
-  try {
-    return resolveTargetConfig(config, { root });
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -544,6 +538,43 @@ function failure(status, error, extra = {}) {
  */
 function canonicalRoot(root) {
   return fs.realpathSync.native(path.resolve(root));
+}
+
+/**
+ * Resolves a project-local path while rejecting escapes and symlink ancestors.
+ * @param {string} root Project root.
+ * @param {string} configuredPath User-provided path.
+ * @param {string} label Human label for errors.
+ * @returns {string} Absolute path inside the canonical root.
+ */
+export function resolveProjectContainedPath(root, configuredPath, label = 'Project file') {
+  const canonical = canonicalRoot(root);
+  if (!configuredPath || configuredPath.includes('\0')) throw new Error(`${label} path must be a safe string.`);
+  const resolved = path.isAbsolute(configuredPath) ? path.resolve(configuredPath) : path.resolve(canonical, configuredPath);
+  if (!isPathInside(canonical, resolved)) throw new Error(`${label} path must resolve inside the project root.`);
+  assertNoSymlinkAncestors(canonical, resolved, label);
+  return resolved;
+}
+
+/**
+ * Rejects existing symlink ancestors and realpath escapes for a project-local path.
+ * @param {string} root Canonical project root.
+ * @param {string} candidate Absolute candidate path.
+ * @param {string} label Human label for errors.
+ * @returns {void}
+ */
+function assertNoSymlinkAncestors(root, candidate, label) {
+  const relative = path.relative(root, candidate);
+  const parts = relative.split(path.sep).filter(Boolean);
+  let current = root;
+  for (const part of parts) {
+    current = path.join(current, part);
+    if (!fs.existsSync(current)) break;
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) throw new Error(`${label} path must not cross symlinks.`);
+    const real = fs.realpathSync.native(current);
+    if (!isPathInside(root, real)) throw new Error(`${label} real path must stay inside the project root.`);
+  }
 }
 
 /**

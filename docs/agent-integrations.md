@@ -148,6 +148,6 @@ Design Intelligence is now partially shipped for coding agents. The reliable pro
 
 Agents should run the profile freshness check before making design claims. If the profile is stale, they should request or run a refresh preview, inspect the delta, and only write `.screenslop/design-profile.json` after explicit approval. The profile stays private by default and should not be committed.
 
-The agent packet is the bridge for subjective review. Screenslop packages the screenshot path, accessibility summary, deterministic findings, matrix cell metadata, project profile, review questions, and output schema. Agents can then return `design`, `product-logic`, or `profile-gap` findings without pretending they are measured defects.
+The agent packet is the bridge for subjective review. Screenslop packages the screenshot path, accessibility summary, deterministic findings, matrix cell metadata, redacted profile summary, review questions, and output schema. Agents can then return `design`, `product-logic`, or `profile-gap` findings without pretending they are measured defects.
 
 Do not merge subjective judgment into `verified-fixed`. Design findings need their own proof label and may require human review.

@@ -3,18 +3,65 @@
   "$id": "https://booplex.com/screenslop/design-review.schema.json",
   "title": "Screenslop Design Review Packet",
   "type": "object",
-  "required": ["schemaVersion", "kind", "bundle", "profile", "questions", "outputSchema"],
+  "required": [
+    "schemaVersion",
+    "kind",
+    "bundle",
+    "profileSummary",
+    "questions",
+    "outputSchema"
+  ],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "kind": { "enum": ["design-review-packet", "design-review-findings"] },
-    "bundle": { "type": "string" },
-    "profile": { "type": ["object", "null"] },
-    "screenshot": { "type": ["string", "null"] },
-    "accessibilitySummary": { "type": "object" },
-    "deterministicSummary": { "type": "object" },
-    "matrixCell": { "type": ["object", "null"] },
-    "questions": { "type": "array", "items": { "type": "string" } },
-    "findings": { "type": "array", "items": { "type": "object" } },
-    "outputSchema": { "type": "object" }
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "design-review-packet",
+        "design-review-findings"
+      ]
+    },
+    "bundle": {
+      "type": "string"
+    },
+    "screenshot": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accessibilitySummary": {
+      "type": "object"
+    },
+    "deterministicSummary": {
+      "type": "object"
+    },
+    "matrixCell": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "outputSchema": {
+      "type": "object"
+    },
+    "profileSummary": {
+      "type": "object"
+    },
+    "profileStatus": {
+      "type": "string"
+    }
   }
 }

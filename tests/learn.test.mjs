@@ -19,10 +19,10 @@ test('screenslop learn --dry-run plans a private design profile without writing'
   assert.equal(payload.action, 'plan');
   assert.equal(payload.wrote, false);
   assert.equal(payload.dryRun, true);
-  assert.equal(payload.profile.schemaVersion, 1);
-  assert.equal(payload.profile.project.name, path.basename(root));
-  assert.equal(payload.profile.freshness.status, 'current');
-  assert.ok(payload.profile.sources.some((source) => source.path === 'DESIGN.md'));
+  assert.equal(payload.profile, undefined);
+  assert.equal(payload.profileSummary.schemaVersion, 1);
+  assert.equal(payload.profileSummary.freshnessStatus, 'current');
+  assert.equal(payload.profileSummary.sourceCount >= 2, true);
   assert.equal(payload.pathDisplayMode, 'redacted');
   assert.match(payload.profilePath, /^<repo>\/\.screenslop\/design-profile\.json$/);
   assert.equal(fs.existsSync(path.join(root, '.screenslop', 'design-profile.json')), false);
@@ -100,6 +100,38 @@ test('screenslop learn detects stale profiles and refreshes while preserving use
   assert.notEqual(refreshed.freshness.sourceHash, profile.freshness.sourceHash);
   assert.ok(refreshed.reviewRules.some((rule) => rule.id === 'custom.brand.voice'));
   assert.ok(refreshed.components.some((component) => component.name === 'HelpView'));
+});
+
+test('screenslop learn rejects profile paths through symlink ancestors', () => {
+  const root = createSwiftUiProject();
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-profile-outside-'));
+  fs.symlinkSync(outside, path.join(root, 'linked-outside'), 'dir');
+
+  const result = runLearn(root, ['--json', '--dry-run', '--profile', 'linked-outside/design-profile.json']);
+
+  assert.equal(result.status, 1);
+  const payload = JSON.parse(result.stdout);
+  assert.match(payload.error, /symlinks|project root/);
+});
+
+test('screenslop learn refuses invalid existing config instead of falling back', () => {
+  const root = createSwiftUiProject();
+  fs.mkdirSync(path.join(root, '.screenslop'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'Settings',
+    defaultScheme: 'App',
+    defaultBundleId: 'dev.example.App',
+    sourceRoot: '../outside'
+  }, null, 2)}\n`);
+
+  const result = runLearn(root, ['--json', '--dry-run']);
+  assert.equal(result.status, 1);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.status, 'config-invalid');
+  assert.equal(payload.profile, undefined);
 });
 
 /**

@@ -32,6 +32,7 @@ export async function loadVerifyInput(options) {
     fresh,
     baselineFindings,
     freshFindings: freshInfo.findings,
+    freshHasDesignReview: freshInfo.hasDesignReview,
     baselineFindingsPath,
     freshFindingsPath: freshInfo.findingsPath,
     freshCritiqueRefreshed: freshInfo.refreshed,
@@ -49,14 +50,7 @@ export async function loadVerifyInput(options) {
  * @returns {object[]} Findings array.
  */
 export function readFindingsFile(options) {
-  if (!fs.existsSync(options.file)) {
-    throw new Error(`${options.label} findings file not found: ${displayPath(options.root, options.file)}. Run screenslop critique first.`);
-  }
-
-  const payload = JSON.parse(fs.readFileSync(options.file, 'utf8'));
-  const findings = Array.isArray(payload) ? payload : payload.findings;
-  if (!Array.isArray(findings)) throw new Error(`${options.label} findings file must contain an array or { findings: [] }: ${displayPath(options.root, options.file)}`);
-  return findings;
+  return readFindingsPayload(options).findings;
 }
 
 /**
@@ -67,10 +61,12 @@ export function readFindingsFile(options) {
 async function loadFreshFindings({ root, fresh, refreshCritique }) {
   const findingsPath = path.join(fresh.dir, 'findings.json');
   if (!refreshCritique && fs.existsSync(findingsPath)) {
+    const payload = readFindingsPayload({ root, file: findingsPath, label: 'Fresh' });
     return {
-      findings: readFindingsFile({ root, file: findingsPath, label: 'Fresh' }),
+      findings: payload.findings,
       findingsPath,
-      refreshed: false
+      refreshed: false,
+      hasDesignReview: hasDesignReviewPayload(payload.raw, payload.findings)
     };
   }
 
@@ -78,8 +74,37 @@ async function loadFreshFindings({ root, fresh, refreshCritique }) {
   return {
     findings: result.findings,
     findingsPath: path.join(fresh.dir, 'findings.json'),
-    refreshed: true
+    refreshed: true,
+    hasDesignReview: false
   };
+}
+
+/**
+ * Reads findings plus raw metadata from disk.
+ * @param {object} options Read options.
+ * @returns {{findings:object[],raw:unknown}} Findings payload.
+ */
+function readFindingsPayload(options) {
+  if (!fs.existsSync(options.file)) {
+    throw new Error(`${options.label} findings file not found: ${displayPath(options.root, options.file)}. Run screenslop critique first.`);
+  }
+
+  const raw = JSON.parse(fs.readFileSync(options.file, 'utf8'));
+  const findings = Array.isArray(raw) ? raw : raw.findings;
+  if (!Array.isArray(findings)) throw new Error(`${options.label} findings file must contain an array or { findings: [] }: ${displayPath(options.root, options.file)}`);
+  return { findings, raw };
+}
+
+/**
+ * Detects whether fresh findings came from a design review pass.
+ * @param {unknown} payload Raw findings payload.
+ * @param {object[]} findings Parsed findings.
+ * @returns {boolean} True when design review provenance is present.
+ */
+function hasDesignReviewPayload(payload, findings) {
+  if (!Array.isArray(findings)) return false;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.designReview?.ran === true) return true;
+  return findings.some((finding) => ['design', 'product-logic', 'profile-gap'].includes(finding.kind) && finding.proofLevel !== 'measured');
 }
 
 /**

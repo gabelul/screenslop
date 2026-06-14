@@ -796,19 +796,35 @@ function printLearnResult(result, json) {
 function redactLearnResult(result) {
   const redacted = { ...result, pathDisplayMode: 'redacted' };
   if (redacted.profilePath) redacted.profilePath = redactPath(redacted.profilePath);
-  if (redacted.profile?.sources) {
-    redacted.profile = {
-      ...redacted.profile,
-      sources: redacted.profile.sources.map((source) => ({ ...source, path: redactPath(source.path) }))
-    };
+  if (redacted.profile) {
+    redacted.profileSummary = summarizePrivateProfile(redacted.profile);
+    delete redacted.profile;
   }
   if (redacted.freshness?.missingSources) {
     redacted.freshness = {
       ...redacted.freshness,
-      missingSources: redacted.freshness.missingSources.map((sourcePath) => redactPath(sourcePath))
+      missingSources: redacted.freshness.missingSources.map(() => '<redacted-source>')
     };
   }
   return redacted;
+}
+
+/**
+ * Summarizes a private design profile without printing project-specific content.
+ * @param {object} profile Private profile.
+ * @returns {object} Public-safe profile summary.
+ */
+function summarizePrivateProfile(profile) {
+  return {
+    schemaVersion: profile.schemaVersion || null,
+    platform: profile.project?.platform || null,
+    sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
+    componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
+    screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
+    stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,
+    reviewRuleCount: Array.isArray(profile.reviewRules) ? profile.reviewRules.length : 0,
+    freshnessStatus: profile.freshness?.status || null
+  };
 }
 
 /** Plans and optionally applies deterministic fixes for critique findings. */
@@ -936,7 +952,8 @@ async function critique() {
         critiqueResult: result,
         profilePath: options.values['design-profile'] || null,
         agentPacket: options.flags.has('agent-packet'),
-        importPath: options.values['import-design-findings'] || null
+        importPath: options.values['import-design-findings'] || null,
+        strictMissingProfile: options.flags.has('json') && !options.flags.has('agent-packet') && !options.values['import-design-findings']
       });
     }
 
@@ -962,7 +979,7 @@ async function critique() {
  * @returns {boolean} True when design review is requested.
  */
 function wantsDesignReview(options) {
-  return options.flags.has('design') || options.flags.has('agent-packet') || Boolean(options.values['import-design-findings']);
+  return options.flags.has('design') || options.flags.has('agent-packet') || Boolean(options.values['design-profile']) || Boolean(options.values['import-design-findings']);
 }
 
 /**

@@ -7,12 +7,13 @@ import { displayPath } from './load-evidence.mjs';
  * @param {object} context Evidence context.
  * @param {object[]} findings Sorted findings.
  * @param {object} summary Finding summary.
+ * @param {object} [metadata] Optional machine-readable metadata for findings.json.
  * @returns {{findingsPath:string, reportPath:string}} Written artifact paths.
  */
-export function writeCritiqueArtifacts(context, findings, summary) {
+export function writeCritiqueArtifacts(context, findings, summary, metadata = {}) {
   const findingsPath = path.join(context.dir, 'findings.json');
   const reportPath = path.join(context.dir, 'critique.md');
-  fs.writeFileSync(findingsPath, `${JSON.stringify({ summary, findings }, null, 2)}\n`);
+  fs.writeFileSync(findingsPath, `${JSON.stringify({ summary, findings, ...metadata }, null, 2)}\n`);
   fs.writeFileSync(reportPath, renderCritiqueMarkdown(context, findings, summary));
   return {
     findingsPath: displayPath(context.root, findingsPath),

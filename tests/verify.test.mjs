@@ -190,9 +190,31 @@ test('external bundle paths remain absolute in JSON artifacts', async () => {
 });
 
 
-test('design findings use improved instead of verified-fixed when absent from fresh review', () => {
+test('verify returns needs-human-review when fresh bundle has only deterministic critique', async () => {
+  const { root, baseline, fresh } = await verifyWorkspace();
+  const baselineFile = path.join(root, baseline, 'findings.json');
+  const payload = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
+  payload.findings = [designFindings()[0]];
+  payload.designReview = { ran: true, profileStatus: 'current' };
+  fs.writeFileSync(baselineFile, `${JSON.stringify(payload, null, 2)}\n`);
+
+  const result = await collectVerify({ root, baselineBundle: baseline, freshBundle: fresh, findingIds: ['design-badge-state'] });
+
+  assert.equal(result.freshHasDesignReview, false);
+  assert.equal(result.items[0].status, 'needs-human-review');
+});
+
+test('design findings need fresh design-review provenance before improvement claims', () => {
   const [baseline] = designFindings();
   const items = matchFindings({ baselineFindings: [baseline], freshFindings: [] });
+
+  assert.equal(items[0].status, 'needs-human-review');
+  assert.match(items[0].reason, /fresh design review/);
+});
+
+test('design findings use improved instead of verified-fixed when absent from fresh review', () => {
+  const [baseline] = designFindings();
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [], freshHasDesignReview: true });
   const summary = summarizeVerification(items);
 
   assert.equal(items[0].status, 'improved');

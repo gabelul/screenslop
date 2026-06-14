@@ -45,6 +45,22 @@ test('matrix dry-run with config preserves the six requested profile cells', asy
   assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-accessibility').settingStatus.dynamicType.status, 'unavailable');
 });
 
+test('matrix design dry-run records unavailable design status per cell', async () => {
+  const root = createWorkspace();
+  writeConfig(root);
+
+  const report = await collectMatrix({ root, dryRun: true, includeDesign: true });
+
+  assert.equal(report.designSummary.enabled, true);
+  assert.equal(report.designSummary.cellsReviewed, 0);
+  assert.equal(report.designSummary.consistency.status, 'not-run');
+  for (const cell of report.cells) {
+    assert.equal(cell.design.enabled, true);
+    assert.equal(cell.design.status, 'dry-run');
+    assert.equal(cell.design.findings, 0);
+  }
+});
+
 test('matrix writes reports and dry-run bundles under configured artifactsDir', async () => {
   const root = createWorkspace();
   writeConfig(root, { artifactsDir: 'matrix-artifacts' });
@@ -148,6 +164,7 @@ test('matrix --design threads design summaries through captured cells', async ()
   assert.equal(report.designSummary.findings, 0);
   assert.equal(report.designSummary.consistency.status, 'consistent');
   assert.equal(report.summary.designCells, 6);
+  assert.equal(report.cells[0].design.status, 'reviewed');
   assert.equal(report.cells[0].design.profileStatus, 'current');
   assert.match(report.cells[0].design.artifacts.designPacketPath, /design-review-packet\.json$/);
 });

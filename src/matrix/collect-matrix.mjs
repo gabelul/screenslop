@@ -7,6 +7,7 @@ import { createEvidenceBundle, writeEvidenceBundle } from '../evidence/bundle.mj
 import { createRunId } from '../evidence/run-id.mjs';
 import { collectCritique } from '../critique/collect-critique.mjs';
 import { collectDesignReview } from '../design/review.mjs';
+import { resolveProjectContainedPath } from '../design/profile.mjs';
 
 export const DEFAULT_MATRIX_PROFILE = {
   schemaVersion: 1,
@@ -110,7 +111,7 @@ export async function collectMatrix(options = {}) {
  */
 function loadMatrixProfile(root, profilePath) {
   if (!profilePath) return normalizeProfile(DEFAULT_MATRIX_PROFILE);
-  const absolute = path.resolve(root, profilePath);
+  const absolute = resolveProjectContainedPath(root, profilePath, 'Matrix profile');
   const payload = JSON.parse(fs.readFileSync(absolute, 'utf8'));
   return normalizeProfile(payload);
 }
@@ -165,7 +166,7 @@ function readMatrixConfig(root) {
 async function runMatrixCell(options) {
   const { root, cell, dryRun, configState, artifactsDir } = options;
   if (!configState.exists || !configState.target) {
-    return writeUnavailableCell({ root, cell, reason: configState.reason || 'no-config', message: configState.message || 'Matrix capture needs project config.', artifactsDir });
+    return writeUnavailableCell({ root, cell, reason: configState.reason || 'no-config', message: configState.message || 'Matrix capture needs project config.', artifactsDir, includeDesign: options.includeDesign });
   }
   if (
     (!configState.target.workspacePath && !configState.target.projectPath)
@@ -178,10 +179,11 @@ async function runMatrixCell(options) {
       cell,
       reason: 'target-incomplete',
       message: 'Matrix capture needs workspacePath/projectPath, defaultScheme, defaultBundleId, and defaultSurface in .screenslop/config.json.',
-      artifactsDir
+      artifactsDir,
+      includeDesign: options.includeDesign
     });
   }
-  if (dryRun) return writeUnavailableCell({ root, cell, reason: 'dry-run', message: 'Dry run only. No simulator capture attempted.', status: 'dryRun', artifactsDir });
+  if (dryRun) return writeUnavailableCell({ root, cell, reason: 'dry-run', message: 'Dry run only. No simulator capture attempted.', status: 'dryRun', artifactsDir, includeDesign: options.includeDesign });
 
   try {
     const build = runBuildTarget({ target: configState.target, cell, commandRunner: options.commandRunner });
@@ -193,7 +195,8 @@ async function runMatrixCell(options) {
         message: 'xcodebuildmcp could not build and launch this matrix cell.',
         status: 'failed',
         artifactsDir,
-        extra: { build }
+        extra: { build },
+        includeDesign: options.includeDesign
       });
     }
 
@@ -231,6 +234,7 @@ async function runMatrixCell(options) {
       critique: critique ? { ok: critique.ok, findings: critique.summary?.total || 0, artifacts: critique.artifacts } : null,
       design: critique?.design ? {
         enabled: true,
+        status: 'reviewed',
         profileStatus: critique.design.profileStatus,
         findings: (critique.findings || []).filter((finding) => finding.kind && finding.kind !== 'measured').length,
         artifacts: {
@@ -241,7 +245,7 @@ async function runMatrixCell(options) {
       error: see.ok ? null : 'capture-failed'
     };
   } catch (error) {
-    return writeUnavailableCell({ root, cell, reason: 'capture-error', message: error.message, status: 'failed', artifactsDir });
+    return writeUnavailableCell({ root, cell, reason: 'capture-error', message: error.message, status: 'failed', artifactsDir, includeDesign: options.includeDesign });
   }
 }
 
@@ -250,7 +254,7 @@ async function runMatrixCell(options) {
  * @param {object} options Cell options.
  * @returns {object} Cell result.
  */
-function writeUnavailableCell({ root, cell, reason, message, status = 'unavailable', artifactsDir = null, extra = {} }) {
+function writeUnavailableCell({ root, cell, reason, message, status = 'unavailable', artifactsDir = null, includeDesign = false, extra = {} }) {
   const bundle = createEvidenceBundle({ root, surface: cell.surface || cell.id, driver: 'matrix', artifactsDir });
   bundle.manifest.matrixCell = { id: cell.id, label: cell.label };
   bundle.manifest.environment = requestedEnvironment(cell);
@@ -271,6 +275,13 @@ function writeUnavailableCell({ root, cell, reason, message, status = 'unavailab
     evidenceBundle: path.relative(root, bundle.dir),
     evidence: path.relative(root, bundle.manifestPath),
     artifacts: bundle.manifest.artifacts,
+    design: includeDesign ? {
+      enabled: true,
+      status: status === 'dryRun' ? 'dry-run' : 'unavailable',
+      profileStatus: null,
+      findings: 0,
+      artifacts: { designPacketPath: null, designPromptPath: null }
+    } : null,
     ...extra
   };
 }
@@ -403,7 +414,7 @@ function publicTarget(target) {
  * @returns {void}
  */
 function applyDesignCellSummary(report, cell) {
-  if (!report.designSummary.enabled || !cell.design?.enabled) return;
+  if (!report.designSummary.enabled || !cell.design?.enabled || cell.design.status !== 'reviewed') return;
   report.designSummary.cellsReviewed += 1;
   report.designSummary.findings += cell.design.findings || 0;
   report.summary.designCells += 1;

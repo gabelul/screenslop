@@ -19,6 +19,7 @@ export async function collectVerify(options) {
   const items = matchFindings({
     baselineFindings: input.baselineFindings,
     freshFindings: input.freshFindings,
+    freshHasDesignReview: input.freshHasDesignReview,
     selectedIds: options.findingIds || [],
     fixSession: input.fixSession
   });
@@ -32,6 +33,7 @@ export async function collectVerify(options) {
     baselineFindingsPath: displayPath(input.root, input.baselineFindingsPath),
     freshFindingsPath: displayPath(input.root, input.freshFindingsPath),
     freshCritiqueRefreshed: input.freshCritiqueRefreshed,
+    freshHasDesignReview: input.freshHasDesignReview,
     fixSessionPath: input.fixSessionPath,
     summary,
     items,

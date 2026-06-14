@@ -70,12 +70,14 @@ test('screenslop verify still refuses to prove without a fresh bundle', () => {
 
 test('screenslop matrix writes a real no-config report with linked cell evidence', () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-matrix-cli-'));
+  fs.mkdirSync(path.join(workspace, 'examples', 'matrix'), { recursive: true });
+  fs.copyFileSync(path.join(repoRoot, 'examples/matrix/default.json'), path.join(workspace, 'examples/matrix/default.json'));
   const result = spawnSync('node', [
     path.join(repoRoot, 'bin/screenslop.mjs'),
     'matrix',
     '--dry-run',
     '--profile',
-    path.join(repoRoot, 'examples/matrix/default.json'),
+    'examples/matrix/default.json',
     '--json'
   ], {
     cwd: workspace,

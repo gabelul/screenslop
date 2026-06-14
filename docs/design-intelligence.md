@@ -23,7 +23,7 @@ screenslop critique artifacts/<run> --import-design-findings design-findings.jso
 screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 ```
 
-The shipped design critique path loads the private profile, can write an agent packet, and can import agent-produced findings. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:
+The shipped design critique path loads the private profile, can write a redacted agent packet, and can import agent-produced findings. In JSON mode, `--design` fails with `missing-design-profile` unless a usable profile exists or `--agent-packet`/`--import-design-findings` is handling the review handoff. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:
 
 - `measured`: deterministic, tool-measured proof.
 - `design`: app-aware design recommendation.
@@ -48,7 +48,7 @@ artifacts/<run>/design-review-packet.json
 artifacts/<run>/design-review-prompt.md
 ```
 
-The packet gives the agent the screenshot path, AX summary, deterministic findings summary, design profile, screen metadata, matrix cell metadata when available, review questions, and an output schema.
+The packet gives the agent the screenshot path, AX summary, deterministic findings summary, a redacted profile summary, screen metadata, matrix cell metadata when available, review questions, and an output schema. It does not copy the full private profile into the packet.
 
 ## Guardrails
 

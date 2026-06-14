@@ -2,13 +2,18 @@
   "schemaVersion": 1,
   "kind": "design-review-packet",
   "bundle": "artifacts/example-settings",
-  "profile": {
+  "profileSummary": {
+    "available": true,
     "schemaVersion": 1,
-    "project": {
-      "name": "ExampleApp",
-      "platform": "ios"
-    }
+    "platform": "ios",
+    "sourceCount": 3,
+    "componentCount": 2,
+    "screenTypeCount": 1,
+    "stateSemanticCount": 1,
+    "reviewRuleCount": 2,
+    "freshnessStatus": "current"
   },
+  "profileStatus": "current",
   "screenshot": "artifacts/example-settings/screenshot.jpg",
   "accessibilitySummary": {
     "visibleControls": 4,
