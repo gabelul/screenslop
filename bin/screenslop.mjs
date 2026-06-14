@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { run } from '../src/runtime/shell.mjs';
+import { quote, run, runFor } from '../src/runtime/shell.mjs';
 import { detectRuntimes } from '../src/runtime/detect.mjs';
 import { collectSee } from '../src/evidence/collect-see.mjs';
 import { collectCritique } from '../src/critique/collect-critique.mjs';
@@ -134,7 +134,9 @@ async function matrix() {
 async function doctor() {
   const detected = detectRuntimes();
   const cli = readCliPackageInfo();
+  const latest = await checkLatestCliVersion(cli);
   console.log(`Screenslop doctor\nVersion: ${cli.name}@${cli.version}\n`);
+  printCliUpdateStatus(cli, latest);
   console.log(`Preferred runtime: ${detected.preferred}\n`);
 
   for (const [name, info] of Object.entries(detected.tools)) {
@@ -159,6 +161,106 @@ async function doctor() {
       installBaguette();
     }
   }
+}
+
+/**
+ * Checks npm for the latest published CLI version without making doctor fail.
+ *
+ * @param {{name:string,version:string}} cli Local CLI metadata.
+ * @returns {Promise<{status:'current'|'outdated'|'unavailable',latest:string|null,reason?:string}>}
+ */
+async function checkLatestCliVersion(cli) {
+  if (process.env.SCREENSLOP_DOCTOR_SKIP_LATEST === '1' || args.includes('--skip-latest')) {
+    return { status: 'unavailable', latest: null, reason: 'skipped' };
+  }
+
+  const override = process.env.SCREENSLOP_LATEST_VERSION_OVERRIDE;
+  if (override) return compareCliVersions(cli.version, override);
+
+  const result = await runFor(`npm view ${quote(cli.name)} version --silent`, { timeoutMs: 2500 });
+  if (result.status !== 0 || result.timedOut) {
+    return {
+      status: 'unavailable',
+      latest: null,
+      reason: result.timedOut ? 'timeout' : 'npm-unavailable'
+    };
+  }
+
+  const latest = result.stdout.trim().split('\n')[0]?.trim();
+  if (!latest) return { status: 'unavailable', latest: null, reason: 'empty-npm-version' };
+
+  return compareCliVersions(cli.version, latest);
+}
+
+/**
+ * Compares local and latest package versions.
+ *
+ * @param {string} current Local package version.
+ * @param {string} latest Latest published package version.
+ * @returns {{status:'current'|'outdated',latest:string}}
+ */
+function compareCliVersions(current, latest) {
+  return {
+    status: isVersionOlder(current, latest) ? 'outdated' : 'current',
+    latest
+  };
+}
+
+/**
+ * Prints the CLI freshness line for humans and coding agents.
+ *
+ * @param {{name:string,version:string}} cli Local CLI metadata.
+ * @param {{status:'current'|'outdated'|'unavailable',latest:string|null,reason?:string}} latest Latest-version result.
+ */
+function printCliUpdateStatus(cli, latest) {
+  if (latest.status === 'current') {
+    console.log(`Latest: ${latest.latest} (current)\n`);
+    return;
+  }
+
+  if (latest.status === 'outdated') {
+    console.log(`Latest: ${latest.latest} (update available)`);
+    console.log(`Update CLI: npm install -g ${cli.name}@latest`);
+    console.log(`No global install: npx -y ${cli.name}@latest doctor\n`);
+    return;
+  }
+
+  const reason = latest.reason ? ` (${latest.reason})` : '';
+  console.log(`Latest: unavailable${reason}`);
+  console.log(`Check manually: npm view ${cli.name} version\n`);
+}
+
+/**
+ * Checks whether one semver-ish version is older than another.
+ *
+ * @param {string} current Current version.
+ * @param {string} latest Latest version.
+ * @returns {boolean} True when current is older.
+ */
+function isVersionOlder(current, latest) {
+  const currentParts = parseVersionParts(current);
+  const latestParts = parseVersionParts(latest);
+  for (let index = 0; index < Math.max(currentParts.length, latestParts.length); index += 1) {
+    const currentValue = currentParts[index] || 0;
+    const latestValue = latestParts[index] || 0;
+    if (currentValue < latestValue) return true;
+    if (currentValue > latestValue) return false;
+  }
+  return false;
+}
+
+/**
+ * Parses numeric semver parts from a version string.
+ *
+ * @param {string} version Version string.
+ * @returns {number[]} Numeric major/minor/patch parts.
+ */
+function parseVersionParts(version) {
+  return String(version || '0.0.0')
+    .replace(/^v/, '')
+    .split(/[.-]/)
+    .map((part) => Number.parseInt(part, 10))
+    .map((part) => (Number.isFinite(part) ? part : 0));
 }
 
 /**

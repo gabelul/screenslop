@@ -9,12 +9,16 @@ Install both when you want an agent to review Apple UI. The skill does not repla
 
 ## Install the CLI
 
-From GitHub:
+From npm:
 
 ```bash
-npm install -g github:gabelul/screenslop#v0.1.0
+npm install -g screenslop@latest
 screenslop doctor
 ```
+
+`doctor` prints the installed CLI version and checks the latest npm version. If
+the global binary is stale, it prints the update command. That gives coding
+agents a safe way to notice “skill updated, CLI did not.”
 
 From a checkout:
 
@@ -29,6 +33,13 @@ If you do not want a global install, run the CLI through the checkout:
 
 ```bash
 node bin/screenslop.mjs see --dry-run --json
+```
+
+Or run the latest npm package without installing a global binary:
+
+```bash
+npx -y screenslop@latest doctor
+npx -y screenslop@latest learn --json --dry-run
 ```
 
 ## Install the agent skill
@@ -54,6 +65,19 @@ npx skills add gabelul/screenslop --skill screenslop --copy
 ```
 
 The Skills CLI is only a file-placement step. It does not run Screenslop, does not create `.screenslop/config.json`, and does not connect a private app.
+
+Updating the skill is separate from updating the CLI:
+
+```bash
+npx skills update screenslop -p -y
+screenslop doctor
+```
+
+If `doctor` reports an older CLI, update it:
+
+```bash
+npm install -g screenslop@latest
+```
 
 ## Manual install
 

@@ -5,7 +5,7 @@ The Screenslop skill is an instruction layer. The CLI must also be installed.
 ## Quick path
 
 ```bash
-npm install -g github:gabelul/screenslop#v0.1.0
+npm install -g screenslop@latest
 screenslop doctor
 npx skills add gabelul/screenslop --list
 npx skills add gabelul/screenslop --skill screenslop
@@ -14,6 +14,19 @@ screenslop instructions --agent codex
 
 `--list` is the safe preview. It should show one skill named `screenslop`.
 `screenslop instructions` prints the same agent contract from the shipped CLI when a host does not auto-load the skill.
+
+Skill updates do not update the CLI binary. If `screenslop doctor` reports an
+older CLI, run:
+
+```bash
+npm install -g screenslop@latest
+```
+
+If global installs are blocked, call the current CLI through npm:
+
+```bash
+npx -y screenslop@latest doctor
+```
 
 ## Manual paths
 

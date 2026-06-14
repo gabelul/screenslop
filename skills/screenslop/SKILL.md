@@ -6,6 +6,7 @@ user-invocable: true
 allowed-tools:
   - Bash(node *)
   - Bash(npx screenslop *)
+  - Bash(npx -y screenslop@latest *)
   - Bash(screenslop *)
   - Bash(baguette *)
   - Bash(xcodebuildmcp *)
@@ -56,6 +57,24 @@ file:
 ## First use in a project
 
 Skill install is file placement. It does not create private target config.
+Skill updates do not update the CLI binary. Start with doctor and follow its
+version warning:
+
+```bash
+screenslop doctor
+```
+
+If doctor says the CLI is stale, update the global command:
+
+```bash
+npm install -g screenslop@latest
+```
+
+If global installs are not allowed, run the latest CLI directly:
+
+```bash
+npx -y screenslop@latest doctor
+```
 
 When `.screenslop/config.json` is missing in an iOS project, run setup as a dry run first:
 

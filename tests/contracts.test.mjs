@@ -195,11 +195,27 @@ test('screenslop doctor prints the package version', () => {
   const pkg = readJson('package.json');
   const result = spawnSync(process.execPath, ['bin/screenslop.mjs', 'doctor'], {
     cwd: repoRoot,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    env: { ...process.env, SCREENSLOP_LATEST_VERSION_OVERRIDE: pkg.version }
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, new RegExp(`Version: ${pkg.name}@${pkg.version}`));
+  assert.match(result.stdout, new RegExp(`Latest: ${pkg.version} \\(current\\)`));
+});
+
+test('screenslop doctor tells agents how to update a stale CLI', () => {
+  const pkg = readJson('package.json');
+  const result = spawnSync(process.execPath, ['bin/screenslop.mjs', 'doctor'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, SCREENSLOP_LATEST_VERSION_OVERRIDE: '99.0.0' }
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Latest: 99\.0\.0 \(update available\)/);
+  assert.match(result.stdout, new RegExp(`npm install -g ${pkg.name}@latest`));
+  assert.match(result.stdout, new RegExp(`npx -y ${pkg.name}@latest doctor`));
 });
 
 test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
@@ -290,7 +306,9 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(readme, /docs\/skill-installation\.md/);
   assert.match(playbook, /docs\/skill-installation\.md/);
   assert.match(skill, /reference\/install\.md/);
+  assert.match(skill, /Skill updates do not update the CLI binary/);
   assert.match(installRef, /The Screenslop skill is an instruction layer\. The CLI must also be installed\./);
+  assert.match(installRef, /npm install -g screenslop@latest/);
 
   for (const ref of [
     'reference/install.md',
@@ -307,6 +325,9 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(install, /Screenslop has two separate pieces/);
   assert.match(install, /npx skills add gabelul\/screenslop --list/);
   assert.match(install, /npx skills add gabelul\/screenslop --skill screenslop/);
+  assert.match(install, /npx skills update screenslop -p -y/);
+  assert.match(install, /npm install -g screenslop@latest/);
+  assert.match(install, /npx -y screenslop@latest doctor/);
   assert.match(install, /~\/\.codex\/skills\/screenslop/);
   assert.match(install, /~\/\.claude\/skills\/screenslop/);
   assert.match(install, /~\/\.agents\/skills\/screenslop/);
