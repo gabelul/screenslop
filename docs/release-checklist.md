@@ -108,4 +108,5 @@ Before shipping design-aware work:
 - Confirm `schemas/finding.schema.json` accepts optional design fields without changing required measured fields.
 - Confirm `package.json` ships `docs/design-intelligence.md`, `docs/design-profile-format.md`, and `examples/design-profile/`.
 - Confirm `.screenslop/design-profile.json` remains ignored unless a project explicitly exports a redacted public profile.
-- Confirm docs and the skill mark planned design commands as planned until the CLI help ships them.
+- Confirm `screenslop learn --json --dry-run`, `--write --yes`, `--check`, and `--refresh --dry-run` pass in a temp project.
+- Confirm docs and the skill mark planned design-critique commands as planned until the CLI help ships them.

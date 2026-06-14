@@ -124,18 +124,18 @@ test('design intelligence contracts are documented without overclaiming shipped 
     assert.match(gitignore, /\.screenslop\/design-profile\.json/);
   }
 
-  assert.match(readme, /Design Intelligence \(planned\)/);
-  assert.match(readme, /`screenslop learn` \| Future/);
+  assert.match(readme, /Design Intelligence profile/);
+  assert.match(readme, /`screenslop learn` \| MVP/);
   assert.match(commands, /Design Intelligence command boundary/);
-  assert.match(commands, /planned, not shipped/);
+  assert.match(commands, /shipped profile learning and planned design critique/);
   assert.match(commands, /--agent-packet/);
   assert.match(integrations, /Design profile integration boundary/);
   assert.match(integrations, /agent packet/);
-  assert.match(playbook, /Design Intelligence when shipped/);
-  assert.match(playbook, /Do not run these as proof until the CLI help exposes the design commands/);
-  assert.match(skill, /Design Intelligence planned path/);
-  assert.match(skill, /Do not invent command support/);
-  assert.match(limitations, /Design Intelligence is not shipped yet/);
+  assert.match(playbook, /Design Intelligence profile path/);
+  assert.match(playbook, /`screenslop learn` is the shipped profile path/);
+  assert.match(skill, /Design Intelligence profile path/);
+  assert.match(skill, /Do not invent unsupported flags/);
+  assert.match(limitations, /Design Intelligence is partially shipped/);
   assert.match(checklist, /Design Intelligence contract checks/);
   assert.match(checklist, /examples\/design-profile\/minimal\.json/);
 });
@@ -230,6 +230,7 @@ test('screenslop instructions prints a self-contained agent contract', () => {
   assert.match(payload.prompt, /Use the Screenslop skill/);
   assert.match(payload.prompt, /Do not replace Screenslop with source-only SwiftUI review/);
   assert.match(payload.prompt, /fresh capture, fresh critique, and screenslop verify/);
+  assert.match(payload.prompt, /screenslop learn --check --json/);
   assert.ok(payload.commands.includes('screenslop setup --json --dry-run'));
   assert.ok(payload.commands.some((command) => command.startsWith('screenslop verify ')));
   assert.ok(['missing', 'installed', 'installed-different'].includes(payload.skill.status));

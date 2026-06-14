@@ -1,7 +1,7 @@
 ---
 name: screenslop
 description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop captures Baguette-backed simulator evidence, produces evidence-backed findings, applies narrow fixes, and verifies against fresh captures. XcodeBuildMCP is used for build/run support; non-Baguette capture fallback is future work.
-argument-hint: "[setup|instructions|init|doctor|see|critique|fix|matrix|verify|watch] [target]"
+argument-hint: "[setup|instructions|init|doctor|see|critique|fix|matrix|learn|verify|watch] [target]"
 user-invocable: true
 allowed-tools:
   - Bash(node *)
@@ -33,6 +33,7 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 - `critique`: score evidence and produce findings.
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
 - `matrix`: write a bounded six-cell report with linked evidence bundles.
+- `learn`: learn, check, or refresh `.screenslop/design-profile.json`.
 - `verify`: compare baseline findings with a fresh bundle; it does not capture
   new evidence by itself.
 - `watch`: future live review loop; current CLI prints a placeholder.
@@ -111,16 +112,17 @@ Only a full configured run with fresh capture, fresh critique, and
 missing, record the outcome as `recorded-blocker` and keep Studio blocked. The
 sample app is not a get-out-of-jail-free card, sadly.
 
-## Design Intelligence planned path
+## Design Intelligence profile path
 
-Design Intelligence is planned, not shipped as a runnable CLI path until `screenslop help` lists it. Do not invent command support.
+Design Intelligence is partially shipped. `learn` is runnable when `screenslop help` lists it; design-aware `critique --design` and agent-packet import remain planned. Do not invent unsupported flags.
 
-When it ships, use this order:
+Use this order:
 
 1. Run the normal deterministic loop first.
-2. Check or refresh `.screenslop/design-profile.json` before design claims.
-3. Use the design review packet for subjective findings.
-4. Keep `measured`, `design`, `product-logic`, and `profile-gap` findings separate.
-5. Only measured findings can become `verifyStatus: "verified-fixed"` automatically.
+2. Run `screenslop learn --check --json` before design claims.
+3. If stale, run `screenslop learn --refresh --json --dry-run`, inspect the delta, then write with `--write --yes`.
+4. Use the planned design review packet for subjective findings.
+5. Keep `measured`, `design`, `product-logic`, and `profile-gap` findings separate.
+6. Only measured findings can become `verifyStatus: "verified-fixed"` automatically.
 
-Until then, treat `docs/design-profile-format.md` and `docs/design-intelligence.md` as manual context. If you review hierarchy, typography, color, emotional fit, or product-state logic yourself, say it is agent judgment and keep it out of the deterministic proof lane.
+For planned critique features, treat `docs/design-profile-format.md` and `docs/design-intelligence.md` as manual context. If you review hierarchy, typography, color, emotional fit, or product-state logic yourself, say it is agent judgment and keep it out of the deterministic proof lane.

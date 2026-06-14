@@ -8,6 +8,7 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
+import { collectDesignProfile } from '../src/design/profile.mjs';
 import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
 import {
@@ -55,6 +56,9 @@ switch (command) {
   case 'matrix':
     await matrix();
     break;
+  case 'learn':
+    await learn();
+    break;
   case 'watch':
     placeholder(command);
     break;
@@ -81,6 +85,7 @@ Commands:
   critique   Review an evidence bundle
   fix        Plan and apply selected safe SwiftUI finding fixes
   matrix     Write a bounded six-cell device/settings report
+  learn      Learn, check, or refresh the private design profile
   verify     Compare previous findings with fresh evidence
   watch      Live review loop (coming next)
 `);
@@ -718,6 +723,90 @@ async function see() {
 }
 
 
+
+/** Learns, checks, or refreshes the project-local design profile. */
+async function learn() {
+  const options = parseOptions(args);
+  const wantsJson = options.flags.has('json');
+  const wantsWrite = options.flags.has('write') && !options.flags.has('dry-run');
+
+  try {
+    const confirmed = wantsWrite && !options.flags.has('yes')
+      ? await confirmDesignProfileWrite()
+      : options.flags.has('yes');
+    const result = collectDesignProfile({
+      root: process.cwd(),
+      profilePath: options.values['design-profile'] || options.values.profile || null,
+      check: options.flags.has('check'),
+      refresh: options.flags.has('refresh'),
+      write: options.flags.has('write'),
+      dryRun: options.flags.has('dry-run'),
+      yes: options.flags.has('yes'),
+      surface: options.values.surface || null,
+      confirmed
+    });
+    printLearnResult(redactLearnResult(result), wantsJson);
+    if (!result.ok) process.exitCode = 1;
+  } catch (error) {
+    if (wantsJson) {
+      console.log(JSON.stringify({ ok: false, command: 'learn', error: error.message }, null, 2));
+    } else {
+      console.error(`screenslop learn failed: ${error.message}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+/** Asks before writing the private design profile. */
+async function confirmDesignProfileWrite() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const answer = await ask('Write .screenslop/design-profile.json now? [y/N] ');
+  return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+/**
+ * Prints learn output for humans or agents.
+ * @param {object} result Learn result.
+ * @param {boolean} json Whether to print strict JSON.
+ * @returns {void}
+ */
+function printLearnResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Design profile: ${result.profilePath || '<missing>'}`);
+  console.log(`Status: ${result.status}`);
+  console.log(`Action: ${result.action || 'learn'}`);
+  console.log(`Wrote: ${result.wrote ? 'yes' : 'no'}`);
+  if (result.sourceCount !== undefined) console.log(`Sources: ${result.sourceCount}`);
+  for (const command of result.next || []) console.log(`Next: ${command}`);
+}
+
+/**
+ * Redacts private path prefixes in learn output.
+ * @param {object} result Learn result.
+ * @returns {object} Redacted result.
+ */
+function redactLearnResult(result) {
+  const redacted = { ...result, pathDisplayMode: 'redacted' };
+  if (redacted.profilePath) redacted.profilePath = redactPath(redacted.profilePath);
+  if (redacted.profile?.sources) {
+    redacted.profile = {
+      ...redacted.profile,
+      sources: redacted.profile.sources.map((source) => ({ ...source, path: redactPath(source.path) }))
+    };
+  }
+  if (redacted.freshness?.missingSources) {
+    redacted.freshness = {
+      ...redacted.freshness,
+      missingSources: redacted.freshness.missingSources.map((sourcePath) => redactPath(sourcePath))
+    };
+  }
+  return redacted;
+}
+
 /** Plans and optionally applies deterministic fixes for critique findings. */
 async function fix() {
   const options = parseOptions(args);
@@ -1013,7 +1102,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['apply', 'boot', 'critique', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'check', 'critique', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -1045,7 +1134,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['apply', 'boot', 'critique', 'dry-run', 'install-baguette', 'json', 'logs', 'refresh-critique', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'check', 'critique', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;

@@ -295,13 +295,13 @@ Stop and report the blocker when:
 
 Do not smooth over these. The whole product is built around evidence, so the blocker is evidence too.
 
-## Design Intelligence when shipped
+## Design Intelligence profile path
 
-This is the future design-aware path. Do not run these as proof until the CLI help exposes the design commands.
+`screenslop learn` is the shipped profile path. Design-aware critique flags are still planned, so do not run those as proof until the CLI help exposes them.
 
 1. Run deterministic Screenslop first: doctor, see, critique, fix, fresh see, fresh critique, verify.
-2. Check the project design profile freshness before design claims.
-3. If the profile is stale, preview the refresh delta and ask before writing `.screenslop/design-profile.json`.
+2. Run `screenslop learn --check --json` before design claims.
+3. If the profile is stale, run `screenslop learn --refresh --json --dry-run`, inspect the delta, and ask before writing `.screenslop/design-profile.json`.
 4. Run the opt-in design pass or agent packet only after runtime evidence exists.
 5. Keep measured and subjective output separate:
    - `measured`: deterministic finding, eligible for fresh-bundle `verified-fixed`.

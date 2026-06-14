@@ -144,9 +144,9 @@ Keep MCP as a wrapper over the same core. Do not let it grow separate behavior.
 
 ## Design profile integration boundary
 
-Design Intelligence is a planned extension for coding agents. The reliable shipped loop is still capture -> critique -> fix -> fresh capture -> fresh critique -> verify.
+Design Intelligence is now partially shipped for coding agents. The reliable proof loop is still capture -> critique -> fix -> fresh capture -> fresh critique -> verify; `learn` adds private profile context for later design judgment.
 
-When Design Intelligence ships, agents should run the profile freshness check before making design claims. If the profile is stale, they should request or run a refresh preview, inspect the delta, and only write `.screenslop/design-profile.json` after explicit approval. The profile stays private by default and should not be committed.
+Agents should run the profile freshness check before making design claims. If the profile is stale, they should request or run a refresh preview, inspect the delta, and only write `.screenslop/design-profile.json` after explicit approval. The profile stays private by default and should not be committed.
 
 The agent packet is the intended bridge for subjective review. Screenslop will package the screenshot path, accessibility summary, deterministic findings, matrix cell metadata, project profile, review questions, and output schema. Agents can then return `design`, `product-logic`, or `profile-gap` findings without pretending they are measured defects.
 

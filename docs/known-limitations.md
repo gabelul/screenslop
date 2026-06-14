@@ -27,9 +27,9 @@ Screenslop v0.1 is an engine/CLI MVP, not Screenslop Studio.
 - The private dogfood gate outcome is `recorded-blocker` in this checkout because no private `.screenslop/config.json` is present. The preflight failure is redacted and parseable, but it is not a substitute for a real app capture, fix, fresh capture, fresh critique, and `verified-fixed` result.
 - This repo should not grow `apps/mac/`, private wrapper scaffolding, or duplicate runtime/critique/fix logic while those gates are still open.
 
-## Design Intelligence is not shipped yet
+## Design Intelligence is partially shipped
 
-The repository now defines the Design Intelligence boundary, schemas, examples, and docs, but the CLI does not yet run `learn`, `--design`, `--agent-packet`, or design finding import. Treat those as planned contracts until `screenslop help` exposes them.
+The repository now ships `screenslop learn` for private design-profile plan/write/check/refresh. The CLI does not yet run `--design`, `--agent-packet`, or design finding import. Treat those as planned contracts until `screenslop help` exposes them.
 
 The private design profile path is `.screenslop/design-profile.json`. It is ignored by default because project tone, product semantics, source paths, and copied design rules can be private. A stale or missing profile should block design claims, not deterministic measured critique.
 

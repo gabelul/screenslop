@@ -200,6 +200,7 @@ function buildPrompt(options) {
   return `Use the Screenslop skill for Apple UI review. If the skill is not auto-loaded, follow this contract exactly.\n\n` +
     `Screenslop is evidence-first. Capture runtime evidence before critique whenever capture is available. Do not replace Screenslop with source-only SwiftUI review.\n\n` +
     `First-use setup is private and dry-run-first. Run setup, show the planned config, and ask before writing .screenslop/config.json. Never commit private config or generated private artifacts.\n\n` +
+    `For design-system judgment, run screenslop learn --check --json first. If the profile is stale, preview with screenslop learn --refresh --json --dry-run and ask before writing .screenslop/design-profile.json.\n\n` +
     `Command loop:\n${options.commands.map((command) => `- ${command}`).join('\n')}\n\n` +
     `A fix is not proven by source edits or fix-session.json. Only fresh capture, fresh critique, and screenslop verify can prove a selected finding is fixed.`;
 }

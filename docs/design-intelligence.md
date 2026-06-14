@@ -7,20 +7,22 @@ Screenslop has two review layers.
 
 The deterministic layer stays the default. It handles things like missing AX labels, weak evidence, touch targets, offscreen frames, and logs. Design intelligence is separate because hierarchy, typography, color, emotional fit, product-state logic, and slop patterns need project context.
 
-## Planned flow
+## Current and planned flow
 
 ```bash
 screenslop learn --json --dry-run
 screenslop learn --write --yes --json
 screenslop learn --check --json
 screenslop learn --refresh --json --dry-run
+screenslop learn --refresh --write --yes --json
 
+# planned design critique flags
 screenslop critique artifacts/<run> --design --json
 screenslop critique artifacts/<run> --design-profile .screenslop/design-profile.json --json
 screenslop critique artifacts/<run> --design --agent-packet --json
 ```
 
-`--design` should never weaken the proof boundary. Design findings must say what kind of judgment they are:
+The shipped `learn` command only manages the private profile. Planned `--design` critique should never weaken the proof boundary. Design findings must say what kind of judgment they are:
 
 - `measured`: deterministic, tool-measured proof.
 - `design`: app-aware design recommendation.

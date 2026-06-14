@@ -35,6 +35,13 @@ try {
       assertEqual(payload.summary.total, 6, 'matrix cell count');
     }
   });
+  runJson('node', ['bin/screenslop.mjs', 'learn', '--dry-run', '--json'], {
+    cwd: packageRoot,
+    assertPayload: (payload) => {
+      assertEqual(payload.command, 'learn', 'learn command');
+      assertEqual(payload.wrote, false, 'learn dry-run write state');
+    }
+  });
   run(
     'node',
     [
@@ -42,6 +49,7 @@ try {
       'tests/check-dogfood-redaction.test.mjs',
       'tests/config.test.mjs',
       'tests/contracts.test.mjs',
+      'tests/learn.test.mjs',
       'tests/matrix.test.mjs',
       'tests/verify.test.mjs'
     ],
@@ -62,6 +70,7 @@ try {
           'doctor',
           'see-dry-run-json',
           'matrix-dry-run-json',
+          'learn-dry-run-json',
           'package-tests',
           'fixture-e2e'
         ]

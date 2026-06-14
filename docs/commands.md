@@ -111,33 +111,30 @@ future 0.x releases may change it with an explicit migration path.
 
 ### `screenslop learn`
 
-Planned design-profile learn/check/refresh path. This command is not shipped
-until `screenslop help` lists it.
+Learns, checks, and refreshes the private project design profile.
 
-This is the future Screenslop design-learning path: stronger than source-only documentation because it can use real screens.
+This is the Screenslop design-learning path. The MVP scans project files and common design docs, writes `.screenslop/design-profile.json`, checks freshness, and refreshes while preserving user-authored rules. Runtime evidence and token adapters can feed this later, but they are not part of the shipped `learn` command yet.
 
 Use it for:
 
-- capturing representative screens
-- reading accessibility trees
-- scanning SwiftUI code
-- extracting colors, typography, spacing, symbols, materials, motion patterns
-- building or refreshing `DESIGN.md`
-- writing app-specific review rules
+- scanning SwiftUI code and common design docs
+- creating the private profile from a dry-run preview
+- checking whether the profile is current or stale
+- refreshing source hashes and generated component hints
+- preserving app-specific review rules across refreshes
 
-Possible future flow:
+Current flow:
 
 ```bash
-screenslop learn --surface Settings
-screenslop learn --from-artifacts artifacts/<run-id>
-screenslop learn --tokens path/to/tokens.json
+screenslop learn --json --dry-run
+screenslop learn --write --yes --json
 screenslop learn --check --json
 screenslop learn --refresh --json --dry-run
-screenslop learn --write --yes --json
+screenslop learn --refresh --write --yes --json
+screenslop learn --surface Settings --json --dry-run
 ```
 
-The private default output is `.screenslop/design-profile.json`. It should stay
-ignored unless a project exports a redacted public profile.
+The private default output is `.screenslop/design-profile.json`. It stays ignored unless a project exports a redacted public profile. JSON writes need `--write --yes`; dry runs never write.
 
 `tokextract` may fit here as a token-source adapter:
 
@@ -416,11 +413,8 @@ Schemas live in `schemas/`. The matrix report contract is
 
 ## Design Intelligence command boundary
 
-Design Intelligence is planned, not shipped as a CLI command in this release. Until the top-level help lists it, agents must treat the commands below as contract notes, not runnable proof:
+Design Intelligence is split into shipped profile learning and planned design critique. `screenslop learn` is shipped; the flags below are still future design-critique contracts until the top-level help exposes them:
 
-- `learn --check --json`: future profile freshness check for `.screenslop/design-profile.json`.
-- `learn --refresh --json --dry-run`: future refresh preview for changed docs, tokens, SwiftUI files, and evidence sources.
-- `learn --write --yes --json`: future explicit write path for a refreshed private profile.
 - `critique --design --json`: future opt-in design pass after deterministic critique.
 - `critique --design-profile <path> --json`: future profile override for a design pass.
 - `critique --design --agent-packet --json`: future packet writer for a coding agent or local reviewer.
@@ -428,4 +422,4 @@ Design Intelligence is planned, not shipped as a CLI command in this release. Un
 
 The deterministic `critique` command remains the default. A design-aware pass must preserve the measured finding schema and add optional fields only: `kind`, `proofLevel`, `requiresHumanReview`, `profileRuleId`, `judgment`, and `alternatives`.
 
-Profile refresh is not proof. If a profile is stale, run a dry-run refresh, review the delta, then write only with explicit confirmation. Design findings should use `design`, `product-logic`, or `profile-gap`; measured findings use `measured` and keep the existing fresh-bundle `verified-fixed` semantics.
+`learn` profile refresh is not proof. If a profile is stale, run a dry-run refresh, review the delta, then write only with explicit confirmation. Design findings should use `design`, `product-logic`, or `profile-gap`; measured findings use `measured` and keep the existing fresh-bundle `verified-fixed` semantics.
