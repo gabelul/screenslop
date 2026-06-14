@@ -103,8 +103,7 @@ function readFindingsPayload(options) {
  */
 function hasDesignReviewPayload(payload, findings) {
   if (!Array.isArray(findings)) return false;
-  if (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.designReview?.ran === true) return true;
-  return findings.some((finding) => ['design', 'product-logic', 'profile-gap'].includes(finding.kind) && finding.proofLevel !== 'measured');
+  return Boolean(payload && typeof payload === 'object' && !Array.isArray(payload) && payload.designReview?.ran === true);
 }
 
 /**

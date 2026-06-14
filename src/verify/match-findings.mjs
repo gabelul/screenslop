@@ -16,7 +16,7 @@ export function matchFindings(options) {
   const selected = selectedIds.length > 0
     ? selectedIds.map((id) => byBaselineId.get(id)).filter(Boolean)
     : options.baselineFindings;
-  const freshHasDesignReview = options.freshHasDesignReview ?? options.freshFindings.some((finding) => isDesignFinding(finding));
+  const freshHasDesignReview = Boolean(options.freshHasDesignReview);
   const items = selected.map((finding) => matchFinding({
     baseline: finding,
     freshFindings: options.freshFindings,

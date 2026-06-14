@@ -222,23 +222,31 @@ test('design findings use improved instead of verified-fixed when absent from fr
   assert.equal(summary.verifiedFixed, 0);
 });
 
-test('design findings report unchanged when the same judgment remains', () => {
+test('design-shaped fresh findings without provenance still need human review', () => {
   const [baseline, fresh] = designFindings();
   const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+
+  assert.equal(items[0].status, 'needs-human-review');
+  assert.match(items[0].reason, /fresh design review/);
+});
+
+test('design findings report unchanged when the same judgment remains', () => {
+  const [baseline, fresh] = designFindings();
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh], freshHasDesignReview: true });
 
   assert.equal(items[0].status, 'unchanged');
 });
 
 test('design findings report regressed when fresh severity is higher', () => {
   const [baseline, fresh] = designFindings({ fresh: { severity: 'P1' } });
-  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh], freshHasDesignReview: true });
 
   assert.equal(items[0].status, 'regressed');
 });
 
 test('design findings request human review when related judgment changes', () => {
   const [baseline, fresh] = designFindings({ fresh: { judgment: 'The badge now conflicts in a different way.' } });
-  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh] });
+  const items = matchFindings({ baselineFindings: [baseline], freshFindings: [fresh], freshHasDesignReview: true });
   const summary = summarizeVerification(items);
 
   assert.equal(items[0].status, 'needs-human-review');
