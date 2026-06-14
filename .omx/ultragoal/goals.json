@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:43:15.426Z",
+  "updatedAt": "2026-06-14T11:46:11.127Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -155,20 +155,23 @@
       "id": "G013-matrix-design-integration-thread-des",
       "title": "Matrix design integration: thread --design through matrix, per-cell d...",
       "objective": "Matrix design integration: thread --design through matrix, per-cell design summaries, matrix-level consistency checks, schema/tests/docs/skill updates.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:43:15.426Z",
-      "startedAt": "2026-06-14T11:43:15.426Z"
+      "updatedAt": "2026-06-14T11:46:10.872Z",
+      "startedAt": "2026-06-14T11:43:15.426Z",
+      "completedAt": "2026-06-14T11:46:10.872Z",
+      "evidence": "Commit 173167a threaded design review through matrix: matrix --design/--agent-packet options, per-cell design summaries, matrix-level designSummary consistency, schema/docs/skill updates, and tests/matrix.test.mjs coverage. Verification passed: node --test tests/matrix.test.mjs tests/contracts.test.mjs tests/design-review.test.mjs; npm test (130 passed); node bin/screenslop.mjs doctor; npm run --silent smoke:package; git diff --check; cleanup macOS sidecars."
     },
     {
       "id": "G014-verify-semantics-for-design-findings",
       "title": "Verify semantics for design findings: improved/unchanged/regressed/ne...",
       "objective": "Verify semantics for design findings: improved/unchanged/regressed/needs-human-review statuses, deterministic verified-fixed boundary, before/after design report tests.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:46:11.127Z",
+      "startedAt": "2026-06-14T11:46:11.127Z"
     },
     {
       "id": "G015-final-hardening-and-dogfood-boundary",
@@ -181,5 +184,5 @@
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G013-matrix-design-integration-thread-des"
+  "activeGoalId": "G014-verify-semantics-for-design-findings"
 }
