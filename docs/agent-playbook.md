@@ -178,6 +178,8 @@ When the user asks whether a screen works on different phone sizes, do not open 
 
 ```bash
 screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
+# design-sensitive matrix pass
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 ```
 
 That profile checks small, normal, and large iPhone classes. If a cell fails because the simulator name is missing, run:

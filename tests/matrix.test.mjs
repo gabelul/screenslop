@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
+import { collectDesignProfile } from '../src/design/profile.mjs';
 
 test('matrix dry-run with no config writes six unavailable cell bundles', async () => {
   const root = createWorkspace();
@@ -99,6 +100,56 @@ test('matrix live path records capture and optional critique per cell', async ()
   assert.equal(report.cells.find((cell) => cell.id === 'dark-appearance').settingStatus.appearance.status, 'requested-only');
   assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-normal').settingStatus.dynamicType.status, 'requested-only');
   assert.equal(report.cells[0].settingStatus.appearance.status, 'not-requested');
+});
+
+
+test('matrix --design threads design summaries through captured cells', async () => {
+  const root = createWorkspace();
+  writeConfig(root);
+  fs.writeFileSync(path.join(root, 'App', 'SettingsView.swift'), 'import SwiftUI\nstruct SettingsView: View { var body: some View { Text("Settings") } }\n');
+  fs.writeFileSync(path.join(root, 'DESIGN.md'), '# Design\n\nKeep status copy honest.\n');
+  collectDesignProfile({ root, write: true, yes: true });
+  let count = 0;
+
+  const report = await collectMatrix({
+    root,
+    includeDesign: true,
+    agentPacket: true,
+    commandRunner: () => ({ status: 0, stdout: '{}', stderr: '' }),
+    collectSeeFn: async () => {
+      count += 1;
+      const dir = path.join('artifacts', `design-cell-${count}`);
+      const absolute = path.join(root, dir);
+      fs.mkdirSync(absolute, { recursive: true });
+      const manifest = {
+        runId: `design-cell-${count}`,
+        surface: 'Settings',
+        runtime: { driver: 'matrix', deviceName: 'iPhone Test', udid: 'TEST' },
+        artifacts: { screenshot: path.join(dir, 'screenshot.jpg') },
+        capture: { status: 'complete', steps: [] }
+      };
+      fs.writeFileSync(path.join(absolute, 'evidence.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      fs.writeFileSync(path.join(absolute, 'screenshot.jpg'), 'fake');
+      return { ok: true, dir, evidence: path.join(dir, 'evidence.json'), artifacts: manifest.artifacts };
+    },
+    collectCritiqueFn: async ({ bundlePath }) => ({
+      ok: true,
+      command: 'critique',
+      bundle: bundlePath,
+      evidence: path.join(bundlePath, 'evidence.json'),
+      artifacts: {},
+      summary: { total: 0, bySeverity: { P0: 0, P1: 0, P2: 0, P3: 0 }, byPillar: {} },
+      findings: []
+    })
+  });
+
+  assert.equal(report.designSummary.enabled, true);
+  assert.equal(report.designSummary.cellsReviewed, 6);
+  assert.equal(report.designSummary.findings, 0);
+  assert.equal(report.designSummary.consistency.status, 'consistent');
+  assert.equal(report.summary.designCells, 6);
+  assert.equal(report.cells[0].design.profileStatus, 'current');
+  assert.match(report.cells[0].design.artifacts.designPacketPath, /design-review-packet\.json$/);
 });
 
 /**

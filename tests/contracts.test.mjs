@@ -130,6 +130,7 @@ test('design intelligence contracts are documented without overclaiming shipped 
   assert.match(commands, /shipped profile learning and shipped design-review plumbing/);
   assert.match(commands, /--agent-packet/);
   assert.match(commands, /--import-design-findings/);
+  assert.match(commands, /--design --agent-packet/);
   assert.match(integrations, /Design profile integration boundary/);
   assert.match(integrations, /agent packet/);
   assert.match(playbook, /Design Intelligence profile path/);

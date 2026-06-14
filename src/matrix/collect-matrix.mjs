@@ -6,6 +6,7 @@ import { collectSee } from '../evidence/collect-see.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from '../evidence/bundle.mjs';
 import { createRunId } from '../evidence/run-id.mjs';
 import { collectCritique } from '../critique/collect-critique.mjs';
+import { collectDesignReview } from '../design/review.mjs';
 
 export const DEFAULT_MATRIX_PROFILE = {
   schemaVersion: 1,
@@ -27,6 +28,7 @@ export const DEFAULT_MATRIX_PROFILE = {
  * @param {string|null} [options.profilePath] Matrix profile JSON path.
  * @param {boolean} [options.dryRun] Scaffold bundles without runtime capture.
  * @param {boolean} [options.includeCritique] Run critique after successful captures.
+ * @param {boolean} [options.includeDesign] Run design review after successful captures.
  * @param {Function} [options.collectSeeFn] Capture function override for tests.
  * @param {Function} [options.collectCritiqueFn] Critique function override for tests.
  * @param {Function} [options.commandRunner] Build/run command override for tests.
@@ -56,7 +58,7 @@ export async function collectMatrix(options = {}) {
       cells: profile.cells.length
     },
     target: publicTarget(configState.target),
-    summary: { total: profile.cells.length, captured: 0, dryRun: 0, unavailable: 0, failed: 0 },
+    summary: { total: profile.cells.length, captured: 0, dryRun: 0, unavailable: 0, failed: 0, designFindings: 0, designCells: 0 },
     cells: [],
     artifacts: {
       reportPath: path.relative(root, reportPath),
@@ -65,6 +67,13 @@ export async function collectMatrix(options = {}) {
     configFeedback: {
       schemaChangeNeeded: false,
       note: 'The six-cell MVP uses a profile JSON file; no new target config fields are required yet.'
+    },
+    designSummary: {
+      enabled: Boolean(options.includeDesign),
+      cellsReviewed: 0,
+      findings: 0,
+      profileStatuses: {},
+      consistency: { status: options.includeDesign ? 'pending' : 'not-run', messages: [] }
     }
   };
 
@@ -78,12 +87,17 @@ export async function collectMatrix(options = {}) {
       collectSeeFn: options.collectSeeFn || collectSee,
       collectCritiqueFn: options.collectCritiqueFn || collectCritique,
       commandRunner: options.commandRunner || defaultCommandRunner,
-      includeCritique: Boolean(options.includeCritique)
+      includeCritique: Boolean(options.includeCritique),
+      includeDesign: Boolean(options.includeDesign),
+      designProfilePath: options.designProfilePath || null,
+      agentPacket: Boolean(options.agentPacket)
     });
     report.cells.push(result);
     report.summary[result.status] = (report.summary[result.status] || 0) + 1;
+    applyDesignCellSummary(report, result);
   }
 
+  finalizeDesignSummary(report);
   writeMatrixReport({ report, reportPath, reportMarkdownPath });
   return report;
 }
@@ -191,9 +205,19 @@ async function runMatrixCell(options) {
       includeLogs: true
     });
     const status = see.ok ? 'captured' : 'failed';
-    const critique = see.ok && options.includeCritique
+    const shouldCritique = options.includeCritique || options.includeDesign;
+    let critique = see.ok && shouldCritique
       ? await options.collectCritiqueFn({ root, bundlePath: see.dir })
       : null;
+    if (critique && options.includeDesign) {
+      critique = collectDesignReview({
+        root,
+        bundlePath: see.dir,
+        critiqueResult: critique,
+        profilePath: options.designProfilePath,
+        agentPacket: options.agentPacket
+      });
+    }
     return {
       id: cell.id,
       label: cell.label,
@@ -205,6 +229,15 @@ async function runMatrixCell(options) {
       evidence: see.evidence,
       artifacts: see.artifacts,
       critique: critique ? { ok: critique.ok, findings: critique.summary?.total || 0, artifacts: critique.artifacts } : null,
+      design: critique?.design ? {
+        enabled: true,
+        profileStatus: critique.design.profileStatus,
+        findings: (critique.findings || []).filter((finding) => finding.kind && finding.kind !== 'measured').length,
+        artifacts: {
+          designPacketPath: critique.artifacts?.designPacketPath || null,
+          designPromptPath: critique.artifacts?.designPromptPath || null
+        }
+      } : null,
       error: see.ok ? null : 'capture-failed'
     };
   } catch (error) {
@@ -362,6 +395,48 @@ function publicTarget(target) {
   };
 }
 
+
+/**
+ * Adds one cell's design result to the matrix summary.
+ * @param {object} report Matrix report under construction.
+ * @param {object} cell Cell result.
+ * @returns {void}
+ */
+function applyDesignCellSummary(report, cell) {
+  if (!report.designSummary.enabled || !cell.design?.enabled) return;
+  report.designSummary.cellsReviewed += 1;
+  report.designSummary.findings += cell.design.findings || 0;
+  report.summary.designCells += 1;
+  report.summary.designFindings += cell.design.findings || 0;
+  const status = cell.design.profileStatus || 'unknown';
+  report.designSummary.profileStatuses[status] = (report.designSummary.profileStatuses[status] || 0) + 1;
+}
+
+/**
+ * Finalizes matrix-level design consistency notes.
+ * @param {object} report Matrix report.
+ * @returns {void}
+ */
+function finalizeDesignSummary(report) {
+  if (!report.designSummary.enabled) return;
+  if (report.designSummary.cellsReviewed === 0) {
+    report.designSummary.consistency = {
+      status: 'not-run',
+      messages: ['No matrix cells produced design review output.']
+    };
+    return;
+  }
+
+  const statuses = Object.keys(report.designSummary.profileStatuses);
+  const messages = [];
+  if (statuses.length > 1) messages.push(`Design profile status varied across cells: ${statuses.join(', ')}.`);
+  if (report.designSummary.findings > 0) messages.push(`${report.designSummary.findings} design finding(s) appeared across matrix cells.`);
+  report.designSummary.consistency = {
+    status: messages.length ? 'review-needed' : 'consistent',
+    messages
+  };
+}
+
 /**
  * Runs one local command.
  * @param {object} options Command options.
@@ -395,7 +470,8 @@ function renderMatrixMarkdown(report) {
   const cells = report.cells.map((cell) => {
     const appearance = cell.settingStatus?.appearance?.status || 'unknown';
     const dynamicType = cell.settingStatus?.dynamicType?.status || 'unknown';
-    return `- ${cell.id}: ${cell.status}${cell.reason ? ` (${cell.reason})` : ''}; settings appearance=${appearance}, dynamicType=${dynamicType} — ${cell.evidenceBundle}`;
+    const design = cell.design?.enabled ? `; design=${cell.design.profileStatus}/${cell.design.findings}` : '';
+    return `- ${cell.id}: ${cell.status}${cell.reason ? ` (${cell.reason})` : ''}; settings appearance=${appearance}, dynamicType=${dynamicType}${design} — ${cell.evidenceBundle}`;
   }).join('\n');
   return `# Screenslop Matrix
 
@@ -412,6 +488,10 @@ Dry run: ${report.summary.dryRun}
 Unavailable: ${report.summary.unavailable}
 
 Failed: ${report.summary.failed}
+
+Design reviewed cells: ${report.designSummary?.cellsReviewed || 0}
+
+Design findings: ${report.designSummary?.findings || 0}
 
 ## Cells
 

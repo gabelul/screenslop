@@ -32,7 +32,7 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 - `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.
 - `critique`: score evidence and produce findings.
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
-- `matrix`: write a bounded six-cell report with linked evidence bundles.
+- `matrix`: write a bounded six-cell report with linked evidence bundles; use `--design` for per-cell design summaries.
 - `learn`: learn, check, or refresh `.screenslop/design-profile.json`.
 - `verify`: compare baseline findings with a fresh bundle; it does not capture
   new evidence by itself.
@@ -94,7 +94,7 @@ node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --dry-
 npm run --silent smoke:package
 ```
 
-For small / normal / large phone checks, run `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json`. If device names are missing, inspect `baguette list --json`, copy the profile, and adjust only the `device` values.
+For small / normal / large phone checks, run `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json`. For design-sensitive work, add `--design --agent-packet`. If device names are missing, inspect `baguette list --json`, copy the profile, and adjust only the `device` values.
 
 Before calling layout-sensitive UI work done, run that phone-size matrix or state the exact blocker. This is required for SwiftUI spacing, onboarding, paywalls, checkout, settings, full-screen flows, compact sheets, tab bars, scroll views, Dynamic Type-sensitive layouts, and any screen where a small or large phone could change the result. A single `screenslop see` capture is acceptable for narrow copy, icon, or accessibility fixes, but not for responsive layout confidence.
 

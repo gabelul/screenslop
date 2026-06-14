@@ -189,6 +189,7 @@ npm run --silent smoke:e2e -- --fresh-mode fixed
 node bin/screenslop.mjs matrix --dry-run --json
 node bin/screenslop.mjs matrix --profile examples/matrix/default.json --json
 node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --json
+node bin/screenslop.mjs matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 npm run cleanup:macos:dry
 npm pack --dry-run
 npm run --silent smoke:package

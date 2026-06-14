@@ -20,6 +20,7 @@ screenslop critique artifacts/<run> --design --json
 screenslop critique artifacts/<run> --design-profile .screenslop/design-profile.json --json
 screenslop critique artifacts/<run> --design --agent-packet --json
 screenslop critique artifacts/<run> --import-design-findings design-findings.json --json
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 ```
 
 The shipped design critique path loads the private profile, can write an agent packet, and can import agent-produced findings. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:

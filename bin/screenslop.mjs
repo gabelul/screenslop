@@ -110,7 +110,10 @@ async function matrix() {
       root: process.cwd(),
       profilePath: options.values.profile || null,
       dryRun: options.flags.has('dry-run'),
-      includeCritique: options.flags.has('critique')
+      includeCritique: options.flags.has('critique'),
+      includeDesign: options.flags.has('design'),
+      designProfilePath: options.values['design-profile'] || null,
+      agentPacket: options.flags.has('agent-packet')
     });
     printMatrixResult(result, options.flags.has('json'));
     if (!result.ok) process.exitCode = 1;

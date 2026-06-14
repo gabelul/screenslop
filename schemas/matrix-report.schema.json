@@ -3,87 +3,238 @@
   "$id": "https://booplex.com/screenslop/matrix-report.schema.json",
   "title": "Screenslop Matrix Report",
   "type": "object",
-  "required": ["ok", "command", "runId", "profile", "summary", "cells", "artifacts"],
+  "required": [
+    "ok",
+    "command",
+    "runId",
+    "profile",
+    "summary",
+    "cells",
+    "artifacts"
+  ],
   "properties": {
-    "ok": { "type": "boolean" },
-    "command": { "const": "matrix" },
-    "runId": { "type": "string" },
-    "createdAt": { "type": "string", "format": "date-time" },
-    "dryRun": { "type": "boolean" },
+    "ok": {
+      "type": "boolean"
+    },
+    "command": {
+      "const": "matrix"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
     "profile": {
       "type": "object",
-      "required": ["schemaVersion", "name", "cells"],
+      "required": [
+        "schemaVersion",
+        "name",
+        "cells"
+      ],
       "properties": {
-        "schemaVersion": { "const": 1 },
-        "name": { "type": "string" },
-        "cells": { "type": "number" }
+        "schemaVersion": {
+          "const": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "cells": {
+          "type": "number"
+        }
       }
     },
     "summary": {
       "type": "object",
-      "required": ["total", "captured", "dryRun", "unavailable", "failed"],
+      "required": [
+        "total",
+        "captured",
+        "dryRun",
+        "unavailable",
+        "failed"
+      ],
       "properties": {
-        "total": { "type": "number" },
-        "captured": { "type": "number" },
-        "dryRun": { "type": "number" },
-        "unavailable": { "type": "number" },
-        "failed": { "type": "number" }
+        "total": {
+          "type": "number"
+        },
+        "captured": {
+          "type": "number"
+        },
+        "dryRun": {
+          "type": "number"
+        },
+        "unavailable": {
+          "type": "number"
+        },
+        "failed": {
+          "type": "number"
+        },
+        "designFindings": {
+          "type": "number"
+        },
+        "designCells": {
+          "type": "number"
+        }
       }
     },
     "cells": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "label", "status", "settingStatus", "evidenceBundle", "evidence"],
+        "required": [
+          "id",
+          "label",
+          "status",
+          "settingStatus",
+          "evidenceBundle",
+          "evidence"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "label": { "type": "string" },
-          "status": { "enum": ["captured", "dryRun", "unavailable", "failed"] },
-          "reason": { "type": "string" },
-          "message": { "type": "string" },
-          "requested": { "type": "object" },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "captured",
+              "dryRun",
+              "unavailable",
+              "failed"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requested": {
+            "type": "object"
+          },
           "settingStatus": {
             "type": "object",
-            "required": ["appearance", "dynamicType"],
+            "required": [
+              "appearance",
+              "dynamicType"
+            ],
             "properties": {
               "appearance": {
                 "type": "object",
-                "required": ["requested", "applied", "status", "message"],
+                "required": [
+                  "requested",
+                  "applied",
+                  "status",
+                  "message"
+                ],
                 "properties": {
-                  "requested": { "type": "string" },
-                  "applied": { "type": ["string", "null"] },
-                  "status": { "enum": ["applied", "requested-only", "unavailable", "not-requested"] },
-                  "message": { "type": "string" }
+                  "requested": {
+                    "type": "string"
+                  },
+                  "applied": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "applied",
+                      "requested-only",
+                      "unavailable",
+                      "not-requested"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
                 }
               },
               "dynamicType": {
                 "type": "object",
-                "required": ["requested", "applied", "status", "message"],
+                "required": [
+                  "requested",
+                  "applied",
+                  "status",
+                  "message"
+                ],
                 "properties": {
-                  "requested": { "type": "string" },
-                  "applied": { "type": ["string", "null"] },
-                  "status": { "enum": ["applied", "requested-only", "unavailable", "not-requested"] },
-                  "message": { "type": "string" }
+                  "requested": {
+                    "type": "string"
+                  },
+                  "applied": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "applied",
+                      "requested-only",
+                      "unavailable",
+                      "not-requested"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
                 }
               }
             }
           },
-          "build": { "type": "object" },
-          "evidenceBundle": { "type": "string" },
-          "evidence": { "type": "string" },
-          "artifacts": { "type": "object" },
-          "critique": { "type": ["object", "null"] }
+          "build": {
+            "type": "object"
+          },
+          "evidenceBundle": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "artifacts": {
+            "type": "object"
+          },
+          "critique": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "design": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
         }
       }
     },
     "artifacts": {
       "type": "object",
-      "required": ["reportPath", "reportMarkdownPath"],
+      "required": [
+        "reportPath",
+        "reportMarkdownPath"
+      ],
       "properties": {
-        "reportPath": { "type": "string" },
-        "reportMarkdownPath": { "type": "string" }
+        "reportPath": {
+          "type": "string"
+        },
+        "reportMarkdownPath": {
+          "type": "string"
+        }
       }
     },
-    "configFeedback": { "type": "object" }
+    "configFeedback": {
+      "type": "object"
+    },
+    "designSummary": {
+      "type": "object"
+    }
   }
 }

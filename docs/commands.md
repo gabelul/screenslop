@@ -339,6 +339,7 @@ MVP usage:
 screenslop matrix --dry-run --json
 screenslop matrix --profile examples/matrix/default.json --json
 screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 screenslop matrix --critique --json
 ```
 
@@ -364,9 +365,10 @@ marks them unavailable with no-config evidence bundles. With config present,
 `--dry-run` writes the same cell bundles without runtime capture. Live capture
 builds and launches the configured target through XcodeBuildMCP, then captures
 with the configured `defaultSurface`, `defaultBundleId`, and default/device cell
-preference. `--critique` runs critique after a successful cell capture.
+preference. `--critique` runs deterministic critique after a successful cell capture. `--design` also runs the design-review layer after each successful cell critique, records per-cell design summaries, and writes matrix-level design consistency notes. Use `--agent-packet` with `--design` when each cell should emit a packet for agent judgment.
 
-Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles. Agents do not need the farm for headless checks; `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json` is the non-interactive path.
+Baguette's farm page can sit beside matrix work as a live multi-simulator dashboard. Start it with `baguette serve` and open `http://localhost:8421/farm`; see `docs/baguette-farm.md`. Screenslop does not ship a `--open-farm` command, and the farm does not replace the matrix report or evidence bundles. Agents do not need the farm for headless checks; `screenslop matrix --profile examples/matrix/phone-sizes.json --critique --json
+screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json` is the non-interactive path.
 
 The matrix profile is JSON with `schemaVersion: 1`, `name`, and `cells[]`. Each
 cell can set `id`, `label`, `device`, `appearance`, `dynamicType`, and optional
