@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:51:53.740Z",
+  "updatedAt": "2026-06-14T12:28:30.261Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -179,13 +179,14 @@
       "id": "G015-final-hardening-and-dogfood-boundary",
       "title": "Final hardening and dogfood boundary: local gates, package smoke, ai-...",
       "objective": "Final hardening and dogfood boundary: local gates, package smoke, ai-slop/docs polish, independent review, redacted BoardingReady dogfood plan or blocker note if private runtime cannot be safely run.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:51:53.740Z",
-      "startedAt": "2026-06-14T11:51:53.740Z"
+      "updatedAt": "2026-06-14T12:28:30.261Z",
+      "startedAt": "2026-06-14T11:51:53.740Z",
+      "evidence": "Final hardening complete. Commits 9c6aa61 and c280b1d resolved final review blockers; local gates passed; ai-slop changed-file scan was clean; final independent code-reviewer APPROVE and architect CLEAR; private dogfood remains a recorded blocker per existing release/session docs, not a passed gate.",
+      "completedAt": "2026-06-14T12:28:30.261Z"
     }
   ],
-  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G015-final-hardening-and-dogfood-boundary"
+  "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail."
 }
