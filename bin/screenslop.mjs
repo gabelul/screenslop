@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import { fileURLToPath } from 'node:url';
 import { run } from '../src/runtime/shell.mjs';
 import { detectRuntimes } from '../src/runtime/detect.mjs';
 import { collectSee } from '../src/evidence/collect-see.mjs';
@@ -22,6 +24,7 @@ import {
 
 const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 switch (command) {
   case 'help':
@@ -130,7 +133,8 @@ async function matrix() {
 /** Checks runtime availability and offers safe setup help. */
 async function doctor() {
   const detected = detectRuntimes();
-  console.log('Screenslop doctor\n');
+  const cli = readCliPackageInfo();
+  console.log(`Screenslop doctor\nVersion: ${cli.name}@${cli.version}\n`);
   console.log(`Preferred runtime: ${detected.preferred}\n`);
 
   for (const [name, info] of Object.entries(detected.tools)) {
@@ -154,6 +158,26 @@ async function doctor() {
     if (wantsInstall) {
       installBaguette();
     }
+  }
+}
+
+/**
+ * Reads package metadata for human-facing diagnostics.
+ *
+ * @returns {{name:string,version:string}} CLI package name and version.
+ */
+function readCliPackageInfo() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+    return {
+      name: pkg.name || 'screenslop',
+      version: pkg.version || '0.0.0'
+    };
+  } catch {
+    return {
+      name: 'screenslop',
+      version: '0.0.0'
+    };
   }
 }
 

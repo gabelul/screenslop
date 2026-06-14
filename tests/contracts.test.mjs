@@ -191,6 +191,17 @@ test('CLI help and Screenslop skill advertise the same command set', () => {
   }
 });
 
+test('screenslop doctor prints the package version', () => {
+  const pkg = readJson('package.json');
+  const result = spawnSync(process.execPath, ['bin/screenslop.mjs', 'doctor'], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, new RegExp(`Version: ${pkg.name}@${pkg.version}`));
+});
+
 test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
   const skill = readText('skills/screenslop/SKILL.md');
   const limitations = readText('docs/known-limitations.md');
