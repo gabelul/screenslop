@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-06-14T11:09:51.342Z",
-  "updatedAt": "2026-06-14T11:37:10.809Z",
+  "updatedAt": "2026-06-14T11:43:15.426Z",
   "briefPath": ".omx/ultragoal/brief.md",
   "goalsPath": ".omx/ultragoal/goals.json",
   "ledgerPath": ".omx/ultragoal/ledger.jsonl",
@@ -143,20 +143,23 @@
       "id": "G012-design-review-mvp-load-profile-summa",
       "title": "Design review MVP: load profile, summarize evidence, agent packet, lo...",
       "objective": "Design review MVP: load profile, summarize evidence, agent packet, local design rules, design critique flags/imports, tests for design findings, missing profile, agent packet, imported findings.",
-      "status": "in_progress",
+      "status": "complete",
       "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:37:10.809Z",
-      "startedAt": "2026-06-14T11:37:10.809Z"
+      "updatedAt": "2026-06-14T11:43:15.297Z",
+      "startedAt": "2026-06-14T11:37:10.809Z",
+      "completedAt": "2026-06-14T11:43:15.297Z",
+      "evidence": "Commit 6e20b79 added design review MVP: critique --design, --design-profile, --agent-packet, --import-design-findings, profile-gap findings, agent packet/prompt artifacts, imported design finding normalization, docs/skill updates, package smoke coverage, and tests/design-review.test.mjs. Verification passed: node --test tests/design-review.test.mjs tests/contracts.test.mjs tests/learn.test.mjs; npm test (129 passed); node bin/screenslop.mjs doctor; npm run --silent smoke:package; git diff --check; cleanup macOS sidecars."
     },
     {
       "id": "G013-matrix-design-integration-thread-des",
       "title": "Matrix design integration: thread --design through matrix, per-cell d...",
       "objective": "Matrix design integration: thread --design through matrix, per-cell design summaries, matrix-level consistency checks, schema/tests/docs/skill updates.",
-      "status": "pending",
-      "attempt": 0,
+      "status": "in_progress",
+      "attempt": 1,
       "createdAt": "2026-06-14T11:09:51.342Z",
-      "updatedAt": "2026-06-14T11:09:51.342Z"
+      "updatedAt": "2026-06-14T11:43:15.426Z",
+      "startedAt": "2026-06-14T11:43:15.426Z"
     },
     {
       "id": "G014-verify-semantics-for-design-findings",
@@ -178,5 +181,5 @@
     }
   ],
   "codexObjective": "Complete the durable ultragoal plan in .omx/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .omx/ultragoal/ledger.jsonl as the audit trail.",
-  "activeGoalId": "G012-design-review-mvp-load-profile-summa"
+  "activeGoalId": "G013-matrix-design-integration-thread-des"
 }
