@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/gabelul/screenslop/compare/v0.1.5...v0.1.6) (2026-06-15)
+
+
+### Bug Fixes
+
+* report current freshness after learn write ([1636cba](https://github.com/gabelul/screenslop/commit/1636cbaebfd0bdca2e5d5e7ee9981fd10dfb664b))
+
 ## [0.1.5](https://github.com/gabelul/screenslop/compare/v0.1.4...v0.1.5) (2026-06-15)
 
 
