@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/gabelul/screenslop/compare/v0.1.4...v0.1.5) (2026-06-15)
+
+
+### Features
+
+* add explicit CLI self-update ([d57b647](https://github.com/gabelul/screenslop/commit/d57b647ed819b53fc0cce317a4c3a8a381cfbaca))
+
 ## [0.1.4](https://github.com/gabelul/screenslop/compare/v0.1.3...v0.1.4) (2026-06-14)
 
 
