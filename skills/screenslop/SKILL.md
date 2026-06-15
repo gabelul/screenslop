@@ -1,13 +1,14 @@
 ---
 name: screenslop
 description: Use when the user wants to review, critique, fix, verify, or visually inspect Apple app UI from real runtime evidence. Screenslop captures Baguette-backed simulator evidence, produces evidence-backed findings, applies narrow fixes, and verifies against fresh captures. XcodeBuildMCP is used for build/run support; non-Baguette capture fallback is future work.
-argument-hint: "[setup|instructions|init|doctor|see|critique|fix|matrix|learn|verify|watch] [target]"
+argument-hint: "[setup|instructions|self-update|init|doctor|see|critique|fix|matrix|learn|verify|watch] [target]"
 user-invocable: true
 allowed-tools:
   - Bash(node *)
   - Bash(npx screenslop *)
   - Bash(npx -y screenslop@latest *)
   - Bash(screenslop *)
+  - Bash(npm install -g screenslop@latest)
   - Bash(baguette *)
   - Bash(xcodebuildmcp *)
   - Bash(npx -y xcodebuildmcp@latest *)
@@ -28,8 +29,9 @@ Screenslop is an evidence-first Apple UI review skill. Do not critique SwiftUI f
 
 - `setup`: detect project metadata and plan first-use `.screenslop/config.json`.
 - `instructions`: print the coding-agent contract and local skill status.
+- `self-update`: update the global Screenslop CLI after confirmation; use `--yes` only when the user asked for it or `doctor` reports a stale CLI.
 - `init`: create or migrate `.screenslop/config.json` with target metadata.
-- `doctor`: check runtime availability.
+- `doctor`: check runtime availability and CLI freshness; use `--update-cli --yes` only when an update is needed and the user allows global package changes.
 - `see`: capture screenshot, AX tree, logs, and source hints through Baguette in v0.1.
 - `critique`: score evidence and produce findings.
 - `fix`: patch selected safe findings; use `--source-root` or config before applying.
@@ -67,7 +69,13 @@ screenslop doctor
 If doctor says the CLI is stale, update the global command:
 
 ```bash
-npm install -g screenslop@latest
+screenslop self-update --yes
+```
+
+You can also combine the check and update:
+
+```bash
+screenslop doctor --update-cli --yes
 ```
 
 If global installs are not allowed, run the latest CLI directly:

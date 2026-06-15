@@ -19,7 +19,13 @@ Skill updates do not update the CLI binary. If `screenslop doctor` reports an
 older CLI, run:
 
 ```bash
-npm install -g screenslop@latest
+screenslop self-update --yes
+```
+
+You can also combine the doctor check and update:
+
+```bash
+screenslop doctor --update-cli --yes
 ```
 
 If global installs are blocked, call the current CLI through npm:

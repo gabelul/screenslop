@@ -33,6 +33,18 @@ Start with the machine check:
 screenslop doctor
 ```
 
+If doctor reports a stale CLI and global package updates are allowed, run:
+
+```bash
+screenslop self-update --yes
+```
+
+If global installs are blocked, use the current package for the command:
+
+```bash
+npx -y screenslop@latest doctor
+```
+
 If you are running from a checkout instead of a global install:
 
 ```bash

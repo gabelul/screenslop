@@ -215,7 +215,31 @@ test('screenslop doctor tells agents how to update a stale CLI', () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Latest: 99\.0\.0 \(update available\)/);
   assert.match(result.stdout, new RegExp(`npm install -g ${pkg.name}@latest`));
+  assert.match(result.stdout, new RegExp(`${pkg.name} self-update --yes`));
   assert.match(result.stdout, new RegExp(`npx -y ${pkg.name}@latest doctor`));
+});
+
+test('screenslop self-update supports safe dry-run and doctor update mode', () => {
+  const baseEnv = { ...process.env, SCREENSLOP_LATEST_VERSION_OVERRIDE: '99.0.0' };
+  const selfUpdate = spawnSync(process.execPath, ['bin/screenslop.mjs', 'self-update', '--dry-run', '--yes'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: baseEnv
+  });
+
+  assert.equal(selfUpdate.status, 0, selfUpdate.stderr || selfUpdate.stdout);
+  assert.match(selfUpdate.stdout, /Would run: npm install -g screenslop@latest/);
+  assert.match(selfUpdate.stdout, /Dry run only/);
+
+  const doctorUpdate = spawnSync(process.execPath, ['bin/screenslop.mjs', 'doctor', '--update-cli', '--dry-run', '--yes'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: baseEnv
+  });
+
+  assert.equal(doctorUpdate.status, 0, doctorUpdate.stderr || doctorUpdate.stdout);
+  assert.match(doctorUpdate.stdout, /Latest: 99\.0\.0 \(update available\)/);
+  assert.match(doctorUpdate.stdout, /Would run: npm install -g screenslop@latest/);
 });
 
 test('agent docs keep unavailable fallback and dogfood gates explicit', () => {
@@ -307,8 +331,10 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(playbook, /docs\/skill-installation\.md/);
   assert.match(skill, /reference\/install\.md/);
   assert.match(skill, /Skill updates do not update the CLI binary/);
+  assert.match(skill, /screenslop self-update --yes/);
+  assert.match(skill, /screenslop doctor --update-cli --yes/);
   assert.match(installRef, /The Screenslop skill is an instruction layer\. The CLI must also be installed\./);
-  assert.match(installRef, /npm install -g screenslop@latest/);
+  assert.match(installRef, /screenslop self-update --yes/);
 
   for (const ref of [
     'reference/install.md',
@@ -327,6 +353,8 @@ test('skill installation docs keep CLI, skill, and private config separate', () 
   assert.match(install, /npx skills add gabelul\/screenslop --skill screenslop/);
   assert.match(install, /npx skills update screenslop -p -y/);
   assert.match(install, /npm install -g screenslop@latest/);
+  assert.match(install, /screenslop self-update --yes/);
+  assert.match(install, /screenslop doctor --update-cli --yes/);
   assert.match(install, /npx -y screenslop@latest doctor/);
   assert.match(install, /~\/\.codex\/skills\/screenslop/);
   assert.match(install, /~\/\.claude\/skills\/screenslop/);

@@ -35,6 +35,9 @@ switch (command) {
   case 'doctor':
     await doctor();
     break;
+  case 'self-update':
+    await selfUpdate();
+    break;
   case 'setup':
     await setupProject();
     break;
@@ -82,9 +85,10 @@ Usage:
 Commands:
   setup      Detect project metadata and plan first-use config
   instructions Print the coding-agent contract and skill status
+  self-update Update the global Screenslop CLI after confirmation
   init       Create .screenslop/config.json
   doctor     Check Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node
-             Use --install-baguette to install after confirmation
+             Use --update-cli or --install-baguette to install after confirmation
   see        Capture screenshot, accessibility tree, optional logs, and evidence
   critique   Review an evidence bundle
   fix        Plan and apply selected safe SwiftUI finding fixes
@@ -132,6 +136,7 @@ async function matrix() {
 
 /** Checks runtime availability and offers safe setup help. */
 async function doctor() {
+  const options = parseOptions(args);
   const detected = detectRuntimes();
   const cli = readCliPackageInfo();
   const latest = await checkLatestCliVersion(cli);
@@ -161,6 +166,19 @@ async function doctor() {
       installBaguette();
     }
   }
+
+  if (options.flags.has('update-cli')) {
+    await updateCliIfNeeded({ cli, latest, options, source: 'doctor' });
+  }
+}
+
+/** Updates the global Screenslop CLI after explicit confirmation. */
+async function selfUpdate() {
+  const options = parseOptions(args);
+  const cli = readCliPackageInfo();
+  const latest = await checkLatestCliVersion(cli);
+
+  await updateCliIfNeeded({ cli, latest, options, source: 'self-update' });
 }
 
 /**
@@ -220,7 +238,8 @@ function printCliUpdateStatus(cli, latest) {
 
   if (latest.status === 'outdated') {
     console.log(`Latest: ${latest.latest} (update available)`);
-    console.log(`Update CLI: npm install -g ${cli.name}@latest`);
+    console.log(`Update CLI: ${buildCliUpdateCommand(cli)}`);
+    console.log(`Auto-update: ${cli.name} self-update --yes`);
     console.log(`No global install: npx -y ${cli.name}@latest doctor\n`);
     return;
   }
@@ -228,6 +247,161 @@ function printCliUpdateStatus(cli, latest) {
   const reason = latest.reason ? ` (${latest.reason})` : '';
   console.log(`Latest: unavailable${reason}`);
   console.log(`Check manually: npm view ${cli.name} version\n`);
+}
+
+/**
+ * Updates the global CLI only when needed, unless forced.
+ *
+ * @param {object} options Update options.
+ * @param {{name:string,version:string}} options.cli Local CLI metadata.
+ * @param {{status:'current'|'outdated'|'unavailable',latest:string|null,reason?:string}} options.latest Latest-version result.
+ * @param {{flags:Set<string>,values:Record<string,string>}} options.options Parsed CLI options.
+ * @param {'doctor'|'self-update'} options.source Calling command.
+ */
+async function updateCliIfNeeded({ cli, latest, options, source }) {
+  const force = options.flags.has('force');
+  const wantsJson = options.flags.has('json');
+  const dryRun = options.flags.has('dry-run');
+  const result = {
+    ok: true,
+    command: source,
+    action: 'self-update',
+    current: cli.version,
+    latest: latest.latest,
+    latestStatus: latest.status,
+    dryRun,
+    updated: false
+  };
+
+  if (latest.status === 'current' && !force) {
+    result.status = 'current';
+    result.message = 'Screenslop CLI is already current.';
+    printSelfUpdateResult(result, wantsJson);
+    return;
+  }
+
+  if (latest.status === 'unavailable' && !force) {
+    result.ok = false;
+    result.status = 'latest-unavailable';
+    result.error = `Could not check npm latest version${latest.reason ? `: ${latest.reason}` : ''}. Run with --force --yes to install screenslop@latest anyway.`;
+    printSelfUpdateResult(result, wantsJson);
+    process.exitCode = 1;
+    return;
+  }
+
+  const commandToRun = process.env.SCREENSLOP_SELF_UPDATE_COMMAND || buildCliUpdateCommand(cli);
+  result.status = dryRun ? 'dry-run' : 'updating';
+  result.updateCommand = redactUpdateCommandForOutput(commandToRun, cli);
+
+  if (dryRun) {
+    result.message = 'Dry run only; no package install was run.';
+    printSelfUpdateResult(result, wantsJson);
+    return;
+  }
+
+  const confirmed = options.flags.has('yes') || await confirmCliUpdate(commandToRun, cli);
+  if (!confirmed) {
+    result.ok = false;
+    result.status = 'needs-confirmation';
+    result.error = 'Refusing to update the global CLI without confirmation. Re-run with --yes for agent/CI use.';
+    printSelfUpdateResult(result, wantsJson);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!wantsJson) console.log(`\nRunning: ${result.updateCommand}\n`);
+  const install = run(commandToRun);
+  if (!wantsJson) {
+    if (install.stdout) process.stdout.write(install.stdout);
+    if (install.stderr) process.stderr.write(install.stderr);
+  }
+
+  if (install.status !== 0) {
+    result.ok = false;
+    result.status = 'failed';
+    result.error = `Update command failed with exit code ${install.status ?? 1}.`;
+    result.stdout = wantsJson ? install.stdout : undefined;
+    result.stderr = wantsJson ? install.stderr : undefined;
+    printSelfUpdateResult(result, wantsJson);
+    process.exitCode = install.status || 1;
+    return;
+  }
+
+  result.status = 'updated';
+  result.updated = true;
+  result.message = 'Screenslop CLI update finished. Refresh your shell command cache, then run screenslop doctor again.';
+  result.next = ['hash -r # bash/sh', 'rehash # zsh', 'screenslop doctor'];
+  printSelfUpdateResult(result, wantsJson);
+}
+
+/**
+ * Builds the global npm update command.
+ *
+ * @param {{name:string}} cli CLI metadata.
+ * @returns {string} Shell command.
+ */
+function buildCliUpdateCommand(cli) {
+  return `npm install -g ${cli.name}@latest`;
+}
+
+/**
+ * Redacts custom test commands while preserving the public npm command.
+ *
+ * @param {string} commandToRun Command string.
+ * @param {{name:string}} cli CLI metadata.
+ * @returns {string} Display-safe command.
+ */
+function redactUpdateCommandForOutput(commandToRun, cli) {
+  const publicCommand = buildCliUpdateCommand(cli);
+  return commandToRun === publicCommand ? publicCommand : '<custom update command>';
+}
+
+/**
+ * Asks before changing the global npm install.
+ *
+ * @param {string} commandToRun Command that would run.
+ * @param {{name:string}} cli CLI metadata.
+ * @returns {Promise<boolean>} True when confirmed.
+ */
+async function confirmCliUpdate(commandToRun, cli) {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const display = redactUpdateCommandForOutput(commandToRun, cli);
+  const answer = await ask(`Run ${display} now? [y/N] `);
+  return answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+}
+
+/**
+ * Prints self-update output for humans or agents.
+ *
+ * @param {object} result Update result.
+ * @param {boolean} json Whether to print JSON.
+ */
+function printSelfUpdateResult(result, json) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (result.status === 'current') {
+    console.log(result.message);
+    return;
+  }
+
+  if (result.status === 'dry-run') {
+    console.log(`Would run: ${result.updateCommand}`);
+    console.log(result.message);
+    return;
+  }
+
+  if (!result.ok) {
+    console.error(result.error);
+    return;
+  }
+
+  if (result.status === 'updated') {
+    console.log(`\n${result.message}`);
+    console.log('Next: hash -r or rehash, then screenslop doctor');
+  }
 }
 
 /**
@@ -1270,7 +1444,7 @@ function printSeeResult(result, json) {
 function parseOptions(rawArgs) {
   const flags = new Set();
   const values = {};
-  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'force', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'update-cli', 'write', 'yes']);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -1302,7 +1476,7 @@ function parseOptions(rawArgs) {
  * @returns {string|null} Positional value.
  */
 function firstPositional(rawArgs) {
-  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'write', 'yes']);
+  const booleanFlags = new Set(['apply', 'boot', 'agent-packet', 'check', 'critique', 'design', 'dry-run', 'force', 'help', 'h', 'install-baguette', 'json', 'logs', 'refresh', 'refresh-critique', 'update-cli', 'write', 'yes']);
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
     if (!arg.startsWith('-')) return arg;

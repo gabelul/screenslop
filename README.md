@@ -110,8 +110,9 @@ No fresh capture means no verified fix claim. That rule saves a lot of nonsense.
 | --- | --- | --- |
 | `screenslop setup` | MVP | Detects project metadata and plans first-use private config. |
 | `screenslop instructions` | MVP | Prints the coding-agent contract and local skill status. |
+| `screenslop self-update` | MVP | Updates the global CLI after confirmation. |
 | `screenslop init` | MVP | Creates or migrates local project config. |
-| `screenslop doctor` | MVP | Checks Baguette, XcodeBuildMCP, Xcode, simctl, Swift, and Node. |
+| `screenslop doctor` | MVP | Checks Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node, and CLI freshness. |
 | `screenslop see` | MVP | Captures screenshot, accessibility tree, logs, manifest, and summary. |
 | `screenslop critique` | MVP | Turns evidence into findings with proof. |
 | `screenslop fix` | MVP | Plans or applies selected safe SwiftUI fixes. |

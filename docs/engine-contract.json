@@ -3,6 +3,7 @@
   "commands": [
     "setup",
     "instructions",
+    "self-update",
     "init",
     "doctor",
     "see",

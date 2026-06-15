@@ -199,6 +199,7 @@ function buildCommandLoop() {
 function buildPrompt(options) {
   return `Use the Screenslop skill for Apple UI review. If the skill is not auto-loaded, follow this contract exactly.\n\n` +
     `Screenslop is evidence-first. Capture runtime evidence before critique whenever capture is available. Do not replace Screenslop with source-only SwiftUI review.\n\n` +
+    `Run screenslop doctor first. If it reports a stale CLI and the user allows global package changes, run screenslop self-update --yes or screenslop doctor --update-cli --yes. If global installs are blocked, use npx -y screenslop@latest for the current command.\n\n` +
     `First-use setup is private and dry-run-first. Run setup, show the planned config, and ask before writing .screenslop/config.json. Never commit private config or generated private artifacts.\n\n` +
     `For design-system judgment, run screenslop learn --check --json first. If the profile is stale, preview with screenslop learn --refresh --json --dry-run and ask before writing .screenslop/design-profile.json.\n\n` +
     `Command loop:\n${options.commands.map((command) => `- ${command}`).join('\n')}\n\n` +

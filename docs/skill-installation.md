@@ -20,6 +20,18 @@ screenslop doctor
 the global binary is stale, it prints the update command. That gives coding
 agents a safe way to notice “skill updated, CLI did not.”
 
+To let Screenslop update the global CLI after confirmation:
+
+```bash
+screenslop self-update
+```
+
+For agent or CI use, make the confirmation explicit:
+
+```bash
+screenslop doctor --update-cli --yes
+```
+
 From a checkout:
 
 ```bash
@@ -74,6 +86,12 @@ screenslop doctor
 ```
 
 If `doctor` reports an older CLI, update it:
+
+```bash
+screenslop self-update --yes
+```
+
+Equivalent direct npm command:
 
 ```bash
 npm install -g screenslop@latest

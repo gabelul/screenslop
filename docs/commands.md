@@ -44,6 +44,27 @@ the fresh-bundle verify rule, private artifact stop rules, CLI package version,
 and local skill status. This command does not inspect, capture, write config, or
 change the app.
 
+### `screenslop self-update`
+
+Updates the globally installed Screenslop CLI after explicit confirmation.
+Skill updates do not update the CLI binary, so agents should use `doctor` to
+detect stale installs and this command to repair them when the user allows
+global package changes.
+
+Current behavior:
+
+```bash
+screenslop self-update
+screenslop self-update --yes
+screenslop self-update --dry-run
+screenslop doctor --update-cli --yes
+```
+
+`self-update` runs `npm install -g screenslop@latest`. Interactive use prompts
+before changing the global install. Non-interactive use needs `--yes`.
+`--dry-run` prints the command without running package installation. If global
+installs are blocked, use `npx -y screenslop@latest <command>` instead.
+
 ### `screenslop init`
 
 Sets up the project connection.
@@ -398,6 +419,9 @@ This is where Baguette's stream view can become extremely useful.
 ## Short version
 
 ```text
+setup     detect project metadata
+doctor    check runtime and CLI freshness
+self-update update the global CLI after confirmation
 init      connect the project
 learn     understand the design system
 see       capture evidence
