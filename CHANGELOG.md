@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/gabelul/screenslop/compare/v0.1.6...v0.1.7) (2026-06-15)
+
+
+### Features
+
+* extract design tokens during learn ([58569f6](https://github.com/gabelul/screenslop/commit/58569f6f5c67863a7977cd3660f6a85c4b44427f))
+
 ## [0.1.6](https://github.com/gabelul/screenslop/compare/v0.1.5...v0.1.6) (2026-06-15)
 
 
