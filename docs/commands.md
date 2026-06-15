@@ -116,6 +116,7 @@ New target fields:
 - `projectPath`
 - `defaultDevice`
 - `sourceRoot`
+- `designSources`
 
 Safety rules:
 
@@ -124,6 +125,8 @@ Safety rules:
 - `.screenslop` and `.screenslop/config.json` symlinks are rejected.
 - `sourceRoot` and `artifactsDir` must resolve inside the repo for v0.1.
 - `sourceRoot` must not point at `.git`, `.omx`, `node_modules`, `DerivedData`, `build`, or `artifacts`.
+- `designSources` may point at repo-local design docs/folders or explicit external design-system folders; they are read-only and are redacted in CLI output.
+- `designSources` must not point at home, filesystem roots, or blocked folders.
 - `artifactsDir` must not point at `.git`, `.omx`, `node_modules`, `DerivedData`, `build`, or the repo root.
 - `sourceRoot` and `artifactsDir` must not overlap.
 
@@ -134,14 +137,14 @@ future 0.x releases may change it with an explicit migration path.
 
 Learns, checks, and refreshes the private project design profile.
 
-This is the Screenslop design-learning path. The MVP scans project files and common design docs, writes `.screenslop/design-profile.json`, checks freshness, and refreshes while preserving user-authored rules. Runtime evidence and token adapters can feed this later, but they are not part of the shipped `learn` command yet.
+This is the Screenslop design-learning path. It scans project files, common design docs, and configured `designSources`, writes `.screenslop/design-profile.json`, checks freshness, and refreshes while preserving user-authored rules. It now extracts lightweight color, typography, spacing, radius, material, and SF Symbol tokens from Markdown tables/pairs and common SwiftUI design-system constants.
 
 Use it for:
 
-- scanning SwiftUI code and common design docs
+- scanning SwiftUI code, common design docs, and configured design-system sources
 - creating the private profile from a dry-run preview
 - checking whether the profile is current or stale
-- refreshing source hashes and generated component hints
+- refreshing source hashes, generated component hints, project tone/audience/category hints, and extracted token summaries
 - preserving app-specific review rules across refreshes
 
 Current flow:
@@ -157,13 +160,14 @@ screenslop learn --surface Settings --json --dry-run
 
 The private default output is `.screenslop/design-profile.json`. It stays ignored unless a project exports a redacted public profile. JSON writes need `--write --yes`; dry runs never write.
 
-`tokextract` may fit here as a token-source adapter:
+If the app uses a shared Swift package or sibling design-system repo, add it to `.screenslop/config.json` through setup/init:
 
-```text
-token/design artifacts -> normalized tokens -> DESIGN.md seed
+```bash
+screenslop init --design-source ../SharedDesignSystem --json --dry-run
+screenslop init --design-source ../SharedDesignSystem --yes
 ```
 
-Do not wire it until its input/output contract is inspected.
+Token extraction is intentionally heuristic. If token counts are still zero or an external package is missing, `learn` records `profileGaps` so the design pass can say what it cannot prove instead of pretending.
 
 ### `screenslop see`
 

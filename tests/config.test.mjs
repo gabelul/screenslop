@@ -25,6 +25,7 @@ test('createDefaultConfig writes schemaVersion 1 and preserves sourceHints as me
       scheme: 'Demo',
       'bundle-id': 'dev.example.Demo',
       'source-root': 'Sources',
+      'design-source': 'DesignSystem,../SharedDesignSystem',
       'source-hint': 'SettingsView.swift,HomeView.swift'
     }
   });
@@ -34,6 +35,7 @@ test('createDefaultConfig writes schemaVersion 1 and preserves sourceHints as me
   assert.equal(config.defaultScheme, 'Demo');
   assert.equal(config.defaultBundleId, 'dev.example.Demo');
   assert.equal(config.sourceRoot, 'Sources');
+  assert.deepEqual(config.designSources, ['DesignSystem', '../SharedDesignSystem']);
   assert.deepEqual(config.sourceHints, ['SettingsView.swift', 'HomeView.swift']);
 });
 
@@ -53,6 +55,7 @@ test('migrateProjectConfig maps the current shipped config shape', () => {
   assert.equal(migration.config.schemaVersion, 1);
   assert.equal(migration.config.artifactsDir, 'screenslop-artifacts');
   assert.deepEqual(migration.config.sourceHints, ['SettingsView.swift']);
+  assert.deepEqual(migration.config.designSources, []);
   assert.equal(migration.config.sourceRoot, null);
 });
 
@@ -70,6 +73,9 @@ test('validateProjectConfig rejects unsafe configured paths and source/artifact 
 
   const blockedSource = { ...safe, sourceRoot: '.git/hooks' };
   assert.match(validateProjectConfig(blockedSource, { root }).errors.join('\n'), /blocked folders/);
+
+  const blockedDesignSource = { ...safe, designSources: ['node_modules/DesignSystem'] };
+  assert.match(validateProjectConfig(blockedDesignSource, { root }).errors.join('\n'), /designSources must point at specific design docs/);
 
   const overlap = { ...safe, sourceRoot: 'App', artifactsDir: 'App/screenslop-artifacts' };
   assert.match(validateProjectConfig(overlap, { root }).errors.join('\n'), /must not overlap/);
@@ -98,6 +104,7 @@ test('resolveTargetConfig returns normalized target metadata', () => {
     defaultBundleId: 'dev.example.Demo',
     defaultDevice: 'iPhone 17',
     sourceRoot: 'Sources',
+    designSources: ['DesignSystem', '/tmp/ExternalDesignSystem'],
     artifactsDir: 'screenslop-artifacts'
   };
 
@@ -110,6 +117,7 @@ test('resolveTargetConfig returns normalized target metadata', () => {
   assert.equal(target.bundleId, 'dev.example.Demo');
   assert.equal(target.device, 'iPhone 17');
   assert.equal(target.sourceRoot, path.join(canonicalRoot, 'Sources'));
+  assert.deepEqual(target.designSources, [path.join(canonicalRoot, 'DesignSystem'), path.join(fs.realpathSync.native('/tmp'), 'ExternalDesignSystem')]);
   assert.equal(target.artifactsDir, path.join(canonicalRoot, 'screenslop-artifacts'));
 });
 
@@ -145,6 +153,7 @@ test('screenslop init --json --dry-run prints schemaVersion 1 without writing', 
   assert.equal(payload.wrote, false);
   assert.equal(payload.schemaVersion, 1);
   assert.equal(payload.config.defaultScheme, 'Demo');
+  assert.deepEqual(payload.config.designSources, []);
   assert.equal(fs.existsSync(path.join(root, '.screenslop', 'config.json')), false);
 });
 
@@ -212,6 +221,7 @@ test('planInitConfig treats reordered valid v1 config as already current', () =>
   fs.mkdirSync(path.join(root, '.screenslop'));
   fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
     sourceHints: [],
+    designSources: [],
     artifactsDir: 'artifacts',
     sourceRoot: null,
     projectPath: null,
@@ -227,6 +237,35 @@ test('planInitConfig treats reordered valid v1 config as already current', () =>
 
   const plan = planInitConfig({ root, detected: { preferred: 'manual' } });
   assert.equal(plan.action, 'exists');
+});
+
+test('planInitConfig can add explicit design sources to existing config', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-init-design-source-'));
+  fs.mkdirSync(path.join(root, '.screenslop'));
+  fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'manual',
+    defaultSurface: null,
+    defaultScheme: null,
+    defaultBundleId: null,
+    defaultDevice: null,
+    workspacePath: null,
+    projectPath: null,
+    sourceRoot: null,
+    designSources: ['DesignSystem'],
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+
+  const plan = planInitConfig({
+    root,
+    detected: { preferred: 'manual' },
+    values: { 'design-source': 'DevDocs/DesignSystem.md,DesignSystem' }
+  });
+
+  assert.equal(plan.action, 'migrate');
+  assert.deepEqual(plan.config.designSources, ['DesignSystem', 'DevDocs/DesignSystem.md']);
 });
 
 test('screenslop init -h prints help without writing config', () => {
@@ -251,6 +290,8 @@ test('screenslop init JSON redacts private absolute path values', () => {
     '--dry-run',
     '--source-root',
     privatePath,
+    '--design-source',
+    privatePath,
     '--bundle-id',
     'com.private.Secret'
   ], { cwd: root, encoding: 'utf8' });
@@ -261,6 +302,7 @@ test('screenslop init JSON redacts private absolute path values', () => {
   const payload = JSON.parse(result.stdout);
   assert.equal(payload.pathDisplayMode, 'redacted');
   assert.equal(payload.config.sourceRoot, '<home>/PrivateApp');
+  assert.deepEqual(payload.config.designSources, ['<home>/PrivateApp']);
   assert.equal(payload.config.defaultBundleId, '<bundle-id>');
 });
 

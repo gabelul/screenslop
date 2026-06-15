@@ -239,6 +239,8 @@ function summarizeProfile(profile) {
     platform: profile.project?.platform || null,
     sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
     tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
+    designSourceCount: Array.isArray(profile.designSources) ? profile.designSources.length : 0,
+    profileGapCount: Array.isArray(profile.profileGaps) ? profile.profileGaps.length : 0,
     componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
     screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
     stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,

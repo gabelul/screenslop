@@ -30,6 +30,10 @@
         }
       }
     },
+    "designSources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "tokens": {
       "type": "object",
       "required": ["colors", "typography", "spacing", "cornerRadii", "materials", "icons"],
@@ -55,6 +59,18 @@
           "pillar": { "enum": ["accessibility", "hierarchy", "typography", "color", "layout", "interaction", "motion", "platform", "performance", "slop"] },
           "severity": { "enum": ["P0", "P1", "P2", "P3"] },
           "description": { "type": "string" }
+        }
+      }
+    },
+    "profileGaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+          "detail": { "type": "string" }
         }
       }
     },

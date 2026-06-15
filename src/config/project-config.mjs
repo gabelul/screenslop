@@ -26,6 +26,7 @@ export function createDefaultConfig(options = {}) {
     workspacePath: values.workspace || null,
     projectPath: values.project || null,
     sourceRoot: values['source-root'] || null,
+    designSources: parseList(values['design-source'] || values['design-sources']),
     artifactsDir: values['artifacts-dir'] || 'artifacts',
     sourceHints: parseList(values['source-hint'])
   };
@@ -123,6 +124,12 @@ export function migrateProjectConfig(existing, options) {
   copyIfPresent(input, config, 'sourceRoot');
   copyIfPresent(input, config, 'artifactsDir');
 
+  if (Array.isArray(input.designSources)) config.designSources = input.designSources;
+  else if (typeof input.designSources === 'string') config.designSources = parseList(input.designSources);
+  if (options.defaults.designSources?.length) {
+    config.designSources = [...new Set([...(config.designSources || []), ...options.defaults.designSources])];
+  }
+
   if (Array.isArray(input.sourceHints)) config.sourceHints = input.sourceHints;
   else if (typeof input.sourceHints === 'string') config.sourceHints = parseList(input.sourceHints);
 
@@ -159,11 +166,17 @@ export function validateProjectConfig(config, options = {}) {
   if (config.schemaVersion !== CONFIG_SCHEMA_VERSION) errors.push(`schemaVersion must be ${CONFIG_SCHEMA_VERSION}.`);
   if (!Array.isArray(config.runtimePreference) || config.runtimePreference.length === 0) errors.push('runtimePreference must be a non-empty array.');
   if (typeof config.artifactsDir !== 'string' || config.artifactsDir.trim() === '') errors.push('artifactsDir must be a non-empty string.');
+  if (config.designSources !== undefined && !Array.isArray(config.designSources)) errors.push('designSources must be an array.');
   if (!Array.isArray(config.sourceHints)) errors.push('sourceHints must be an array.');
 
   for (const key of ['preferredRuntime', 'defaultSurface', 'defaultScheme', 'defaultBundleId', 'defaultDevice', 'workspacePath', 'projectPath', 'sourceRoot']) {
     const value = config[key];
     if (value !== null && value !== undefined && typeof value !== 'string') errors.push(`${key} must be a string or null.`);
+  }
+
+  for (const value of config.designSources || []) {
+    if (typeof value !== 'string' || value.trim() === '') errors.push('designSources entries must be non-empty strings.');
+    else if (isUnsafePath(value)) errors.push('designSources entries must not contain NUL bytes.');
   }
 
   for (const key of ['artifactsDir', 'sourceRoot']) {
@@ -183,6 +196,14 @@ export function validateProjectConfig(config, options = {}) {
     const resolved = resolveConfiguredPath(root, config.artifactsDir);
     if (!isPathInside(root, resolved)) errors.push('artifactsDir must resolve inside the project root for v0.1.');
     if (isBlockedArtifactPath(root, resolved)) errors.push('artifactsDir must not point at .git, .omx, node_modules, build, DerivedData, or the repository root.');
+  }
+
+  if (root && Array.isArray(config.designSources)) {
+    for (const value of config.designSources) {
+      if (typeof value !== 'string' || value.trim() === '') continue;
+      const resolved = resolveConfiguredPath(root, value);
+      if (isDangerousDesignSource(root, resolved)) errors.push('designSources must point at specific design docs or folders, not home, filesystem roots, or blocked folders.');
+    }
   }
 
   if (root && config.sourceRoot && config.artifactsDir) {
@@ -238,6 +259,7 @@ export function resolveTargetConfig(config, options = {}) {
     scheme: config.defaultScheme || null,
     bundleId: config.defaultBundleId || null,
     sourceRoot: config.sourceRoot ? resolveConfiguredPath(root, config.sourceRoot) : null,
+    designSources: Array.isArray(config.designSources) ? config.designSources.map((value) => resolveConfiguredPath(root, value)) : [],
     device: config.defaultDevice || null,
     artifactsDir: resolveConfiguredPath(root, config.artifactsDir || 'artifacts'),
     preferredRuntime: config.preferredRuntime || 'manual',
@@ -389,6 +411,24 @@ function isBlockedArtifactPath(root, candidate) {
  */
 function blockedRelativePath(root, candidate) {
   const parts = path.relative(root, candidate).split(path.sep).filter(Boolean);
+  const blocked = new Set(['.git', '.omx', 'node_modules', 'DerivedData', 'build', 'artifacts']);
+  return parts.some((part) => blocked.has(part));
+}
+
+
+/**
+ * Rejects design source paths that are too broad or enter blocked folders.
+ * @param {string} root Project root.
+ * @param {string} candidate Resolved design source path.
+ * @returns {boolean} True when unsafe.
+ */
+function isDangerousDesignSource(root, candidate) {
+  const home = process.env.HOME ? canonicalizeExistingPath(process.env.HOME) : null;
+  if (candidate === path.parse(candidate).root) return true;
+  if (home && candidate === home) return true;
+  if (candidate === root) return false;
+  if (isPathInside(root, candidate) && blockedRelativePath(root, candidate)) return true;
+  const parts = candidate.split(path.sep).filter(Boolean);
   const blocked = new Set(['.git', '.omx', 'node_modules', 'DerivedData', 'build', 'artifacts']);
   return parts.some((part) => blocked.has(part));
 }

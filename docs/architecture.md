@@ -24,15 +24,17 @@ Current schema:
   "workspacePath": null,
   "projectPath": null,
   "sourceRoot": null,
+  "designSources": [],
   "artifactsDir": "artifacts",
   "sourceHints": []
 }
 ```
 
 `artifactsDir` is the canonical artifact-root config field. `see` and `matrix`
-use it when a valid config exists. `sourceHints` are evidence metadata and never
-grant write scope. Source edits need an explicit `sourceRoot` from config or CLI
-flags.
+use it when a valid config exists. `designSources` is a read-only allowlist for
+extra design-system docs or Swift packages that `learn` may scan for tokens.
+`sourceHints` are evidence metadata and never grant write scope. Source edits
+need an explicit `sourceRoot` from config or CLI flags.
 
 The config file is ignored because workspace paths, source roots, and bundle IDs
 can reveal private app details. Durable examples belong in docs or templates,

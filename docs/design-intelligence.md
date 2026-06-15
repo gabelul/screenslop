@@ -7,7 +7,7 @@ Screenslop has two review layers.
 
 The deterministic layer stays the default. It handles things like missing AX labels, weak evidence, touch targets, offscreen frames, and logs. Design intelligence is separate because hierarchy, typography, color, emotional fit, product-state logic, and slop patterns need project context.
 
-## Current and planned flow
+## Current flow
 
 ```bash
 screenslop learn --json --dry-run
@@ -15,6 +15,7 @@ screenslop learn --write --yes --json
 screenslop learn --check --json
 screenslop learn --refresh --json --dry-run
 screenslop learn --refresh --write --yes --json
+screenslop init --design-source ../SharedDesignSystem --json --dry-run
 
 screenslop critique artifacts/<run> --design --json
 screenslop critique artifacts/<run> --design-profile .screenslop/design-profile.json --json
@@ -22,6 +23,8 @@ screenslop critique artifacts/<run> --design --agent-packet --json
 screenslop critique artifacts/<run> --import-design-findings design-findings.json --json
 screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 ```
+
+`learn` scans repo-local design docs plus configured `designSources`, then extracts lightweight colors, typography, spacing, corner radii, materials, and icons from Markdown token rows and common SwiftUI static constants. If it cannot learn enough, it records `profileGaps` so agents say what is missing.
 
 The shipped design critique path loads the private profile, can write a redacted agent packet, and can import agent-produced findings. In JSON mode, `--design` fails with `missing-design-profile` unless a usable profile exists or `--agent-packet`/`--import-design-findings` is handling the review handoff. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:
 

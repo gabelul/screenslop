@@ -68,6 +68,84 @@ test('screenslop learn writes and checks the current profile', () => {
   assert.deepEqual(checked.next, []);
 });
 
+test('screenslop learn extracts tokens from design docs and explicit design sources', () => {
+  const root = createSwiftUiProject();
+  const externalDesign = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-external-design-'));
+  fs.mkdirSync(path.join(root, '.screenslop'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'Home',
+    defaultScheme: 'PetPacket',
+    defaultBundleId: 'com.example.petpacket',
+    defaultDevice: null,
+    workspacePath: null,
+    projectPath: null,
+    sourceRoot: 'Sources',
+    designSources: [externalDesign],
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+  fs.writeFileSync(path.join(root, 'DESIGN.md'), `# Design
+
+Category: pet care
+Audience: busy dog parents, families
+Tone: warm, calm, practical
+
+## Colors
+| Token | Value |
+| --- | --- |
+| brand.teal | #1CA6A6 |
+
+## Spacing
+- spacing.md: 16
+- radius.card: 18
+`);
+  fs.writeFileSync(path.join(externalDesign, 'DesignSystem.swift'), `
+import SwiftUI
+
+enum BrandColor {
+  static let primaryTeal: Color = Color("PrimaryTeal")
+}
+
+enum BrandTypography {
+  static let title: Font = Font.custom("PetSerif", size: 28)
+}
+
+enum BrandSpacing {
+  static let spacingLarge: CGFloat = 24
+  static let cornerRadiusCard: CGFloat = 18
+}
+
+enum BrandChrome {
+  static let backgroundMaterial = Material.thin
+  static let addPetIcon = Image(systemName: "pawprint")
+}
+`);
+
+  const result = runLearn(root, ['--json', '--write', '--yes']);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(root, '.screenslop', 'design-profile.json'), 'utf8'));
+  assert.equal(profile.project.appCategory, 'pet care');
+  assert.deepEqual(profile.project.audience, ['busy dog parents', 'families']);
+  assert.deepEqual(profile.project.tone, ['warm', 'calm', 'practical']);
+  assert.equal(profile.designSources.length, 1);
+  assert.ok(profile.sources.some((source) => source.path === path.join(fs.realpathSync.native(externalDesign), 'DesignSystem.swift')));
+  assert.ok(profile.tokens.colors.some((token) => token.name.includes('primaryTeal') || token.name.includes('brand.teal')));
+  assert.ok(profile.tokens.typography.some((token) => token.value.includes('PetSerif')));
+  assert.ok(profile.tokens.spacing.some((token) => token.name.includes('spacingLarge') || token.name.includes('spacing.md')));
+  assert.ok(profile.tokens.cornerRadii.some((token) => token.name.includes('cornerRadiusCard') || token.name.includes('radius.card')));
+  assert.ok(profile.tokens.materials.some((token) => token.value.includes('Material.thin')));
+  assert.ok(profile.tokens.icons.some((token) => token.value.includes('pawprint')));
+
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.profileSummary.designSourceCount, 1);
+  assert.equal(payload.profileSummary.profileGapCount, 0);
+  assert.equal(payload.profileSummary.tokenCounts.colors > 0, true);
+});
+
 test('screenslop learn detects stale profiles and refreshes while preserving user rules', () => {
   const root = createSwiftUiProject();
   assert.equal(runLearn(root, ['--json', '--write', '--yes']).status, 0);

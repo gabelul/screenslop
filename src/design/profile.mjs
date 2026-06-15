@@ -6,7 +6,8 @@ import { DEFAULT_DESIGN_PROFILE_PATH, DESIGN_PROFILE_SCHEMA_VERSION } from './in
 
 const SCANNED_EXTENSIONS = new Set(['.swift', '.md', '.json', '.yml', '.yaml']);
 const BLOCKED_DIRS = new Set(['.git', '.omx', '.screenslop', 'artifacts', 'build', 'DerivedData', 'node_modules']);
-const MAX_SOURCE_FILES = 80;
+const MAX_SOURCE_FILES = 160;
+const TOKEN_LIMIT_PER_BUCKET = 80;
 
 /**
  * Plans, checks, refreshes, and writes the project-local design profile.
@@ -99,12 +100,14 @@ export function collectProjectDesignContext(options) {
   const config = configRead.config || null;
   const target = config ? resolveTargetConfig(config, { root }) : null;
   const sourceRoot = target?.sourceRoot || inferSourceRoot(root);
-  const sources = scanDesignSources(root, sourceRoot);
+  const designSources = target?.designSources || [];
+  const sources = scanDesignSources(root, sourceRoot, designSources);
   const sourceHash = hashSources(sources);
 
   return {
     root,
     sourceRoot: path.relative(root, sourceRoot) || '.',
+    designSources: designSources.map((source) => displaySourcePath(root, source)),
     projectName: inferProjectName(root, config),
     platform: 'ios',
     surface: options.surface || config?.defaultSurface || null,
@@ -126,23 +129,29 @@ export function buildDesignProfile(options) {
   const existing = options.existing || null;
   const now = new Date().toISOString();
   const inferredComponents = inferComponents(context.root, context.sources);
+  const inferredTokens = inferTokens(context.root, context.sources);
+  const inferredMetadata = inferProjectMetadata(context.root, context.sources);
   const existingRules = Array.isArray(existing?.reviewRules) ? existing.reviewRules : [];
+  const tokens = mergeTokens(inferredTokens, existing?.tokens);
+  const profileGaps = inferProfileGaps({ context, tokens });
 
   return {
     schemaVersion: DESIGN_PROFILE_SCHEMA_VERSION,
     project: {
       name: existing?.project?.name || context.projectName,
       platform: existing?.project?.platform || context.platform || 'ios',
-      appCategory: existing?.project?.appCategory || null,
-      audience: Array.isArray(existing?.project?.audience) ? existing.project.audience : [],
-      tone: Array.isArray(existing?.project?.tone) ? existing.project.tone : []
+      appCategory: existing?.project?.appCategory || inferredMetadata.appCategory || null,
+      audience: Array.isArray(existing?.project?.audience) && existing.project.audience.length ? existing.project.audience : inferredMetadata.audience,
+      tone: Array.isArray(existing?.project?.tone) && existing.project.tone.length ? existing.project.tone : inferredMetadata.tone
     },
     sources: context.sources,
-    tokens: existing?.tokens || emptyTokens(),
+    designSources: context.designSources || [],
+    tokens,
     components: mergeNamedObjects(existing?.components, inferredComponents),
     screenTypes: mergeNamedObjects(existing?.screenTypes, defaultScreenTypes(context.surface)),
     stateSemantics: mergeNamedObjects(existing?.stateSemantics, defaultStateSemantics()),
     reviewRules: mergeRules(existingRules, defaultReviewRules()),
+    profileGaps,
     freshness: {
       createdAt: existing?.freshness?.createdAt || now,
       updatedAt: now,
@@ -267,31 +276,26 @@ function writeDesignProfile(root, file, profile) {
  * @param {string} sourceRoot Source root.
  * @returns {object[]} Source records.
  */
-function scanDesignSources(root, sourceRoot) {
+function scanDesignSources(root, sourceRoot, designSources = []) {
   const files = [];
   const seen = new Set();
-  walk(sourceRoot, files, root);
   for (const candidate of designDocCandidates(root)) {
-    if (isSafeSourceFile(root, candidate)) files.push(candidate);
+    addSourceCandidate({ root, file: candidate, files, seen });
   }
-  const uniqueFiles = files.filter((file) => {
-    const relative = path.relative(root, file);
-    if (seen.has(relative)) return false;
-    seen.add(relative);
-    return true;
-  });
-  return uniqueFiles
-    .sort((left, right) => left.localeCompare(right))
+  for (const designSource of designSources) {
+    walk(designSource, files, root, seen, 'design-source');
+  }
+  walk(sourceRoot, files, root, seen, 'source-root');
+
+  return files
     .slice(0, MAX_SOURCE_FILES)
-    .map((file) => {
-      const relative = path.relative(root, file);
-      return {
-        path: relative,
-        kind: sourceKind(file),
-        hash: `sha256:${hashFile(file)}`,
-        lastSeenAt: new Date().toISOString()
-      };
-    });
+    .map((entry) => ({
+      path: displaySourcePath(root, entry.file),
+      kind: sourceKind(entry.file, entry.origin),
+      origin: entry.origin,
+      hash: `sha256:${hashFile(entry.file)}`,
+      lastSeenAt: new Date().toISOString()
+    }));
 }
 
 
@@ -314,12 +318,12 @@ function designDocCandidates(root) {
  * @param {string} root Project root.
  * @returns {void}
  */
-function walk(dir, files, root) {
+function walk(dir, files, root, seen, origin) {
   if (!fs.existsSync(dir) || files.length >= MAX_SOURCE_FILES) return;
   const stat = fs.lstatSync(dir);
   if (stat.isSymbolicLink()) return;
   if (stat.isFile()) {
-    if (SCANNED_EXTENSIONS.has(path.extname(dir)) && isSafeSourceFile(root, dir)) files.push(dir);
+    addSourceCandidate({ root, file: dir, files, seen, origin });
     return;
   }
   if (!stat.isDirectory()) return;
@@ -330,13 +334,13 @@ function walk(dir, files, root) {
 
   for (const entry of fs.readdirSync(dir).sort()) {
     if (entry.startsWith('._')) continue;
-    walk(path.join(dir, entry), files, root);
+    walk(path.join(dir, entry), files, root, seen, origin);
     if (files.length >= MAX_SOURCE_FILES) return;
   }
 }
 
 /**
- * Checks that a source file exists, is not a symlink, and realpaths under root.
+ * Checks that a source file exists and is not a symlink. Explicit designSources may live outside the repo.
  * @param {string} root Project root.
  * @param {string} file Candidate source file.
  * @returns {boolean} True when safe to read.
@@ -345,7 +349,7 @@ function isSafeSourceFile(root, file) {
   if (!fs.existsSync(file)) return false;
   const stat = fs.lstatSync(file);
   if (stat.isSymbolicLink() || !stat.isFile()) return false;
-  return isPathInside(root, fs.realpathSync.native(file));
+  return true;
 }
 
 /**
@@ -411,7 +415,7 @@ function inferComponents(root, sources) {
   const components = [];
   for (const source of sources) {
     if (!source.path.endsWith('.swift')) continue;
-    const text = safeRead(path.join(root, source.path));
+    const text = safeRead(resolveSourceFile(root, source.path));
     for (const match of text.matchAll(/struct\s+([A-Za-z][A-Za-z0-9_]*)\s*:\s*View/g)) {
       components.push({
         name: match[1],
@@ -435,6 +439,266 @@ function safeRead(file) {
   } catch {
     return '';
   }
+}
+
+
+/**
+ * Adds one scanned source while preserving priority order.
+ * @param {object} options Source candidate options.
+ * @param {string} options.root Project root.
+ * @param {string} options.file Absolute candidate file.
+ * @param {{file:string,origin:string}[]} options.files Output records.
+ * @param {Set<string>} options.seen Seen file keys.
+ * @param {string} [options.origin] Source origin label.
+ * @returns {void}
+ */
+function addSourceCandidate({ root, file, files, seen, origin = 'design-doc' }) {
+  if (files.length >= MAX_SOURCE_FILES) return;
+  if (!SCANNED_EXTENSIONS.has(path.extname(file)) || !isSafeSourceFile(root, file)) return;
+  const key = fs.realpathSync.native(file);
+  if (seen.has(key)) return;
+  seen.add(key);
+  files.push({ file: key, origin });
+}
+
+/**
+ * Builds a private source path for repo-local and explicit external sources.
+ * @param {string} root Project root.
+ * @param {string} file Absolute source file.
+ * @returns {string} Repo-relative path or absolute external path.
+ */
+function displaySourcePath(root, file) {
+  const relative = path.relative(root, file);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)) ? relative || '.' : file;
+}
+
+/**
+ * Extracts lightweight tokens from Swift and Markdown design sources.
+ * @param {string} root Project root.
+ * @param {object[]} sources Source records.
+ * @returns {object} Token buckets.
+ */
+function inferTokens(root, sources) {
+  const tokens = emptyTokens();
+  for (const source of sources) {
+    const text = safeRead(resolveSourceFile(root, source.path));
+    if (!text) continue;
+    const found = source.path.endsWith('.md') ? extractMarkdownTokens(text, source) : extractSwiftTokens(text, source);
+    for (const [bucket, values] of Object.entries(found)) {
+      tokens[bucket] = dedupeTokens([...(tokens[bucket] || []), ...values]).slice(0, TOKEN_LIMIT_PER_BUCKET);
+    }
+  }
+  return tokens;
+}
+
+/**
+ * Extracts design tokens from Markdown tables and bullet-style docs.
+ * @param {string} text Markdown source text.
+ * @param {object} source Source record.
+ * @returns {object} Token buckets.
+ */
+function extractMarkdownTokens(text, source) {
+  const tokens = emptyTokens();
+  const lines = text.split(/\r?\n/);
+  let heading = '';
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^#{1,6}\s+/.test(trimmed)) heading = trimmed.replace(/^#{1,6}\s+/, '').toLowerCase();
+    if (!trimmed || /^\|?\s*:?-{3,}/.test(trimmed)) continue;
+
+    const tableCells = parseMarkdownTableRow(trimmed);
+    if (tableCells.length >= 2) {
+      const [first, second, third] = tableCells;
+      if (/^(token|name)$/i.test(first) && /^(value|hex|usage)$/i.test(second)) continue;
+      const bucket = classifyTokenBucket(`${heading} ${first} ${second} ${third || ''}`);
+      if (bucket) tokens[bucket].push(tokenRecord(first, second, source, 'markdown-table'));
+      continue;
+    }
+
+    const pair = trimmed.match(/^(?:[-*]\s*)?`?([A-Za-z][A-Za-z0-9_. -]{1,60})`?\s*[:=]\s*`?([^`]+?)`?\s*$/);
+    if (!pair) continue;
+    const bucket = classifyTokenBucket(`${heading} ${pair[1]} ${pair[2]}`);
+    if (bucket) tokens[bucket].push(tokenRecord(pair[1], pair[2], source, 'markdown-pair'));
+  }
+  return tokens;
+}
+
+/**
+ * Extracts SwiftUI design tokens from common static constants and symbols.
+ * @param {string} text Swift source text.
+ * @param {object} source Source record.
+ * @returns {object} Token buckets.
+ */
+function extractSwiftTokens(text, source) {
+  const tokens = emptyTokens();
+  const lines = text.split(/\r?\n/);
+  let scope = '';
+  for (const line of lines) {
+    const scopeMatch = line.match(/\b(?:enum|struct|class)\s+([A-Za-z][A-Za-z0-9_]*)/);
+    if (scopeMatch) scope = scopeMatch[1];
+    const constant = line.match(/\bstatic\s+(?:let|var)\s+([A-Za-z][A-Za-z0-9_]*)\s*(?::\s*([^=]+))?\s*=\s*(.+)$/);
+    if (constant) {
+      const name = `${scope ? `${scope}.` : ''}${constant[1]}`;
+      const typeHint = constant[2] || '';
+      const value = constant[3].replace(/\s*\/\/.*$/, '').trim();
+      const bucket = classifyTokenBucket(`${name} ${typeHint} ${value}`);
+      if (bucket) tokens[bucket].push(tokenRecord(name, value, source, 'swift-static'));
+    }
+
+    for (const match of line.matchAll(/Color\(\s*"([^"]+)"\s*\)/g)) {
+      tokens.colors.push(tokenRecord(match[1], `Color("${match[1]}")`, source, 'swift-color-asset'));
+    }
+    for (const match of line.matchAll(/Font\.custom\(\s*"([^"]+)"\s*,\s*size:\s*([0-9.]+)/g)) {
+      tokens.typography.push(tokenRecord(match[1], `Font.custom(size: ${match[2]})`, source, 'swift-font-custom'));
+    }
+    for (const match of line.matchAll(/(?:Image\(\s*systemName:|systemImage:)\s*"([^"]+)"/g)) {
+      tokens.icons.push(tokenRecord(match[1], match[1], source, 'swift-symbol'));
+    }
+    if (/material/i.test(line)) {
+      for (const match of line.matchAll(/(?:Material\.)?(ultraThinMaterial|thinMaterial|regularMaterial|thickMaterial|ultraThickMaterial|thin|regular|thick|bar)\b/g)) {
+        tokens.materials.push(tokenRecord(match[1], match[0], source, 'swift-material'));
+      }
+    }
+  }
+  return Object.fromEntries(Object.entries(tokens).map(([bucket, values]) => [bucket, dedupeTokens(values)]));
+}
+
+/**
+ * Reads high-level product metadata from common design docs.
+ * @param {string} root Project root.
+ * @param {object[]} sources Source records.
+ * @returns {{appCategory:string|null,audience:string[],tone:string[]}}
+ */
+function inferProjectMetadata(root, sources) {
+  const metadata = { appCategory: null, audience: [], tone: [] };
+  for (const source of sources.filter((item) => item.path.endsWith('.md'))) {
+    const text = safeRead(resolveSourceFile(root, source.path));
+    for (const line of text.split(/\r?\n/)) {
+      const match = line.match(/^\s*(?:[-*]\s*)?(Category|App Category|Audience|Tone|Voice)\s*:\s*(.+)$/i);
+      if (!match) continue;
+      const key = match[1].toLowerCase();
+      const values = splitList(match[2]);
+      if (key.includes('category') && !metadata.appCategory) metadata.appCategory = values[0] || null;
+      if (key === 'audience') metadata.audience = dedupeStrings([...metadata.audience, ...values]);
+      if (key === 'tone' || key === 'voice') metadata.tone = dedupeStrings([...metadata.tone, ...values]);
+    }
+  }
+  return metadata;
+}
+
+/**
+ * Builds profile gaps that agents can report honestly.
+ * @param {object} options Gap options.
+ * @param {object} options.context Current context.
+ * @param {object} options.tokens Token buckets.
+ * @returns {object[]} Profile gap records.
+ */
+function inferProfileGaps({ context, tokens }) {
+  const gaps = [];
+  const tokenCounts = Object.fromEntries(Object.entries(tokens).map(([key, value]) => [key, value.length]));
+  if (Object.values(tokenCounts).every((count) => count === 0)) {
+    gaps.push({
+      id: 'design.tokens.empty',
+      severity: 'P2',
+      detail: 'No color, typography, spacing, radius, material, or icon tokens were extracted. Design-system drift checks need explicit designSources or parseable design docs.'
+    });
+  }
+  if (!context.designSources?.length) {
+    gaps.push({
+      id: 'design.sources.not-configured',
+      severity: 'P3',
+      detail: 'No extra designSources are configured. External Swift packages or shared design-system folders will not be scanned.'
+    });
+  }
+  return gaps;
+}
+
+/** @param {string} line Markdown line. @returns {string[]} Table cells. */
+function parseMarkdownTableRow(line) {
+  if (!line.includes('|')) return [];
+  return line.split('|').map((cell) => cell.trim()).filter(Boolean);
+}
+
+/** @param {string} text Token hint text. @returns {string|null} Token bucket. */
+function classifyTokenBucket(text) {
+  const value = text.toLowerCase();
+  if (/#[0-9a-f]{3,8}\b|\bcolor\b|\bcolour\b|\bpalette\b|\bteal\b|\bhex\b/.test(value)) return 'colors';
+  if (/\bfont\b|\btype\b|\btypography\b|\bserif\b|\bsans\b|\bweight\b|\btextstyle\b/.test(value)) return 'typography';
+  if (/radius|corner|rounded/.test(value)) return 'cornerRadii';
+  if (/spacing|padding|gap|inset|margin/.test(value)) return 'spacing';
+  if (/\bmaterial\b|\bblur\b|\bglass\b|ultrathinmaterial|thinmaterial|regularmaterial|thickmaterial/.test(value)) return 'materials';
+  if (/\bicon\b|\bsymbol\b|\bsf symbol\b|\bsystemimage\b|\bsystemname\b/.test(value)) return 'icons';
+  return null;
+}
+
+/**
+ * Builds a normalized token record.
+ * @param {string} name Token name.
+ * @param {string} value Token value.
+ * @param {object} source Source record.
+ * @param {string} extraction Extraction strategy.
+ * @returns {object} Token record.
+ */
+function tokenRecord(name, value, source, extraction) {
+  return {
+    name: cleanTokenText(name),
+    value: cleanTokenText(value),
+    source: source.path,
+    extraction
+  };
+}
+
+/** @param {object[]} values Token records. @returns {object[]} Deduped records. */
+function dedupeTokens(values) {
+  const seen = new Set();
+  const output = [];
+  for (const token of values) {
+    if (!token?.name || !token?.value) continue;
+    const key = `${token.name.toLowerCase()}=${token.value.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(token);
+  }
+  return output;
+}
+
+/**
+ * Merges generated tokens ahead of existing manual records.
+ * @param {object} generated Generated tokens.
+ * @param {object|undefined} existing Existing profile tokens.
+ * @returns {object} Merged token buckets.
+ */
+function mergeTokens(generated, existing) {
+  const output = emptyTokens();
+  for (const bucket of Object.keys(output)) {
+    output[bucket] = dedupeTokens([...(generated?.[bucket] || []), ...(Array.isArray(existing?.[bucket]) ? existing[bucket] : [])]).slice(0, TOKEN_LIMIT_PER_BUCKET);
+  }
+  return output;
+}
+
+/** @param {string} value Raw token text. @returns {string} Clean token text. */
+function cleanTokenText(value) {
+  return String(value || '').replace(/^`|`$/g, '').replace(/\s+/g, ' ').trim().slice(0, 180);
+}
+
+/** @param {string} value Comma-separated text. @returns {string[]} Clean values. */
+function splitList(value) {
+  return value.split(/[,;\/]|\s+and\s+/i).map((item) => item.trim()).filter(Boolean).slice(0, 12);
+}
+
+/** @param {string[]} values Values to dedupe. @returns {string[]} Deduped strings. */
+function dedupeStrings(values) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+/**
+ * Resolves private profile source paths back to local files.
+ * @param {string} root Project root.
+ * @param {string} sourcePath Profile source path.
+ * @returns {string} Absolute file path.
+ */
+function resolveSourceFile(root, sourcePath) {
+  return path.isAbsolute(sourcePath) ? sourcePath : path.join(root, sourcePath);
 }
 
 /** @returns {object} Empty token buckets. */
@@ -518,11 +782,12 @@ function mergeRules(existing, generated) {
  * @param {string} file Source file.
  * @returns {string} Source kind.
  */
-function sourceKind(file) {
+function sourceKind(file, origin = 'source-root') {
+  if (origin === 'design-source' && file.endsWith('.swift')) return 'design-system-source';
   if (file.endsWith('.swift')) return 'swiftui-source';
   if (file.endsWith('.md')) return 'design-doc';
   if (file.endsWith('.json')) return 'json-config';
-  return 'project-source';
+  return origin === 'design-source' ? 'design-source' : 'project-source';
 }
 
 /**

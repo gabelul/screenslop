@@ -585,6 +585,7 @@ Options:
   --bundle-id <id>       Default app bundle ID
   --device <name>        Default simulator device
   --source-root <path>   Source root for future apply flows
+  --design-source <path> Extra design-system doc/folder for learn; repeat or comma-separate
   --surface <name>       Default surface name for capture/report context
   --artifacts-dir <path> Artifact output directory
 `);
@@ -704,6 +705,7 @@ function redactSetupConfig(config) {
     workspacePath: config.workspacePath ? '<workspace>' : config.workspacePath,
     projectPath: config.projectPath ? '<project>' : config.projectPath,
     sourceRoot: config.sourceRoot ? '<source-root>' : config.sourceRoot,
+    designSources: Array.isArray(config.designSources) ? config.designSources.map(() => '<design-source>') : config.designSources,
     artifactsDir: config.artifactsDir ? '<artifacts-dir>' : config.artifactsDir
   };
 }
@@ -740,6 +742,8 @@ function redactSetupValues(values) {
     scheme: values.scheme ? '<scheme>' : values.scheme,
     device: values.device ? '<device>' : values.device,
     'source-root': values['source-root'] ? '<source-root>' : values['source-root'],
+    'design-source': values['design-source'] ? '<design-source>' : values['design-source'],
+    'design-sources': values['design-sources'] ? '<design-source>' : values['design-sources'],
     'artifacts-dir': values['artifacts-dir'] ? '<artifacts-dir>' : values['artifacts-dir'],
     'bundle-id': values['bundle-id'] ? '<bundle-id>' : values['bundle-id']
   };
@@ -757,6 +761,7 @@ function redactSetupNext(commands) {
     .replace(/--project\s+\S+/g, '--project <App.xcodeproj>')
     .replace(/--workspace\s+\S+/g, '--workspace <App.xcworkspace>')
     .replace(/--source-root\s+\S+/g, '--source-root <SourceRoot>')
+    .replace(/--design-source\s+\S+/g, '--design-source <DesignSource>')
     .replace(/critique\s+\S+/g, 'critique artifacts/<run-id>'));
 }
 
@@ -857,6 +862,7 @@ Options:
   --bundle-id <id>       Default app bundle ID
   --device <name>        Default simulator device
   --source-root <path>   Source root for future apply flows
+  --design-source <path> Extra design-system doc/folder for learn; repeat or comma-separate
   --surface <name>       Default surface name for capture/report context
   --artifacts-dir <path> Artifact output directory
 `);
@@ -879,6 +885,7 @@ async function collectInitValues(options) {
     ['bundle-id', 'Default bundle ID (optional): '],
     ['device', 'Default simulator device (optional): '],
     ['source-root', 'Source root for fixes (optional, defaults later): '],
+    ['design-source', 'Extra design source for learn (optional): '],
     ['artifacts-dir', 'Artifacts directory [artifacts]: ']
   ];
 
@@ -978,6 +985,7 @@ function redactConfig(config) {
     workspacePath: redactPath(config.workspacePath),
     projectPath: redactPath(config.projectPath),
     sourceRoot: redactPath(config.sourceRoot),
+    designSources: Array.isArray(config.designSources) ? config.designSources.map((item) => redactPath(item)) : config.designSources,
     artifactsDir: redactPath(config.artifactsDir),
     defaultBundleId: config.defaultBundleId ? '<bundle-id>' : config.defaultBundleId
   };
@@ -1128,6 +1136,9 @@ function summarizePrivateProfile(profile) {
     schemaVersion: profile.schemaVersion || null,
     platform: profile.project?.platform || null,
     sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
+    tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
+    designSourceCount: Array.isArray(profile.designSources) ? profile.designSources.length : 0,
+    profileGapCount: Array.isArray(profile.profileGaps) ? profile.profileGaps.length : 0,
     componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
     screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
     stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,
