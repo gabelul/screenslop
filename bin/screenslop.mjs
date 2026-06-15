@@ -1084,6 +1084,9 @@ function printLearnResult(result, json) {
   console.log(`Status: ${result.status}`);
   console.log(`Action: ${result.action || 'learn'}`);
   console.log(`Wrote: ${result.wrote ? 'yes' : 'no'}`);
+  if (result.previousFreshness?.status && result.previousFreshness.status !== result.freshness?.status) {
+    console.log(`Previous: ${result.previousFreshness.status}`);
+  }
   if (result.sourceCount !== undefined) console.log(`Sources: ${result.sourceCount}`);
   for (const command of result.next || []) console.log(`Next: ${command}`);
 }
@@ -1104,6 +1107,12 @@ function redactLearnResult(result) {
     redacted.freshness = {
       ...redacted.freshness,
       missingSources: redacted.freshness.missingSources.map(() => '<redacted-source>')
+    };
+  }
+  if (redacted.previousFreshness?.missingSources) {
+    redacted.previousFreshness = {
+      ...redacted.previousFreshness,
+      missingSources: redacted.previousFreshness.missingSources.map(() => '<redacted-source>')
     };
   }
   return redacted;

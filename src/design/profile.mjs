@@ -41,7 +41,9 @@ export function collectDesignProfile(options) {
   }
 
   const profile = buildDesignProfile({ context: current, existing: existing.profile });
-  const comparison = existing.profile ? compareProfileWithContext(existing.profile, current) : { status: 'missing-profile', stale: true, missingSources: [] };
+  const previousFreshness = existing.profile
+    ? compareProfileWithContext(existing.profile, current)
+    : { status: 'missing-profile', stale: true, missingSources: [] };
   const action = options.refresh ? 'refresh' : 'plan';
   const wantsWrite = options.write && !options.dryRun;
   const mayWrite = wantsWrite && (options.yes || options.confirmed);
@@ -55,26 +57,29 @@ export function collectDesignProfile(options) {
       wrote: false,
       dryRun: Boolean(options.dryRun),
       profilePath,
-      freshness: comparison,
+      freshness: previousFreshness,
       profile
     };
   }
 
+  let freshness = previousFreshness;
   if (mayWrite) {
     writeDesignProfile(root, profilePath, profile);
+    freshness = compareProfileWithContext(profile, current);
   }
 
   return {
     ok: true,
     command: 'learn',
     action,
-    status: mayWrite ? 'written' : (comparison.status === 'current' ? 'current' : 'ready'),
+    status: mayWrite ? 'written' : (previousFreshness.status === 'current' ? 'current' : 'ready'),
     wrote: Boolean(mayWrite),
     dryRun: Boolean(options.dryRun),
     profilePath,
     sourceHash: current.sourceHash,
     sourceCount: current.sources.length,
-    freshness: comparison,
+    freshness,
+    previousFreshness: mayWrite ? previousFreshness : undefined,
     profile
   };
 }

@@ -49,6 +49,9 @@ test('screenslop learn writes and checks the current profile', () => {
   assert.equal(written.ok, true);
   assert.equal(written.status, 'written');
   assert.equal(written.wrote, true);
+  assert.equal(written.freshness.status, 'current');
+  assert.equal(written.freshness.stale, false);
+  assert.equal(written.previousFreshness.status, 'missing-profile');
 
   const file = path.join(root, '.screenslop', 'design-profile.json');
   assert.equal(fs.existsSync(file), true);
