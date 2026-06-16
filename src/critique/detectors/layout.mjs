@@ -41,6 +41,7 @@ function touchTargetFinding(context, node) {
   const height = Number(frame.height);
   if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
   if (width >= minTouchTarget && height >= minTouchTarget) return null;
+  if (shouldSkipTouchTargetNode(node, width, height)) return null;
 
   const bothAxes = width < minTouchTarget && height < minTouchTarget;
   const systemAccessory = isSystemAccessory(node);
@@ -84,7 +85,7 @@ function offscreenFrameFinding(context, node, bounds) {
   const nodeMaxX = Number(frame.x) + Number(frame.width);
   const nodeMaxY = Number(frame.y) + Number(frame.height);
   const outside = Number(frame.x) < minX || Number(frame.y) < minY || nodeMaxX > maxX || nodeMaxY > maxY;
-  if (!outside) return null;
+  if (!outside || isScrollBelowFoldCandidate(frame, { minX, maxX, maxY, bounds })) return null;
 
   const centerX = Number(frame.x) + Number(frame.width) / 2;
   const centerY = Number(frame.y) + Number(frame.height) / 2;
@@ -118,6 +119,95 @@ function offscreenFrameFinding(context, node, bounds) {
 function isSystemAccessory(node) {
   const text = `${node.label || ''} ${node.identifier || ''}`.toLowerCase();
   return text.includes('close') || text.includes('grabber') || text.includes('dynamic island');
+}
+
+/**
+ * Suppresses recurring AX frame false positives where runtime evidence reports a visual subframe.
+ * @param {object} node AX node.
+ * @param {number} width AX frame width.
+ * @param {number} height AX frame height.
+ * @returns {boolean} True when the small frame is known platform/component noise.
+ */
+function shouldSkipTouchTargetNode(node, width, height) {
+  return isSystemChromeNode(node)
+    || isNativeCompactControl(node, height)
+    || isDesignSystemCompactRow(node, height)
+    || isButtonTextBounds(node, width, height);
+}
+
+/**
+ * Returns true for OS chrome that already owns a larger system hit region.
+ * @param {object} node AX node.
+ * @returns {boolean} Whether the node is native navigation/status/toolbar chrome.
+ */
+function isSystemChromeNode(node) {
+  const text = nodeText(node);
+  const name = `${node.label || ''} ${node.title || ''}`.trim();
+  return /^back$/i.test(name)
+    || /^return to\s+/i.test(name)
+    || /toolbar|navigationbar|navigation bar|navbar|statusbar|status bar/.test(text);
+}
+
+/**
+ * Returns true for compact native controls whose visual height is below 44pt by design.
+ * @param {object} node AX node.
+ * @param {number} height AX frame height.
+ * @returns {boolean} Whether the node is a compact native control.
+ */
+function isNativeCompactControl(node, height) {
+  if (height < 30 || height >= minTouchTarget) return false;
+  return /segmented|segment control|segmentedcontrol|date picker|datepicker|axdatepicker/.test(nodeText(node));
+}
+
+/**
+ * Returns true for known design-system rows that intentionally render at 40pt.
+ * @param {object} node AX node.
+ * @param {number} height AX frame height.
+ * @returns {boolean} Whether the node is a compact DS row.
+ */
+function isDesignSystemCompactRow(node, height) {
+  if (height < 38 || height >= minTouchTarget) return false;
+  return /sectionrow|section row/.test(nodeText(node));
+}
+
+/**
+ * Returns true when AX reports the text bounds for a padded SwiftUI button.
+ * @param {object} node AX node.
+ * @param {number} width AX frame width.
+ * @param {number} height AX frame height.
+ * @returns {boolean} Whether the frame looks like text bounds, not the hit area.
+ */
+function isButtonTextBounds(node, width, height) {
+  if (!/button/i.test(String(node.role || ''))) return false;
+  if (width < minTouchTarget || height < 16 || height >= minTouchTarget) return false;
+  const name = `${node.label || ''}${node.title || ''}`.trim();
+  return /[A-Za-z0-9]/.test(name);
+}
+
+/**
+ * Returns true for AX rows that are below the visible viewport in a scroll view.
+ * @param {object} frame AX frame.
+ * @param {object} geometry Root geometry.
+ * @returns {boolean} Whether this is likely scroll-below-fold content.
+ */
+function isScrollBelowFoldCandidate(frame, geometry) {
+  const x = Number(frame.x);
+  const y = Number(frame.y);
+  const width = Number(frame.width);
+  const height = Number(frame.height);
+  if (![x, y, width, height].every(Number.isFinite)) return false;
+  const horizontallyIntersects = x < geometry.maxX && x + width > geometry.minX;
+  const saneScrollableSize = width <= Number(geometry.bounds.width || 0) * 1.15 && height <= Number(geometry.bounds.height || 0);
+  return y >= geometry.maxY && horizontallyIntersects && saneScrollableSize;
+}
+
+/**
+ * Builds lower-cased searchable node text.
+ * @param {object} node AX node.
+ * @returns {string} Search text.
+ */
+function nodeText(node) {
+  return `${node.role || ''} ${node.label || ''} ${node.title || ''} ${node.value || ''} ${node.identifier || ''}`.toLowerCase();
 }
 
 /**

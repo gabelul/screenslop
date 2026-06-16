@@ -61,6 +61,42 @@ test('collectCritique detects AX, touch target, offscreen, and log findings', as
 });
 
 
+test('collectCritique suppresses recurring AX frame false positives', async () => {
+  const { root, bundle } = createAxBundle({
+    role: 'AXApplication',
+    label: 'False Positive Fixture',
+    enabled: true,
+    hidden: false,
+    frame: { x: 0, y: 0, width: 402, height: 874 },
+    children: [
+      { role: 'AXButton', label: 'Below fold row', enabled: true, hidden: false, identifier: 'settings.rowButton', frame: { x: 20, y: 920, width: 360, height: 48 } },
+      { role: 'AXSegmentedControl', label: 'Filter segmented control', enabled: true, hidden: false, frame: { x: 20, y: 120, width: 220, height: 32 } },
+      { role: 'AXGenericElement', label: 'Start date picker', enabled: true, hidden: false, identifier: 'startDatePicker', frame: { x: 20, y: 170, width: 180, height: 33 } },
+      { role: 'AXButton', label: 'Return to JollyTrack', enabled: true, hidden: false, frame: { x: 8, y: 20, width: 150, height: 30 } },
+      { role: 'AXButton', label: 'Back', enabled: true, hidden: false, frame: { x: 8, y: 64, width: 38, height: 32 } },
+      { role: 'AXButton', label: 'More', enabled: true, hidden: false, identifier: 'main.toolbar.moreButton', frame: { x: 356, y: 64, width: 32, height: 32 } },
+      { role: 'AXButton', label: 'Profile row', enabled: true, hidden: false, identifier: 'profile.SectionRow', frame: { x: 20, y: 240, width: 360, height: 40 } },
+      { role: 'AXButton', label: 'Continue', enabled: true, hidden: false, identifier: 'onboarding.continueButton', frame: { x: 120, y: 300, width: 90, height: 22 } },
+      { role: 'AXButton', label: 'Tiny custom action', enabled: true, hidden: false, identifier: 'custom.tinyIconButton', frame: { x: 20, y: 360, width: 32, height: 32 } },
+      { role: 'AXButton', label: 'Horizontal offscreen action', enabled: true, hidden: false, identifier: 'custom.horizontalOffscreenButton', frame: { x: 430, y: 420, width: 80, height: 48 } }
+    ]
+  });
+  const result = await collectCritique({ root, bundlePath: bundle });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.label === 'Below fold row'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.label === 'Filter segmented control'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.label === 'Start date picker'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.label === 'Return to JollyTrack'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.label === 'Back'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.identifier === 'main.toolbar.moreButton'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.identifier === 'profile.SectionRow'), false);
+  assert.equal(result.findings.some((finding) => finding.evidence.node?.identifier === 'onboarding.continueButton'), false);
+  assert.equal(result.findings.some((finding) => finding.ruleId === 'layout.touch-target' && finding.evidence.node?.identifier === 'custom.tinyIconButton'), true);
+  assert.equal(result.findings.some((finding) => finding.ruleId === 'layout.offscreen-frame' && finding.evidence.node?.identifier === 'custom.horizontalOffscreenButton'), true);
+});
+
+
 test('collectCritique prefers copied bundle-local artifacts over repo-root manifest paths', async () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-critique-moved-'));
   const movedBundle = path.join(tempRoot, 'moved-problem');
@@ -174,6 +210,41 @@ function assertFindingMatchesSchema(finding, schema) {
   assert.equal(schema.properties.pillar.enum.includes(finding.pillar), true);
   assert.equal(schema.properties.confidence.enum.includes(finding.confidence), true);
   assert.equal(schema.properties.effort.enum.includes(finding.effort), true);
+}
+
+/**
+ * Creates a minimal complete evidence bundle from an AX tree.
+ * @param {object} accessibility Accessibility tree root.
+ * @returns {{root:string,bundle:string}} Temporary root and bundle path.
+ */
+function createAxBundle(accessibility) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-critique-ax-'));
+  const bundle = 'artifacts/ax-fixture';
+  const bundlePath = path.join(root, bundle);
+  fs.mkdirSync(bundlePath, { recursive: true });
+  fs.writeFileSync(path.join(bundlePath, 'accessibility.json'), JSON.stringify(accessibility, null, 2));
+  fs.writeFileSync(path.join(bundlePath, 'evidence.json'), JSON.stringify({
+    runId: 'ax-fixture',
+    createdAt: '2026-06-16T00:00:00.000Z',
+    surface: 'AX Fixture',
+    runtime: { driver: 'baguette', deviceName: 'iPhone Test', udid: 'TEST' },
+    environment: { appearance: 'unspecified' },
+    artifacts: {
+      screenshot: 'artifacts/ax-fixture/screenshot.jpg',
+      accessibilityTree: 'artifacts/ax-fixture/accessibility.json',
+      logs: null,
+      summary: 'artifacts/ax-fixture/summary.md'
+    },
+    capture: {
+      status: 'complete',
+      steps: [
+        { name: 'screenshot', ok: true, message: 'ok' },
+        { name: 'accessibility-tree', ok: true, message: 'ok' }
+      ]
+    },
+    sourceHints: []
+  }, null, 2));
+  return { root, bundle };
 }
 
 /**
