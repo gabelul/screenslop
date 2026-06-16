@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/gabelul/screenslop/compare/v0.1.8...v0.1.9) (2026-06-16)
+
+
+### Bug Fixes
+
+* suppress recurring AX frame false positives ([89bcceb](https://github.com/gabelul/screenslop/commit/89bcceb11b95ad8450093d9603b994e5548b042b))
+
 ## [0.1.8](https://github.com/gabelul/screenslop/compare/v0.1.7...v0.1.8) (2026-06-16)
 
 
