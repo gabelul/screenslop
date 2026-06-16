@@ -38,12 +38,12 @@
       "type": "object",
       "required": ["colors", "typography", "spacing", "cornerRadii", "materials", "icons"],
       "properties": {
-        "colors": { "type": "array" },
-        "typography": { "type": "array" },
-        "spacing": { "type": "array" },
-        "cornerRadii": { "type": "array" },
-        "materials": { "type": "array" },
-        "icons": { "type": "array" }
+        "colors": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+        "typography": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+        "spacing": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+        "cornerRadii": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+        "materials": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+        "icons": { "type": "array", "items": { "$ref": "#/$defs/token" } }
       }
     },
     "components": { "type": "array", "items": { "type": "object" } },
@@ -83,6 +83,21 @@
         "sourceHash": { "type": "string" },
         "status": { "enum": ["current", "stale", "missing-sources", "needs-review"] }
       }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "object",
+      "required": ["name", "value", "source"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "source": { "type": "string" },
+        "sourceKind": { "type": ["string", "null"] },
+        "extraction": { "type": "string" },
+        "confidence": { "enum": ["low", "medium", "high"] }
+      },
+      "additionalProperties": true
     }
   }
 }

@@ -5,9 +5,10 @@ import { readProjectConfig, resolveTargetConfig } from '../config/project-config
 import { DEFAULT_DESIGN_PROFILE_PATH, DESIGN_PROFILE_SCHEMA_VERSION } from './index.mjs';
 
 const SCANNED_EXTENSIONS = new Set(['.swift', '.md', '.json', '.yml', '.yaml']);
-const BLOCKED_DIRS = new Set(['.git', '.omx', '.screenslop', 'artifacts', 'build', 'DerivedData', 'node_modules']);
-const MAX_SOURCE_FILES = 160;
+const BLOCKED_DIRS = new Set(['.build', '.git', '.github', '.omx', '.screenslop', '.swiftpm', 'artifacts', 'build', 'DerivedData', 'node_modules']);
+const MAX_SOURCE_FILES = 320;
 const TOKEN_LIMIT_PER_BUCKET = 80;
+const CORE_TOKEN_BUCKETS = ['colors', 'typography', 'spacing', 'cornerRadii'];
 
 /**
  * Plans, checks, refreshes, and writes the project-local design profile.
@@ -332,7 +333,7 @@ function walk(dir, files, root, seen, origin) {
   const parts = relative.split(path.sep).filter(Boolean);
   if (parts.some((part) => BLOCKED_DIRS.has(part))) return;
 
-  for (const entry of fs.readdirSync(dir).sort()) {
+  for (const entry of fs.readdirSync(dir).sort(compareWalkEntries)) {
     if (entry.startsWith('._')) continue;
     walk(path.join(dir, entry), files, root, seen, origin);
     if (files.length >= MAX_SOURCE_FILES) return;
@@ -350,6 +351,32 @@ function isSafeSourceFile(root, file) {
   const stat = fs.lstatSync(file);
   if (stat.isSymbolicLink() || !stat.isFile()) return false;
   return true;
+}
+
+/**
+ * Sorts likely design-system files early so bounded scans reach tokens before examples.
+ * @param {string} left First directory entry name.
+ * @param {string} right Second directory entry name.
+ * @returns {number} Sort order.
+ */
+function compareWalkEntries(left, right) {
+  const priority = walkEntryPriority(left) - walkEntryPriority(right);
+  return priority || left.localeCompare(right);
+}
+
+/**
+ * Scores an entry name for design-profile learning.
+ * @param {string} entry Directory entry name.
+ * @returns {number} Lower means earlier.
+ */
+function walkEntryPriority(entry) {
+  const normalized = entry.toLowerCase();
+  if (normalized === 'sources') return 0;
+  if (normalized === 'tokens') return 1;
+  if (['primitive', 'semantic', 'theme', 'environment'].includes(normalized)) return 2;
+  if (/token|color|typography|spacing|radius|theme|design|brand|palette/.test(normalized)) return 3;
+  if (/readme|design|\.md$|\.docc$/.test(normalized)) return 4;
+  return 10;
 }
 
 /**
@@ -481,6 +508,7 @@ function displaySourcePath(root, file) {
 function inferTokens(root, sources) {
   const tokens = emptyTokens();
   for (const source of sources) {
+    if (shouldSkipTokenExtraction(source)) continue;
     const text = safeRead(resolveSourceFile(root, source.path));
     if (!text) continue;
     const found = source.path.endsWith('.md') ? extractMarkdownTokens(text, source) : extractSwiftTokens(text, source);
@@ -532,31 +560,46 @@ function extractMarkdownTokens(text, source) {
 function extractSwiftTokens(text, source) {
   const tokens = emptyTokens();
   const lines = text.split(/\r?\n/);
-  let scope = '';
+  let scopeName = '';
+  let scopeContext = '';
   for (const line of lines) {
-    const scopeMatch = line.match(/\b(?:enum|struct|class)\s+([A-Za-z][A-Za-z0-9_]*)/);
-    if (scopeMatch) scope = scopeMatch[1];
-    const constant = line.match(/\bstatic\s+(?:let|var)\s+([A-Za-z][A-Za-z0-9_]*)\s*(?::\s*([^=]+))?\s*=\s*(.+)$/);
+    if (/^\s*\/\//.test(line)) continue;
+    const scopeMatch = line.match(/\b(?:enum|struct|class|protocol)\s+([A-Za-z][A-Za-z0-9_]*)([^{}]*)/);
+    if (scopeMatch) {
+      scopeName = scopeMatch[1];
+      scopeContext = `${scopeMatch[1]} ${scopeMatch[2] || ''}`;
+    }
+    const constant = line.match(/\b(?:static\s+)?(?:let|var)\s+([A-Za-z][A-Za-z0-9_]*)\s*(?::\s*([^=\{]+))?\s*(?:=|\{)\s*(.+)$/);
     if (constant) {
-      const name = `${scope ? `${scope}.` : ''}${constant[1]}`;
+      const name = `${scopeName ? `${scopeName}.` : ''}${constant[1]}`;
       const typeHint = constant[2] || '';
       const value = constant[3].replace(/\s*\/\/.*$/, '').trim();
-      const bucket = classifyTokenBucket(`${name} ${typeHint} ${value}`);
-      if (bucket) tokens[bucket].push(tokenRecord(name, value, source, 'swift-static'));
+      if (/^(?:get|set)\b/.test(value)) continue;
+      const bucket = classifySwiftTokenBucket({ name, typeHint, value, line, scopeContext, source });
+      if (bucket) tokens[bucket].push(tokenRecord(name, value, source, 'swift-static', 'medium'));
     }
 
     for (const match of line.matchAll(/Color\(\s*"([^"]+)"\s*\)/g)) {
-      tokens.colors.push(tokenRecord(match[1], `Color("${match[1]}")`, source, 'swift-color-asset'));
+      tokens.colors.push(tokenRecord(match[1], `Color("${match[1]}")`, source, 'swift-color-asset', 'high'));
+    }
+    for (const match of line.matchAll(/(?:Color|UIColor)\s*\(\s*hex\s*:\s*"?([^"\),]+)"?/gi)) {
+      tokens.colors.push(tokenRecord(`${scopeName || 'color'}.hex`, match[1], source, 'swift-color-hex', 'high'));
+    }
+    for (const match of line.matchAll(/(?:Color|UIColor)\s*\([^)]*(?:hue\s*:|saturation\s*:|brightness\s*:)[^)]*\)/gi)) {
+      tokens.colors.push(tokenRecord(`${scopeName || 'color'}.hsb`, match[0], source, 'swift-color-hsb', 'high'));
+    }
+    for (const match of line.matchAll(/DynamicTheme\s*\(|brandColor\s*:/g)) {
+      tokens.colors.push(tokenRecord(`${scopeName || 'theme'}.dynamicTheme`, line.trim(), source, 'swift-dynamic-theme', 'medium'));
     }
     for (const match of line.matchAll(/Font\.custom\(\s*"([^"]+)"\s*,\s*size:\s*([0-9.]+)/g)) {
-      tokens.typography.push(tokenRecord(match[1], `Font.custom(size: ${match[2]})`, source, 'swift-font-custom'));
+      tokens.typography.push(tokenRecord(match[1], `Font.custom(size: ${match[2]})`, source, 'swift-font-custom', 'high'));
     }
     for (const match of line.matchAll(/(?:Image\(\s*systemName:|systemImage:)\s*"([^"]+)"/g)) {
-      tokens.icons.push(tokenRecord(match[1], match[1], source, 'swift-symbol'));
+      tokens.icons.push(tokenRecord(match[1], match[1], source, 'swift-symbol', 'high'));
     }
     if (/material/i.test(line)) {
       for (const match of line.matchAll(/(?:Material\.)?(ultraThinMaterial|thinMaterial|regularMaterial|thickMaterial|ultraThickMaterial|thin|regular|thick|bar)\b/g)) {
-        tokens.materials.push(tokenRecord(match[1], match[0], source, 'swift-material'));
+        tokens.materials.push(tokenRecord(match[1], match[0], source, 'swift-material', 'high'));
       }
     }
   }
@@ -596,11 +639,20 @@ function inferProjectMetadata(root, sources) {
 function inferProfileGaps({ context, tokens }) {
   const gaps = [];
   const tokenCounts = Object.fromEntries(Object.entries(tokens).map(([key, value]) => [key, value.length]));
+  const trustedCounts = Object.fromEntries(Object.entries(tokens).map(([key, value]) => [key, value.filter(isTrustedToken).length]));
   if (Object.values(tokenCounts).every((count) => count === 0)) {
     gaps.push({
       id: 'design.tokens.empty',
       severity: 'P2',
       detail: 'No color, typography, spacing, radius, material, or icon tokens were extracted. Design-system drift checks need explicit designSources or parseable design docs.'
+    });
+  }
+  const weakCoreBuckets = CORE_TOKEN_BUCKETS.filter((bucket) => trustedCounts[bucket] === 0);
+  if (context.designSources?.length && weakCoreBuckets.length > 0) {
+    gaps.push({
+      id: 'design.tokens.incomplete-core',
+      severity: 'P2',
+      detail: `Configured design sources were scanned, but credible core token buckets are still missing: ${weakCoreBuckets.join(', ')}. Treat design-system drift checks as incomplete until the extractor learns those patterns or the profile is hand-reviewed.`
     });
   }
   if (!context.designSources?.length) {
@@ -613,6 +665,54 @@ function inferProfileGaps({ context, tokens }) {
   return gaps;
 }
 
+
+/**
+ * Skips generated/localization sources that look like copy catalogs, not design-system definitions.
+ * @param {object} source Source record.
+ * @returns {boolean} True when token extraction should skip the file.
+ */
+function shouldSkipTokenExtraction(source) {
+  const normalized = source.path.replace(/\\/g, '/').toLowerCase();
+  return /(^|\/)l10n\.swift$/.test(normalized)
+    || normalized.includes('/localization')
+    || normalized.includes('/localizable')
+    || normalized.includes('/strings')
+    || normalized.includes('/generated/')
+    || normalized.endsWith('/generated.swift');
+}
+
+/**
+ * Classifies Swift constants only when the declaration looks like a real design token.
+ * @param {object} options Classification options.
+ * @returns {string|null} Token bucket.
+ */
+function classifySwiftTokenBucket(options) {
+  const text = `${options.name} ${options.typeHint} ${options.value} ${options.scopeContext}`.toLowerCase();
+  const sourceText = `${options.source.path} ${options.source.origin || ''}`.toLowerCase();
+  const designContext = /design|theme|token|style|brand|palette|spacing|radius|typography|font/.test(sourceText)
+    || /design|theme|token|style|brand|palette|spacing|radius|typography|font/.test(options.scopeContext.toLowerCase());
+  if (/image\s*\(|systemimage|systemname|sf symbol|icon/.test(text)) return 'icons';
+  if (/color\s*\(|uicolor|cgcolor|#[0-9a-f]{3,8}\b|\bhex\b|hue\s*:|saturation\s*:|brightness\s*:|dynamictheme|brandcolor|themecolor|palette/.test(text)) return 'colors';
+  if (/font\s*\.|uifont|font\b|typography|textstyle|serif|sans|weight/.test(text)) return 'typography';
+  if (/material\b|ultrathinmaterial|thinmaterial|regularmaterial|thickmaterial|blur/.test(options.value.toLowerCase()) || /material\b|blur/.test(options.name.toLowerCase())) return 'materials';
+  if (/radius|corner|rounded/.test(text) && designContext) return 'cornerRadii';
+  if (/spacing|padding|inset|margin|gap/.test(text) && designContext) return 'spacing';
+  if (/\b(xxs|xs|sm|md|lg|xl|xxl|small|medium|large)\b/.test(options.name.toLowerCase()) && /cgfloat|double|int|spacing|scale/.test(text) && designContext) return 'spacing';
+  return null;
+}
+
+/** @param {object} token Token record. @returns {boolean} True when it can clear profile gaps. */
+function isTrustedToken(token) {
+  return token?.confidence === 'high' || token?.confidence === 'medium' || token?.extraction === 'manual';
+}
+
+/** @param {object} token Existing token record. @returns {boolean} True when the token should survive refresh. */
+function shouldPreserveExistingToken(token) {
+  if (!token || typeof token !== 'object') return false;
+  if (token.extraction && !token.confidence) return false;
+  return token.confidence !== 'low';
+}
+
 /** @param {string} line Markdown line. @returns {string[]} Table cells. */
 function parseMarkdownTableRow(line) {
   if (!line.includes('|')) return [];
@@ -623,7 +723,7 @@ function parseMarkdownTableRow(line) {
 function classifyTokenBucket(text) {
   const value = text.toLowerCase();
   if (/#[0-9a-f]{3,8}\b|\bcolor\b|\bcolour\b|\bpalette\b|\bteal\b|\bhex\b/.test(value)) return 'colors';
-  if (/\bfont\b|\btype\b|\btypography\b|\bserif\b|\bsans\b|\bweight\b|\btextstyle\b/.test(value)) return 'typography';
+  if (/\bfont\b|\btypography\b|\bserif\b|\bsans\b|\bweight\b|\btextstyle\b/.test(value)) return 'typography';
   if (/radius|corner|rounded/.test(value)) return 'cornerRadii';
   if (/spacing|padding|gap|inset|margin/.test(value)) return 'spacing';
   if (/\bmaterial\b|\bblur\b|\bglass\b|ultrathinmaterial|thinmaterial|regularmaterial|thickmaterial/.test(value)) return 'materials';
@@ -637,14 +737,17 @@ function classifyTokenBucket(text) {
  * @param {string} value Token value.
  * @param {object} source Source record.
  * @param {string} extraction Extraction strategy.
+ * @param {string} [confidence='medium'] Token confidence used by profile-gap checks.
  * @returns {object} Token record.
  */
-function tokenRecord(name, value, source, extraction) {
+function tokenRecord(name, value, source, extraction, confidence = 'medium') {
   return {
     name: cleanTokenText(name),
     value: cleanTokenText(value),
     source: source.path,
-    extraction
+    sourceKind: source.kind || null,
+    extraction,
+    confidence
   };
 }
 
@@ -671,7 +774,8 @@ function dedupeTokens(values) {
 function mergeTokens(generated, existing) {
   const output = emptyTokens();
   for (const bucket of Object.keys(output)) {
-    output[bucket] = dedupeTokens([...(generated?.[bucket] || []), ...(Array.isArray(existing?.[bucket]) ? existing[bucket] : [])]).slice(0, TOKEN_LIMIT_PER_BUCKET);
+    const preserved = (Array.isArray(existing?.[bucket]) ? existing[bucket] : []).filter(shouldPreserveExistingToken);
+    output[bucket] = dedupeTokens([...(generated?.[bucket] || []), ...preserved]).slice(0, TOKEN_LIMIT_PER_BUCKET);
   }
   return output;
 }

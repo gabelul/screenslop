@@ -19,7 +19,7 @@ Core sections:
 - `project`: app name, platform, category, audience, and tone.
 - `sources`: scanned docs, SwiftUI files, token files, configured design sources, and evidence bundles with hashes.
 - `designSources`: the private read-only design-system paths configured for learning.
-- `tokens`: extracted colors, typography, spacing, radii, materials, and icons.
+- `tokens`: extracted colors, typography, spacing, radii, materials, and icons. Each generated token includes `name`, `value`, `source`, `sourceKind`, `extraction`, and `confidence`.
 - `components`: app-specific UI building blocks and expected traits.
 - `screenTypes`: rules for onboarding, settings, paywalls, empty states, dashboards, and other flows.
 - `stateSemantics`: product-state rules, such as when a badge can say active, locked, pending, or complete.
@@ -29,6 +29,6 @@ Core sections:
 
 ## Refresh contract
 
-`screenslop learn --check` compares profile source hashes with the current project. `screenslop learn --refresh` updates learned facts while preserving user-authored rules where possible. The extractor reads Markdown token tables/pairs and common SwiftUI static constants such as `Color`, `Font`, spacing, radius, material, and SF Symbol definitions.
+`screenslop learn --check` compares profile source hashes with the current project. `screenslop learn --refresh` updates learned facts while preserving user-authored rules where possible. The extractor reads Markdown token tables/pairs and common SwiftUI design-system patterns such as `DynamicTheme`, `Color(hex:)`, HSB colors, `Font.custom`, spacing/radius constants, material definitions, and SF Symbols. It skips build/checkouts and localization/generated files so translated copy and generated identifiers do not suppress profile gaps.
 
 Agents should treat a stale profile as a blocker for design claims. Run a refresh dry-run first, review the delta, then write only after explicit confirmation.

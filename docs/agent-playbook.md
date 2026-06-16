@@ -315,7 +315,7 @@ Do not smooth over these. The whole product is built around evidence, so the blo
 
 1. Run deterministic Screenslop first: doctor, see, critique, fix, fresh see, fresh critique, verify.
 2. Run `screenslop learn --check --json` before design claims.
-3. If the profile is stale or missing a shared design system, preview config/profile changes first. Add explicit design sources with `screenslop init --design-source <path> --json --dry-run`, then refresh with `screenslop learn --refresh --json --dry-run` and ask before writing private files.
+3. If the profile is stale or missing a shared design system, preview config/profile changes first. Add explicit design sources with `screenslop init --design-source <path> --json --dry-run`, then refresh with `screenslop learn --refresh --json --dry-run` and ask before writing private files. Check `profileSummary.profileGapIds` and `trustedTokenCounts`; raw token counts alone are not proof that the design system was learned.
 4. Run the opt-in design pass or agent packet only after runtime evidence exists.
 5. Keep measured and subjective output separate:
    - `measured`: deterministic finding, eligible for fresh-bundle `verified-fixed`.

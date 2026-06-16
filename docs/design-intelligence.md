@@ -24,7 +24,7 @@ screenslop critique artifacts/<run> --import-design-findings design-findings.jso
 screenslop matrix --profile examples/matrix/phone-sizes.json --critique --design --agent-packet --json
 ```
 
-`learn` scans repo-local design docs plus configured `designSources`, then extracts lightweight colors, typography, spacing, corner radii, materials, and icons from Markdown token rows and common SwiftUI static constants. If it cannot learn enough, it records `profileGaps` so agents say what is missing.
+`learn` scans repo-local design docs plus configured `designSources`, skips build/checkouts and localization/generated noise such as `L10n.swift`, then extracts lightweight colors, typography, spacing, corner radii, materials, and icons from Markdown token rows and common SwiftUI design-system patterns. Current Swift patterns include `DynamicTheme`, `Color(hex:)`, HSB colors, `Font.custom`, spacing/radius constants, materials, and SF Symbols. Token records include confidence/provenance fields. If trusted core buckets are still missing, it records `profileGaps` so agents say what is missing.
 
 The shipped design critique path loads the private profile, can write a redacted agent packet, and can import agent-produced findings. In JSON mode, `--design` fails with `missing-design-profile` unless a usable profile exists or `--agent-packet`/`--import-design-findings` is handling the review handoff. It should never weaken the proof boundary. Design findings must say what kind of judgment they are:
 

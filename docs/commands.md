@@ -137,7 +137,7 @@ future 0.x releases may change it with an explicit migration path.
 
 Learns, checks, and refreshes the private project design profile.
 
-This is the Screenslop design-learning path. It scans project files, common design docs, and configured `designSources`, writes `.screenslop/design-profile.json`, checks freshness, and refreshes while preserving user-authored rules. It now extracts lightweight color, typography, spacing, radius, material, and SF Symbol tokens from Markdown tables/pairs and common SwiftUI design-system constants.
+This is the Screenslop design-learning path. It scans project files, common design docs, and configured `designSources`, writes `.screenslop/design-profile.json`, checks freshness, and refreshes while preserving user-authored rules. It extracts lightweight color, typography, spacing, radius, material, and SF Symbol tokens from Markdown tables/pairs plus common SwiftUI design-system patterns, including `DynamicTheme`, `Color(hex:)`, HSB colors, `Font.custom`, spacing/radius constants, materials, and SF Symbols. It skips build/checkouts and localization/generated files such as `L10n.swift` so copy catalogs do not become fake design tokens.
 
 Use it for:
 
@@ -167,7 +167,7 @@ screenslop init --design-source ../SharedDesignSystem --json --dry-run
 screenslop init --design-source ../SharedDesignSystem --yes
 ```
 
-Token extraction is intentionally heuristic. If token counts are still zero or an external package is missing, `learn` records `profileGaps` so the design pass can say what it cannot prove instead of pretending.
+Token extraction is intentionally heuristic. `learn` reports both raw token counts and trusted token counts in JSON summaries. If credible core buckets are still missing, or an external package is not configured, it records `profileGaps` so the design pass says what it cannot prove instead of pretending.
 
 ### `screenslop see`
 

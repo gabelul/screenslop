@@ -1111,19 +1111,29 @@ function redactLearnResult(result) {
     redacted.profileSummary = summarizePrivateProfile(redacted.profile);
     delete redacted.profile;
   }
-  if (redacted.freshness?.missingSources) {
-    redacted.freshness = {
-      ...redacted.freshness,
-      missingSources: redacted.freshness.missingSources.map(() => '<redacted-source>')
-    };
-  }
-  if (redacted.previousFreshness?.missingSources) {
-    redacted.previousFreshness = {
-      ...redacted.previousFreshness,
-      missingSources: redacted.previousFreshness.missingSources.map(() => '<redacted-source>')
-    };
-  }
+  if (redacted.freshness?.missingSources) redacted.freshness = redactFreshnessSources(redacted.freshness);
+  if (redacted.previousFreshness?.missingSources) redacted.previousFreshness = redactFreshnessSources(redacted.previousFreshness);
   return redacted;
+}
+
+/**
+ * Redacts private profile source paths while keeping stale-profile counts useful.
+ * @param {object} freshness Profile freshness payload.
+ * @returns {object} Public-safe freshness payload.
+ */
+function redactFreshnessSources(freshness) {
+  const missingSources = Array.isArray(freshness.missingSources) ? freshness.missingSources : [];
+  return {
+    ...freshness,
+    missingSourceCount: missingSources.length,
+    missingSources: missingSources.slice(0, 10).map(() => '<redacted-source>'),
+    missingSourcesTruncated: missingSources.length > 10
+  };
+}
+
+/** @param {object} token Token record. @returns {boolean} True when safe to count as learned. */
+function isTrustedProfileToken(token) {
+  return token?.confidence === 'high' || token?.confidence === 'medium' || token?.extraction === 'manual';
 }
 
 /**
@@ -1137,8 +1147,10 @@ function summarizePrivateProfile(profile) {
     platform: profile.project?.platform || null,
     sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
     tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
+    trustedTokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.filter(isTrustedProfileToken).length : 0])),
     designSourceCount: Array.isArray(profile.designSources) ? profile.designSources.length : 0,
     profileGapCount: Array.isArray(profile.profileGaps) ? profile.profileGaps.length : 0,
+    profileGapIds: Array.isArray(profile.profileGaps) ? profile.profileGaps.map((gap) => gap.id).filter(Boolean) : [],
     componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
     screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
     stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,

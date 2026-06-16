@@ -102,7 +102,12 @@ Tone: warm, calm, practical
 - spacing.md: 16
 - radius.card: 18
 `);
-  fs.writeFileSync(path.join(externalDesign, 'DesignSystem.swift'), `
+  fs.mkdirSync(path.join(externalDesign, '.build', 'checkouts', 'Noise'), { recursive: true });
+  for (let index = 0; index < 180; index += 1) {
+    fs.writeFileSync(path.join(externalDesign, '.build', 'checkouts', 'Noise', `Generated${index}.swift`), 'enum L10n { static let typeMethod = \"gap copy\" }\n');
+  }
+  fs.mkdirSync(path.join(externalDesign, 'Sources'), { recursive: true });
+  fs.writeFileSync(path.join(externalDesign, 'Sources', 'DesignSystem.swift'), `
 import SwiftUI
 
 enum BrandColor {
@@ -122,6 +127,24 @@ enum BrandChrome {
   static let backgroundMaterial = Material.thin
   static let addPetIcon = Image(systemName: "pawprint")
 }
+
+struct DynamicTheme {
+  let brandColor: Color
+}
+
+enum ThemeFactory {
+  static let warmTheme = DynamicTheme(brandColor: Color(hue: 0.48, saturation: 0.62, brightness: 0.68))
+}
+
+protocol SpacingScale {
+  var sm: CGFloat { get }
+  var lg: CGFloat { get }
+}
+
+struct PetSpacing: SpacingScale {
+  let sm: CGFloat = 8
+  let lg: CGFloat = 24
+}
 `);
 
   const result = runLearn(root, ['--json', '--write', '--yes']);
@@ -132,10 +155,13 @@ enum BrandChrome {
   assert.deepEqual(profile.project.audience, ['busy dog parents', 'families']);
   assert.deepEqual(profile.project.tone, ['warm', 'calm', 'practical']);
   assert.equal(profile.designSources.length, 1);
-  assert.ok(profile.sources.some((source) => source.path === path.join(fs.realpathSync.native(externalDesign), 'DesignSystem.swift')));
+  assert.ok(profile.sources.some((source) => source.path === path.join(fs.realpathSync.native(externalDesign), 'Sources', 'DesignSystem.swift')));
+  assert.equal(profile.sources.some((source) => source.path.includes('/.build/')), false);
   assert.ok(profile.tokens.colors.some((token) => token.name.includes('primaryTeal') || token.name.includes('brand.teal')));
+  assert.ok(profile.tokens.colors.some((token) => token.extraction === 'swift-dynamic-theme' || token.extraction === 'swift-color-hsb'));
   assert.ok(profile.tokens.typography.some((token) => token.value.includes('PetSerif')));
   assert.ok(profile.tokens.spacing.some((token) => token.name.includes('spacingLarge') || token.name.includes('spacing.md')));
+  assert.ok(profile.tokens.spacing.some((token) => token.name.includes('PetSpacing.sm')));
   assert.ok(profile.tokens.cornerRadii.some((token) => token.name.includes('cornerRadiusCard') || token.name.includes('radius.card')));
   assert.ok(profile.tokens.materials.some((token) => token.value.includes('Material.thin')));
   assert.ok(profile.tokens.icons.some((token) => token.value.includes('pawprint')));
@@ -144,6 +170,52 @@ enum BrandChrome {
   assert.equal(payload.profileSummary.designSourceCount, 1);
   assert.equal(payload.profileSummary.profileGapCount, 0);
   assert.equal(payload.profileSummary.tokenCounts.colors > 0, true);
+  assert.equal(payload.profileSummary.trustedTokenCounts.colors > 0, true);
+  assert.deepEqual(payload.profileSummary.profileGapIds, []);
+});
+
+test('screenslop learn does not let L10n noise clear token profile gaps', () => {
+  const root = createSwiftUiProject();
+  const externalDesign = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-noisy-design-'));
+  fs.mkdirSync(path.join(root, '.screenslop'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.screenslop', 'config.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    runtimePreference: ['baguette', 'xcodebuildmcp', 'simctl', 'manual'],
+    preferredRuntime: 'baguette',
+    defaultSurface: 'Home',
+    defaultScheme: 'PetPacket',
+    defaultBundleId: 'com.example.petpacket',
+    defaultDevice: null,
+    workspacePath: null,
+    projectPath: null,
+    sourceRoot: 'Sources',
+    designSources: [externalDesign],
+    artifactsDir: 'artifacts',
+    sourceHints: []
+  }, null, 2)}\n`);
+  fs.writeFileSync(path.join(externalDesign, 'L10n.swift'), `
+enum L10n {
+  static let addLaterNote = "Leave a gap before you add another pet"
+  static let typeMethod = "Choose the type method"
+}
+`);
+  fs.writeFileSync(path.join(externalDesign, 'KindIdentifier.swift'), `
+enum KindIdentifier {
+  static let typeMethod = "kind.type.method"
+}
+`);
+
+  const result = runLearn(root, ['--json', '--write', '--yes']);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(root, '.screenslop', 'design-profile.json'), 'utf8'));
+  assert.deepEqual(profile.tokens.typography, []);
+  assert.deepEqual(profile.tokens.spacing, []);
+  assert.ok(profile.profileGaps.some((gap) => gap.id === 'design.tokens.incomplete-core'));
+
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.profileSummary.profileGapCount > 0, true);
+  assert.ok(payload.profileSummary.profileGapIds.includes('design.tokens.incomplete-core'));
 });
 
 test('screenslop learn detects stale profiles and refreshes while preserving user rules', () => {
