@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/gabelul/screenslop/compare/v0.1.7...v0.1.8) (2026-06-16)
+
+
+### Bug Fixes
+
+* drop stale material token noise on refresh ([f16be77](https://github.com/gabelul/screenslop/commit/f16be771e9f548a7fbb7a6cb52e0929a23fe9717))
+* keep noisy learned tokens from hiding gaps ([0bf0b1b](https://github.com/gabelul/screenslop/commit/0bf0b1b45345024ca5eb65be3258462dfbe2f131))
+
 ## [0.1.7](https://github.com/gabelul/screenslop/compare/v0.1.6...v0.1.7) (2026-06-15)
 
 
