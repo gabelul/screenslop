@@ -65,6 +65,9 @@ test('screenslop learn writes and checks the current profile', () => {
   const checked = JSON.parse(check.stdout);
   assert.equal(checked.ok, true);
   assert.equal(checked.status, 'current');
+  assert.equal(checked.profileSummary.schemaVersion, 1);
+  assert.ok(checked.profileSummary.trustedTokenCounts);
+  assert.ok(Array.isArray(checked.profileSummary.profileGapIds));
   assert.deepEqual(checked.next, []);
 });
 
@@ -204,6 +207,12 @@ enum KindIdentifier {
   static let typeMethod = "kind.type.method"
 }
 `);
+  fs.writeFileSync(path.join(externalDesign, 'Reference.md'), `# Material Design notes
+
+- SearchField: struct BadgeView
+- Reference guide: var body
+- component.material: prose only
+`);
 
   const result = runLearn(root, ['--json', '--write', '--yes']);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -211,6 +220,7 @@ enum KindIdentifier {
   const profile = JSON.parse(fs.readFileSync(path.join(root, '.screenslop', 'design-profile.json'), 'utf8'));
   assert.deepEqual(profile.tokens.typography, []);
   assert.deepEqual(profile.tokens.spacing, []);
+  assert.deepEqual(profile.tokens.materials, []);
   assert.ok(profile.profileGaps.some((gap) => gap.id === 'design.tokens.incomplete-core'));
 
   const payload = JSON.parse(result.stdout);
@@ -229,6 +239,21 @@ test('screenslop learn detects stale profiles and refreshes while preserving use
     pillar: 'slop',
     severity: 'P3',
     description: 'Keep the project voice direct and calm.'
+  });
+  profile.tokens.materials.push({
+    name: 'SearchField',
+    value: 'struct BadgeView',
+    source: 'docs/reference.md',
+    sourceKind: 'design-doc',
+    extraction: 'markdown-pair',
+    confidence: 'medium'
+  });
+  profile.tokens.colors.push({
+    name: 'manual.brand',
+    value: '#123456',
+    source: 'manual',
+    extraction: 'manual',
+    confidence: 'high'
   });
   fs.writeFileSync(file, `${JSON.stringify(profile, null, 2)}\n`);
 
@@ -252,6 +277,8 @@ test('screenslop learn detects stale profiles and refreshes while preserving use
   const refreshed = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.notEqual(refreshed.freshness.sourceHash, profile.freshness.sourceHash);
   assert.ok(refreshed.reviewRules.some((rule) => rule.id === 'custom.brand.voice'));
+  assert.ok(refreshed.tokens.colors.some((token) => token.name === 'manual.brand'));
+  assert.equal(refreshed.tokens.materials.some((token) => token.name === 'SearchField'), false);
   assert.ok(refreshed.components.some((component) => component.name === 'HelpView'));
 });
 

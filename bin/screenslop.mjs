@@ -10,7 +10,7 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
-import { collectDesignProfile } from '../src/design/profile.mjs';
+import { collectDesignProfile, summarizeDesignProfile } from '../src/design/profile.mjs';
 import { collectDesignReview } from '../src/design/review.mjs';
 import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
@@ -1108,7 +1108,7 @@ function redactLearnResult(result) {
   const redacted = { ...result, pathDisplayMode: 'redacted' };
   if (redacted.profilePath) redacted.profilePath = redactPath(redacted.profilePath);
   if (redacted.profile) {
-    redacted.profileSummary = summarizePrivateProfile(redacted.profile);
+    redacted.profileSummary = summarizeDesignProfile(redacted.profile);
     delete redacted.profile;
   }
   if (redacted.freshness?.missingSources) redacted.freshness = redactFreshnessSources(redacted.freshness);
@@ -1128,34 +1128,6 @@ function redactFreshnessSources(freshness) {
     missingSourceCount: missingSources.length,
     missingSources: missingSources.slice(0, 10).map(() => '<redacted-source>'),
     missingSourcesTruncated: missingSources.length > 10
-  };
-}
-
-/** @param {object} token Token record. @returns {boolean} True when safe to count as learned. */
-function isTrustedProfileToken(token) {
-  return token?.confidence === 'high' || token?.confidence === 'medium' || token?.extraction === 'manual';
-}
-
-/**
- * Summarizes a private design profile without printing project-specific content.
- * @param {object} profile Private profile.
- * @returns {object} Public-safe profile summary.
- */
-function summarizePrivateProfile(profile) {
-  return {
-    schemaVersion: profile.schemaVersion || null,
-    platform: profile.project?.platform || null,
-    sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
-    tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
-    trustedTokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.filter(isTrustedProfileToken).length : 0])),
-    designSourceCount: Array.isArray(profile.designSources) ? profile.designSources.length : 0,
-    profileGapCount: Array.isArray(profile.profileGaps) ? profile.profileGaps.length : 0,
-    profileGapIds: Array.isArray(profile.profileGaps) ? profile.profileGaps.map((gap) => gap.id).filter(Boolean) : [],
-    componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
-    screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
-    stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,
-    reviewRuleCount: Array.isArray(profile.reviewRules) ? profile.reviewRules.length : 0,
-    freshnessStatus: profile.freshness?.status || null
   };
 }
 

@@ -163,6 +163,29 @@ export function buildDesignProfile(options) {
 }
 
 /**
+ * Summarizes a private design profile without exposing source content.
+ * @param {object} profile Private profile.
+ * @returns {object} Public-safe profile summary.
+ */
+export function summarizeDesignProfile(profile) {
+  return {
+    schemaVersion: profile.schemaVersion || null,
+    platform: profile.project?.platform || null,
+    sourceCount: Array.isArray(profile.sources) ? profile.sources.length : 0,
+    tokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0])),
+    trustedTokenCounts: Object.fromEntries(Object.entries(profile.tokens || {}).map(([key, value]) => [key, Array.isArray(value) ? value.filter(isTrustedToken).length : 0])),
+    designSourceCount: Array.isArray(profile.designSources) ? profile.designSources.length : 0,
+    profileGapCount: Array.isArray(profile.profileGaps) ? profile.profileGaps.length : 0,
+    profileGapIds: Array.isArray(profile.profileGaps) ? profile.profileGaps.map((gap) => gap.id).filter(Boolean) : [],
+    componentCount: Array.isArray(profile.components) ? profile.components.length : 0,
+    screenTypeCount: Array.isArray(profile.screenTypes) ? profile.screenTypes.length : 0,
+    stateSemanticCount: Array.isArray(profile.stateSemantics) ? profile.stateSemantics.length : 0,
+    reviewRuleCount: Array.isArray(profile.reviewRules) ? profile.reviewRules.length : 0,
+    freshnessStatus: profile.freshness?.status || null
+  };
+}
+
+/**
  * Returns the resolved private design profile path after containment checks.
  *
  * @param {string} root Project root.
@@ -208,6 +231,7 @@ function checkDesignProfile(options) {
     sourceHash: options.current.sourceHash,
     sourceCount: options.current.sources.length,
     freshness,
+    profileSummary: summarizeDesignProfile(existing.profile),
     next: freshness.status === 'current' ? [] : ['screenslop learn --refresh --json --dry-run']
   };
 }
@@ -538,14 +562,14 @@ function extractMarkdownTokens(text, source) {
     if (tableCells.length >= 2) {
       const [first, second, third] = tableCells;
       if (/^(token|name)$/i.test(first) && /^(value|hex|usage)$/i.test(second)) continue;
-      const bucket = classifyTokenBucket(`${heading} ${first} ${second} ${third || ''}`);
+      const bucket = classifyMarkdownTokenBucket({ heading, name: first, value: second, extra: third || '' });
       if (bucket) tokens[bucket].push(tokenRecord(first, second, source, 'markdown-table'));
       continue;
     }
 
     const pair = trimmed.match(/^(?:[-*]\s*)?`?([A-Za-z][A-Za-z0-9_. -]{1,60})`?\s*[:=]\s*`?([^`]+?)`?\s*$/);
     if (!pair) continue;
-    const bucket = classifyTokenBucket(`${heading} ${pair[1]} ${pair[2]}`);
+    const bucket = classifyMarkdownTokenBucket({ heading, name: pair[1], value: pair[2], extra: '' });
     if (bucket) tokens[bucket].push(tokenRecord(pair[1], pair[2], source, 'markdown-pair'));
   }
   return tokens;
@@ -709,8 +733,28 @@ function isTrustedToken(token) {
 /** @param {object} token Existing token record. @returns {boolean} True when the token should survive refresh. */
 function shouldPreserveExistingToken(token) {
   if (!token || typeof token !== 'object') return false;
-  if (token.extraction && !token.confidence) return false;
+  if (token.extraction && token.extraction !== 'manual') return false;
   return token.confidence !== 'low';
+}
+
+/**
+ * Classifies Markdown token rows without letting prose headings create material tokens.
+ * @param {object} options Markdown token hints.
+ * @returns {string|null} Token bucket.
+ */
+function classifyMarkdownTokenBucket(options) {
+  const bucket = classifyTokenBucket(`${options.heading} ${options.name} ${options.value} ${options.extra}`);
+  if (bucket !== 'materials') return bucket;
+  return looksLikeExplicitMaterialToken(`${options.name} ${options.value} ${options.extra}`) ? bucket : null;
+}
+
+/**
+ * Checks for actual SwiftUI material tokens rather than prose like Material Design.
+ * @param {string} text Markdown name/value text.
+ * @returns {boolean} True when the text names a concrete material token.
+ */
+function looksLikeExplicitMaterialToken(text) {
+  return /(?:Material\.)?(?:ultraThinMaterial|thinMaterial|regularMaterial|thickMaterial|ultraThickMaterial)\b|\bMaterial\.(?:thin|regular|thick|bar)\b|\.(?:thin|regular|thick|bar)Material\b/i.test(text);
 }
 
 /** @param {string} line Markdown line. @returns {string[]} Table cells. */
