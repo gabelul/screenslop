@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import { flattenAxTree } from './ax-tree.mjs';
 import { detectAccessibilityIssues } from './detectors/accessibility.mjs';
+import { detectAlignmentIssues } from './detectors/alignment.mjs';
+import { detectCognitiveLoadIssues } from './detectors/cognitive-load.mjs';
+import { detectDesignPlacementIssues } from './detectors/design.mjs';
 import { detectEvidenceQuality } from './detectors/evidence-quality.mjs';
 import { detectLayoutIssues } from './detectors/layout.mjs';
 import { detectLogIssues } from './detectors/logs.mjs';
@@ -25,6 +28,9 @@ export async function collectCritique(options) {
     const nodes = flattenAxTree(axTree);
     findings.push(...detectAccessibilityIssues(context, nodes));
     findings.push(...detectLayoutIssues(context, nodes));
+    findings.push(...detectDesignPlacementIssues(context, nodes));
+    findings.push(...detectAlignmentIssues(context, nodes));
+    findings.push(...detectCognitiveLoadIssues(context, nodes));
   }
 
   findings.push(...await detectLogIssues(context));
