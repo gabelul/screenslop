@@ -41,6 +41,37 @@ test('critique --design --agent-packet writes a packet with profile and evidence
   assert.equal(packet.outputSchema.findingKind.includes('product-logic'), true);
 });
 
+test('critique --design --agent-packet includes the five persona walkthroughs', () => {
+  const root = createProjectWithBundle('problem');
+  assert.equal(runScreenslop(root, ['learn', '--write', '--yes', '--json']).status, 0);
+
+  const result = runScreenslop(root, ['critique', 'artifacts/problem', '--design', '--agent-packet', '--json']);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  const packet = JSON.parse(fs.readFileSync(path.join(root, payload.artifacts.designPacketPath), 'utf8'));
+
+  assert.equal(packet.personas.length, 5);
+  assert.deepEqual(
+    packet.personas.map((persona) => persona.id),
+    ['first-launch', 'one-handed', 'voiceover-dynamic-type', 'stress-content', 'muscle-memory']
+  );
+  for (const persona of packet.personas) {
+    assert.ok(persona.name.trim(), `${persona.id} needs a name`);
+    assert.ok(persona.lens.trim(), `${persona.id} needs a lens`);
+    assert.ok(persona.questions.length >= 2 && persona.questions.length <= 4, `${persona.id} needs 2-4 questions`);
+    for (const question of persona.questions) {
+      assert.ok(typeof question === 'string' && question.trim(), `${persona.id} has an empty question`);
+    }
+  }
+
+  // Personas live in the judgment lane: their text must never point at the measured status.
+  assert.equal(JSON.stringify(packet.personas).includes('verified-fixed'), false);
+
+  // The one-handed persona threads the captured device metadata into its lens.
+  const oneHanded = packet.personas.find((persona) => persona.id === 'one-handed');
+  assert.match(oneHanded.lens, /iPhone Test/);
+});
+
 test('critique --design-profile implies the design review layer', () => {
   const root = createProjectWithBundle('problem');
   assert.equal(runScreenslop(root, ['learn', '--write', '--yes', '--json']).status, 0);

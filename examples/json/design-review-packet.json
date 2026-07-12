@@ -28,6 +28,48 @@
     "Does the hierarchy match the project profile?",
     "Does any badge or status copy contradict the visible state?"
   ],
+  "personas": [
+    {
+      "id": "first-launch",
+      "name": "First-launch user",
+      "lens": "Opens this screen with zero context; the next step has to be obvious without any prior knowledge.",
+      "questions": [
+        "With zero context, what would you tap first on this screen? If that is not the intended primary action, return a design finding."
+      ]
+    },
+    {
+      "id": "one-handed",
+      "name": "One-handed phone user",
+      "lens": "Holds the phone in one hand on the captured iPhone 16; primary actions must sit within comfortable thumb reach.",
+      "questions": [
+        "Judging from the screenshot on the captured iPhone 16, do the primary actions sit in the lower two-thirds of the screen where a thumb reaches? If not, return a design finding."
+      ]
+    },
+    {
+      "id": "voiceover-dynamic-type",
+      "name": "VoiceOver + accessibility Dynamic Type user",
+      "lens": "Navigates by VoiceOver and runs the largest accessibility Dynamic Type sizes; labels and layout must survive both.",
+      "questions": [
+        "Read the AX labels in order: does the spoken sequence tell a coherent story of the screen, or would a VoiceOver user get lost? Return incoherent ordering or vague labels as a design finding."
+      ]
+    },
+    {
+      "id": "stress-content",
+      "name": "Stress-content user",
+      "lens": "Brings hostile real-world data: 40-character German labels, 9999 unread, names that never fit the mock.",
+      "questions": [
+        "Which visible element would break first with a 40-character German label or a 9999 badge count? Return the weakest spot as a design finding."
+      ]
+    },
+    {
+      "id": "muscle-memory",
+      "name": "Muscle-memory user",
+      "lens": "Uses the app daily and taps from habit; primary actions must stay where the rest of the app put them.",
+      "questions": [
+        "Based on the profile summary and this screenshot, is the primary action where this app usually puts it? Return unexplained relocation as a design finding."
+      ]
+    }
+  ],
   "findings": [],
   "outputSchema": {
     "findingKind": ["design", "product-logic", "profile-gap"],
