@@ -187,6 +187,16 @@ Reviews evidence and produces findings.
 
 Every finding needs a screenshot region, AX node, log line, source hint, or an explicit note that evidence is missing.
 
+Deterministic rule families, by evidence source:
+
+- **AX structure**: `ax.missing-name`, `ax.generic-name`, `evidence.*`, `logs.*`.
+- **AX frame math**: `layout.touch-target`, `layout.offscreen-frame`, `layout.thumb-reach`, `layout.destructive-adjacency`, `layout.alignment-edges`, `layout.spacing-offgrid`, `layout.spacing-monotony`, `layout.empty-state-dead-end`, `platform.hamburger-menu`, `platform.stacked-modals`, `hierarchy.working-memory`, `typography.truncation-risk`.
+- **Screenshot pixels**: `color.contrast`, `color.monochrome-mute`, `color.competing-accents`. Pixel rules sample the real capture through macOS `sips`; on machines without `sips` or on stub screenshots they skip silently instead of failing critique.
+
+Frame-math and pixel rules are heuristics with deliberately conservative thresholds — they lean toward missing a marginal case over flooding a screen with noise, and their findings say so in the detail text.
+
+Each critique also writes `trend.json` into the bundle, comparing findings against the newest same-surface sibling bundle: new findings, resolved findings, unchanged count, and per-severity deltas. With no eligible baseline the file records `no-baseline`. The trend uses bundle basenames only, so it stays redaction-safe.
+
 Agent JSON contract:
 
 - `bundle`, `evidence`, and generated artifact paths are repo-relative when the bundle lives inside the current project root.

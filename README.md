@@ -114,7 +114,7 @@ No fresh capture means no verified fix claim. That rule saves a lot of nonsense.
 | `screenslop init` | MVP | Creates or migrates local project config. |
 | `screenslop doctor` | MVP | Checks Baguette, XcodeBuildMCP, Xcode, simctl, Swift, Node, and CLI freshness. |
 | `screenslop see` | MVP | Captures screenshot, accessibility tree, logs, manifest, and summary. |
-| `screenslop critique` | MVP | Turns evidence into findings with proof. |
+| `screenslop critique` | MVP | Turns evidence into findings with proof: AX structure, frame-math design rules, pixel-sampled color checks, and a cross-run trend. |
 | `screenslop fix` | MVP | Plans or applies selected safe SwiftUI fixes. |
 | `screenslop verify` | MVP | Compares baseline findings against fresh critique output. |
 | `screenslop matrix` | MVP | Writes a bounded six-cell matrix report and evidence bundles. |
@@ -151,7 +151,17 @@ artifacts/<run-id>/
   summary.md
 ```
 
-`critique`, `fix`, and `verify` add their own artifacts next to the evidence so agents can pass a single bundle around without losing context.
+`critique`, `fix`, and `verify` add their own artifacts next to the evidence (`findings.json`, `critique.md`, `trend.json`, fix and verification reports) so agents can pass a single bundle around without losing context.
+
+### What critique checks
+
+Findings come from three evidence lanes, all deterministic:
+
+- **AX structure** — missing or generic accessibility names, capture quality, log errors.
+- **AX frame math** — touch targets, offscreen frames, one-handed thumb reach for primary actions, destructive buttons parked next to confirm actions, scattered leading edges, off-grid or monotonous spacing, overloaded action groups, truncation-prone labels, dead-end empty states, hamburger menus where tab bars belong, stacked modals.
+- **Screenshot pixels** — WCAG contrast sampled from the real capture, colorless screens, competing accent families. Pixel checks use macOS `sips` (no extra dependencies) and skip silently where it is unavailable.
+
+With a learned design profile, `critique --design` also flags token drift: screen accents the profile never learned, and near-miss colors that look like hand-rolled approximations of real tokens. Those ride the design lane with human review, not the measured lane.
 
 ---
 

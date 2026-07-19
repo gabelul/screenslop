@@ -3,6 +3,16 @@
   "command": "critique",
   "bundle": "artifacts/2026-06-08T13-00-00Z-settings",
   "summary": { "total": 1, "bySeverity": { "P1": 1 } },
+  "trend": {
+    "status": "compared",
+    "previousBundle": "2026-06-08T12-00-00Z-settings",
+    "newFindings": [],
+    "resolvedFindings": [
+      { "id": "layout-touch-target-example", "ruleId": "layout.touch-target", "severity": "P2", "title": "Touch target is below 44pt on one axis" }
+    ],
+    "unchangedCount": 1,
+    "deltaBySeverity": { "P0": 0, "P1": 0, "P2": -1, "P3": 0 }
+  },
   "findings": [
     {
       "id": "ax-missing-name-example",

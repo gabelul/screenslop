@@ -38,6 +38,19 @@ Design findings also carry a `proofLevel`:
 - `measured`
 - `runtime-informed`
 - `profile-informed`
+
+## Token drift
+
+When a profile with parseable color tokens exists and the capture has real pixels, `critique --design` samples the screenshot's accent colors and compares them against the learned tokens:
+
+- `design.token-drift`: the screen uses an accent the profile never learned (RGB distance > 60 from every token).
+- `design.token-near-miss`: an accent sits close to a learned token but not on it — the classic hardcoded approximation of a token value.
+
+Both are P3 design-lane findings with `proofLevel: profile-informed` and `requiresHumanReview`. Drift is measured against the learned profile, and the profile may itself be stale — the findings say so. They never claim `verified-fixed` semantics.
+
+## Persona walkthroughs
+
+The agent packet carries five persona lenses for the subjective pass: first-launch user, one-handed phone user, VoiceOver + accessibility Dynamic Type user, stress-content user, and muscle-memory user. Each persona ships 2-4 concrete questions about the captured screenshot and AX evidence, and every question routes the reviewer to `design`, `product-logic`, or `profile-gap` findings — measured claims stay with the deterministic detectors. The packet schema (`schemas/design-review.schema.json`) validates the persona shape.
 - `agent-judgment`
 
 Only measured findings can become `verified-fixed` automatically. Design findings can become `improved`, `unchanged`, `regressed`, or `needs-human-review` after fresh evidence and a fresh design review. They do not become `verified-fixed` automatically.
