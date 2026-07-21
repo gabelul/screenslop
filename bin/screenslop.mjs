@@ -10,7 +10,7 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
-import { collectDesignProfile, summarizeDesignProfile } from '../src/design/profile.mjs';
+import { collectDesignProfile, resolveDesignProfilePath, summarizeDesignProfile } from '../src/design/profile.mjs';
 import { collectDesignReview } from '../src/design/review.mjs';
 import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
@@ -617,6 +617,7 @@ function setupReadyNext(config) {
   const surface = config?.defaultSurface || '<surface>';
   return [
     'screenslop doctor',
+    'screenslop learn --json --dry-run',
     `screenslop see --surface ${surface} --boot --json`,
     'screenslop critique artifacts/<run-id> --json'
   ];
@@ -1248,6 +1249,7 @@ async function critique() {
       root: process.cwd(),
       bundlePath
     });
+    result = { ...result, designProfile: designProfileStatus() };
 
     if (wantsDesignReview(options)) {
       result = collectDesignReview({
@@ -1278,6 +1280,30 @@ async function critique() {
 
 
 /**
+ * Reports whether a learned design profile exists, so agents that skipped
+ * `learn` are told they are getting generic-HIG critique instead of
+ * drift-aware review. Existence check only — freshness stays with
+ * `learn --check` and the design-lane findings.
+ * @returns {{status:'present'|'missing', next?:string[]}} Profile status hint.
+ */
+function designProfileStatus() {
+  try {
+    const profilePath = resolveDesignProfilePath(process.cwd());
+    if (fs.existsSync(profilePath)) return { status: 'present' };
+  } catch {
+    // Unresolvable profile path counts as missing; the nudge still applies.
+  }
+  return {
+    status: 'missing',
+    next: [
+      'screenslop learn --json --dry-run',
+      'screenslop learn --write --yes --json',
+      'screenslop critique <bundle> --design --json'
+    ]
+  };
+}
+
+/**
  * Checks whether critique should add the design-review layer.
  * @param {{flags:Set<string>,values:Record<string,string>}} options Parsed options.
  * @returns {boolean} True when design review is requested.
@@ -1306,6 +1332,12 @@ function printCritiqueResult(result, json) {
   }
   console.log(`findings: ${result.artifacts.findingsPath}`);
   console.log(`report: ${result.artifacts.reportPath}`);
+
+  if (result.designProfile?.status === 'missing') {
+    console.log('\nNo design profile yet — this critique used generic Apple HIG rules only.');
+    console.log('Teach Screenslop this project\'s design system for drift-aware review:');
+    for (const command of result.designProfile.next || []) console.log(`- ${command}`);
+  }
 
   let printed = 0;
   for (const level of ['P0', 'P1', 'P2', 'P3']) {
