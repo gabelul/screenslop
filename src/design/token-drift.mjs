@@ -22,6 +22,10 @@ const accentShareThreshold = 0.03;
 // simply does not know.
 const nearMissDistance = 20;
 const driftDistance = 60;
+// Two candidates whose distances sit within 5 of each other count as a tie;
+// the semantic role wins the tie because roles are what reviewers should
+// reach for, not the raw primitive that happens to share the value.
+const semanticTieDistance = 5;
 // Never flood a review with drift items; the biggest accents tell the story.
 const maxDriftItems = 4;
 
@@ -43,7 +47,10 @@ export function detectTokenDrift({ profile, image } = {}) {
   const items = [];
   for (const accent of accents) {
     const nearest = nearestToken(accent, tokenColors);
-    if (!nearest || nearest.distance <= nearMissDistance) continue;
+    // Suppression uses the true minimum distance: an accent sitting on any
+    // token is on-token, even when a semantic tie-break would report a
+    // slightly farther role as the nearest.
+    if (!nearest || nearest.minDistance <= nearMissDistance) continue;
     items.push(driftItem(accent, nearest));
   }
 
@@ -61,15 +68,31 @@ export function detectTokenDrift({ profile, image } = {}) {
  */
 export function extractProfileColorTokens(profile) {
   const records = Array.isArray(profile?.tokens?.colors) ? profile.tokens.colors : [];
-  const seen = new Set();
-  const colors = [];
+  const byHex = new Map();
   for (const record of records) {
-    const rgb = parseHexColor(`${record?.value || ''} ${record?.name || ''}`);
-    if (!rgb || seen.has(rgb.hex)) continue;
-    seen.add(rgb.hex);
-    colors.push({ ...rgb, name: String(record?.name || '') });
+    // Semantic aliases carry no hex of their own — their value is a reference
+    // like "PrimitiveColors.blue500" that the profile's resolution pass turned
+    // into resolvedValue. Try the direct value first, then the resolved one.
+    const rgb = parseHexColor(`${record?.value || ''} ${record?.name || ''}`)
+      || parseHexColor(record?.resolvedValue || '');
+    if (!rgb) continue;
+    const candidate = { ...rgb, name: String(record?.name || ''), layer: normalizeTokenLayer(record?.layer) };
+    const existing = byHex.get(rgb.hex);
+    // The same hex twice usually means a semantic role aliasing a primitive —
+    // keep the semantic record so drift items name the role, not the raw value.
+    if (!existing || (existing.layer !== 'semantic' && candidate.layer === 'semantic')) byHex.set(rgb.hex, candidate);
   }
-  return colors;
+  return [...byHex.values()];
+}
+
+/**
+ * Normalizes a token's layer field; profiles written before layers existed
+ * simply have no field, and those tokens classify as 'unknown'.
+ * @param {string|undefined} layer Raw layer value from the token record.
+ * @returns {'primitive'|'semantic'|'component'|'unknown'} Safe layer value.
+ */
+function normalizeTokenLayer(layer) {
+  return layer === 'primitive' || layer === 'semantic' || layer === 'component' ? layer : 'unknown';
 }
 
 /**
@@ -129,24 +152,43 @@ function sampleAccentBuckets(image) {
 }
 
 /**
- * Finds the profile token nearest to an accent color.
+ * Finds the profile token nearest to an accent color, with a semantic tie-break.
+ * When a semantic role sits within `semanticTieDistance` of the closest match,
+ * the role is reported as nearest — pointing a reviewer at "use the role" beats
+ * pointing at the primitive it aliases. The raw minimum distance is preserved
+ * so on-token suppression never loosens.
  * @param {{r:number,g:number,b:number}} accent Accent bucket color.
- * @param {{hex:string,r:number,g:number,b:number}[]} tokenColors Parsed token colors.
- * @returns {{hex:string,distance:number}|null} Nearest token and its RGB distance.
+ * @param {{hex:string,r:number,g:number,b:number,name:string,layer:string}[]} tokenColors Parsed token colors.
+ * @returns {{hex:string,name:string|null,layer:string,distance:number,minDistance:number,semanticAlternative:{name:string|null,hex:string,distance:number}|null}|null} Nearest token details.
  */
 function nearestToken(accent, tokenColors) {
   let best = null;
+  let bestSemantic = null;
   for (const token of tokenColors) {
     const distance = Math.hypot(accent.r - token.r, accent.g - token.g, accent.b - token.b);
-    if (!best || distance < best.distance) best = { hex: token.hex, distance };
+    if (!best || distance < best.distance) best = { ...token, distance };
+    if (token.layer === 'semantic' && (!bestSemantic || distance < bestSemantic.distance)) bestSemantic = { ...token, distance };
   }
-  return best;
+  if (!best) return null;
+
+  const semanticWinsTie = bestSemantic && best.layer !== 'semantic' && bestSemantic.distance <= best.distance + semanticTieDistance;
+  const chosen = semanticWinsTie ? bestSemantic : best;
+  return {
+    hex: chosen.hex,
+    name: chosen.name || null,
+    layer: chosen.layer || 'unknown',
+    distance: chosen.distance,
+    minDistance: best.distance,
+    semanticAlternative: chosen.layer !== 'semantic' && bestSemantic
+      ? { name: bestSemantic.name || null, hex: bestSemantic.hex, distance: bestSemantic.distance }
+      : null
+  };
 }
 
 /**
  * Builds one drift or near-miss item for the design lane.
  * @param {{hex:string,share:number}} accent Accent bucket.
- * @param {{hex:string,distance:number}} nearest Nearest token match.
+ * @param {{hex:string,name:string|null,layer:string,distance:number,semanticAlternative:object|null}} nearest Nearest token match.
  * @returns {object} Design-lane drift item.
  */
 function driftItem(accent, nearest) {
@@ -154,6 +196,14 @@ function driftItem(accent, nearest) {
   const share = Math.round(accent.share * 1000) / 1000;
   const sharePercent = Math.round(share * 100);
   const staleness = 'Drift is measured against the learned design profile, which may itself be stale — treat this as a review prompt, not a measured defect.';
+  // When the nearest token is a raw primitive but a semantic role also sits
+  // within the near-miss band, nudge toward the role — that's the fix a
+  // layered design system actually wants.
+  const semanticAside = nearest.layer === 'primitive'
+    && nearest.semanticAlternative
+    && nearest.semanticAlternative.distance <= driftDistance
+    ? ` The semantic role ${nearest.semanticAlternative.name || nearest.semanticAlternative.hex} (${nearest.semanticAlternative.hex}) sits almost as close at RGB distance ${Math.round(nearest.semanticAlternative.distance)} — prefer the role over the raw primitive.`
+    : '';
 
   return {
     kind: 'design',
@@ -163,14 +213,16 @@ function driftItem(accent, nearest) {
     proofLevel: 'profile-informed',
     screenColor: accent.hex,
     nearestToken: nearest.hex,
+    nearestTokenName: nearest.name || null,
+    nearestTokenLayer: nearest.layer || 'unknown',
     distance: Math.round(nearest.distance * 10) / 10,
     share,
     title: isDrift
       ? `Screen accent ${accent.hex} is not in the design profile`
       : `Screen accent ${accent.hex} looks like a hand-rolled ${nearest.hex}`,
     detail: isDrift
-      ? `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}, and the closest learned color token is ${nearest.hex} at RGB distance ${Math.round(nearest.distance)} — too far to be the same color. Either the screen uses an accent the profile never learned, or the profile needs a refresh. ${staleness}`
-      : `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}, sitting RGB distance ${Math.round(nearest.distance)} from the learned token ${nearest.hex}. That gap is the classic magic-number drift: a hardcoded approximation of a token instead of the token itself. ${staleness}`
+      ? `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}, and the closest learned color token is ${nearest.hex} at RGB distance ${Math.round(nearest.distance)} — too far to be the same color. Either the screen uses an accent the profile never learned, or the profile needs a refresh.${semanticAside} ${staleness}`
+      : `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}, sitting RGB distance ${Math.round(nearest.distance)} from the learned token ${nearest.hex}. That gap is the classic magic-number drift: a hardcoded approximation of a token instead of the token itself.${semanticAside} ${staleness}`
   };
 }
 

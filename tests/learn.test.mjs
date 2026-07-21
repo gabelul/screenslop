@@ -228,6 +228,84 @@ enum KindIdentifier {
   assert.ok(payload.profileSummary.profileGapIds.includes('design.tokens.incomplete-core'));
 });
 
+test('screenslop learn classifies token layers from paths and names', () => {
+  const root = createSwiftUiProject();
+  // Layered design system: a /Primitive/ directory, a semantic palette named
+  // by role, and a token whose name and path say nothing about its layer.
+  fs.mkdirSync(path.join(root, 'Sources', 'Tokens', 'Primitive'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'Sources', 'Tokens', 'Primitive', 'PrimitiveColors.swift'), `
+import SwiftUI
+
+enum PrimitiveColors {
+  static let blue500: Color = Color(hex: "#3B82F6")
+}
+`);
+  fs.writeFileSync(path.join(root, 'Sources', 'Tokens', 'ColorPalette.swift'), `
+import SwiftUI
+
+enum ColorPalette {
+  static let primary: Color = Color(hex: "#0A84FF")
+}
+`);
+  fs.writeFileSync(path.join(root, 'Sources', 'Glow.swift'), `
+import SwiftUI
+
+enum Glow {
+  static let fizz: Color = Color(hex: "#123123")
+}
+`);
+
+  const result = runLearn(root, ['--json', '--write', '--yes']);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(root, '.screenslop', 'design-profile.json'), 'utf8'));
+  const layerOf = (fragment) => profile.tokens.colors.find((token) => token.name.includes(fragment))?.layer;
+  assert.equal(layerOf('blue500'), 'primitive', 'a /Primitive/ path segment must classify as primitive');
+  assert.equal(layerOf('ColorPalette.primary'), 'semantic', 'role names like primary must classify as semantic');
+  assert.equal(layerOf('Glow.fizz'), 'unknown', 'tokens with no layer signal must classify as unknown');
+});
+
+test('screenslop learn extracts semantic alias colors and resolves them to their primitive hex', () => {
+  const root = createSwiftUiProject();
+  // The real layered shape: primitives hold the hex, semantic roles are
+  // computed alias vars that just point at a primitive.
+  fs.mkdirSync(path.join(root, 'Sources', 'Tokens', 'Primitive'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'Sources', 'Tokens', 'Primitive', 'PrimitiveColors.swift'), `
+import SwiftUI
+
+enum PrimitiveColors {
+  static let blue500: Color = Color(hex: "#3B82F6")
+}
+`);
+  fs.mkdirSync(path.join(root, 'Sources', 'Themes', 'Light'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'Sources', 'Themes', 'Light', 'LightTheme.swift'), `
+import SwiftUI
+
+public struct LightTheme {
+  public var primary: Color { PrimitiveColors.blue500 }
+  public var mystery: Color { MissingColors.ghost700 }
+}
+`);
+
+  const result = runLearn(root, ['--json', '--write', '--yes']);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(root, '.screenslop', 'design-profile.json'), 'utf8'));
+  const primary = profile.tokens.colors.find((token) => token.name === 'LightTheme.primary');
+  assert.ok(primary, 'the alias var must be extracted as a color token');
+  assert.equal(primary.extraction, 'swift-color-alias');
+  assert.equal(primary.layer, 'semantic');
+  assert.equal(primary.value, 'PrimitiveColors.blue500');
+  assert.equal(primary.aliasOf, 'PrimitiveColors.blue500');
+  assert.match(primary.resolvedValue, /#3B82F6/);
+
+  // An alias pointing at a scope the scan never saw stays honest: raw value, no resolution.
+  const mystery = profile.tokens.colors.find((token) => token.name === 'LightTheme.mystery');
+  assert.ok(mystery, 'unresolvable aliases are still recorded');
+  assert.equal(mystery.resolvedValue, undefined);
+  assert.equal(mystery.aliasOf, undefined);
+});
+
 test('screenslop learn detects stale profiles and refreshes while preserving user rules', () => {
   const root = createSwiftUiProject();
   assert.equal(runLearn(root, ['--json', '--write', '--yes']).status, 0);

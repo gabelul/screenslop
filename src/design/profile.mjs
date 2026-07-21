@@ -537,10 +537,74 @@ function inferTokens(root, sources) {
     if (!text) continue;
     const found = source.path.endsWith('.md') ? extractMarkdownTokens(text, source) : extractSwiftTokens(text, source);
     for (const [bucket, values] of Object.entries(found)) {
-      tokens[bucket] = dedupeTokens([...(tokens[bucket] || []), ...values]).slice(0, TOKEN_LIMIT_PER_BUCKET);
+      tokens[bucket] = dedupeTokens([...(tokens[bucket] || []), ...values]);
     }
   }
+  resolveAliasColorTokens(tokens.colors);
+  // Cap once at the end, not per merge: a big primitive palette scans first
+  // (Tokens/Primitive/ sorts before Themes/) and would otherwise fill the
+  // bucket before a single semantic role arrives. Semantic and component
+  // tokens are the scarce, high-value records — they survive the trim.
+  for (const bucket of Object.keys(tokens)) {
+    tokens[bucket] = capTokensByLayer(tokens[bucket]);
+  }
   return tokens;
+}
+
+/**
+ * Trims a token bucket to the per-bucket limit, preferring layered value:
+ * semantic > component > unknown > primitive, stable within each layer.
+ * Aliases are resolved before this runs, so trimmed primitives have already
+ * donated their hex to the semantic records that reference them.
+ * @param {object[]} values Deduped token records.
+ * @returns {object[]} Capped token records.
+ */
+function capTokensByLayer(values) {
+  if (values.length <= TOKEN_LIMIT_PER_BUCKET) return values;
+  const priority = { semantic: 0, component: 1, unknown: 2, primitive: 3 };
+  // Resolved aliases outrank everything in their layer: a real design system
+  // yields hundreds of theme-palette literals but only a few dozen named
+  // roles, and the roles are what drift findings exist to recommend.
+  const rank = (token) => (token.extraction === 'swift-color-alias' && token.resolvedValue ? 0 : 1);
+  return values
+    .map((token, index) => ({ token, index }))
+    .sort((left, right) => {
+      const layerDelta = (priority[left.token.layer] ?? 2) - (priority[right.token.layer] ?? 2);
+      if (layerDelta !== 0) return layerDelta;
+      const rankDelta = rank(left.token) - rank(right.token);
+      return rankDelta !== 0 ? rankDelta : left.index - right.index;
+    })
+    .slice(0, TOKEN_LIMIT_PER_BUCKET)
+    .sort((left, right) => left.index - right.index)
+    .map((entry) => entry.token);
+}
+
+/**
+ * Resolves alias color tokens against the tokens they reference.
+ * Layered design systems write semantic roles as computed aliases —
+ * `var primary: Color { PrimitiveColors.blue500 }` — so the role's value is a
+ * reference, not a hex. This pass looks the reference up among the extracted
+ * colors and stamps the alias with `resolvedValue` (the target's value text)
+ * and `aliasOf` (the target's name). One hop only: aliases pointing at other
+ * aliases stay unresolved rather than chasing chains. Unresolvable references
+ * keep their raw value and gain nothing.
+ * @param {object[]} colors Extracted color token records (mutated in place).
+ * @returns {object[]} The same array, with alias records annotated.
+ */
+function resolveAliasColorTokens(colors) {
+  const byName = new Map();
+  for (const token of colors) {
+    if (token.extraction === 'swift-color-alias') continue;
+    if (!byName.has(token.name)) byName.set(token.name, token);
+  }
+  for (const token of colors) {
+    if (token.extraction !== 'swift-color-alias') continue;
+    const target = byName.get(token.value);
+    if (!target) continue;
+    token.resolvedValue = target.value;
+    token.aliasOf = target.name;
+  }
+  return colors;
 }
 
 /**
@@ -599,8 +663,22 @@ function extractSwiftTokens(text, source) {
       const typeHint = constant[2] || '';
       const value = constant[3].replace(/\s*\/\/.*$/, '').trim();
       if (/^(?:get|set)\b/.test(value)) continue;
+      // Semantic layers alias primitives instead of repeating literals:
+      // `var primary: Color { PrimitiveColors.blue500 }`. Check the alias
+      // shape BEFORE the bucket classifier — scope names like ColorPalette
+      // contain "palette", so these lines classify as colors and would be
+      // recorded as opaque statics, never reaching an else-branch. A literal
+      // marker (parenthesis, hash, quote) means a real value, not an alias.
+      const aliasRef = /[("#]/.test(value)
+        ? null
+        : value.match(/\b([A-Z][A-Za-z0-9_]*(?:Colors|Palette|Tokens))\s*\.\s*([a-zA-Z][A-Za-z0-9_]*)\b/);
+      const saysColor = /\bcolor\b/i.test(typeHint) || /(Colors|Palette)$/.test(aliasRef?.[1] || '');
       const bucket = classifySwiftTokenBucket({ name, typeHint, value, line, scopeContext, source });
-      if (bucket) tokens[bucket].push(tokenRecord(name, value, source, 'swift-static', 'medium'));
+      if (aliasRef && saysColor) {
+        tokens.colors.push(tokenRecord(name, `${aliasRef[1]}.${aliasRef[2]}`, source, 'swift-color-alias', 'medium'));
+      } else if (bucket) {
+        tokens[bucket].push(tokenRecord(name, value, source, 'swift-static', 'medium'));
+      }
     }
 
     for (const match of line.matchAll(/Color\(\s*"([^"]+)"\s*\)/g)) {
@@ -775,6 +853,52 @@ function classifyTokenBucket(text) {
   return null;
 }
 
+// Semantic-role vocabulary: names that say what a token is *for* (primary,
+// onSurface, error) rather than what it looks like.
+const SEMANTIC_NAME_PATTERN = /\b(primary|secondary|tertiary|accent|background|surface|onsurface|onprimary|error|warning|success|info|label|separator|palette)\b/i;
+// Primitive vocabulary: raw scale names like blue500 — what a token *is*, not what it's for.
+const PRIMITIVE_NAME_PATTERN = /\b(blue|red|green|gray|grey|purple|orange|yellow|pink|slate|neutral)\d{2,3}\b/i;
+
+/**
+ * Classifies which design-system layer a token belongs to, from cheap signals.
+ * Real design systems stack primitives (blue500) under semantic roles (primary,
+ * onSurface) under component tokens; knowing the layer lets drift findings say
+ * "you used a primitive where a role belongs." Precedence: source path segments
+ * first (a /Primitive/ directory beats any name pattern), then semantic name
+ * patterns, then primitive name patterns, else 'unknown'.
+ * @param {string} name Token name, usually `Scope.constant`.
+ * @param {object} source Source record with the file path.
+ * @returns {'primitive'|'semantic'|'component'|'unknown'} Token layer.
+ */
+function classifyTokenLayer(name, source) {
+  const fromPath = classifyLayerFromPath(source?.path);
+  if (fromPath) return fromPath;
+  // Split camelCase so surfacePrimary matches \bprimary\b, but keep the raw
+  // name too — onSurface only matches \bonsurface\b when it stays glued.
+  const spaced = String(name || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  const haystack = `${name} ${spaced}`;
+  if (SEMANTIC_NAME_PATTERN.test(haystack)) return 'semantic';
+  if (PRIMITIVE_NAME_PATTERN.test(haystack) || /\bprimitive\b/i.test(spaced)) return 'primitive';
+  return 'unknown';
+}
+
+/**
+ * Reads the token layer from path segments like Tokens/Primitive/ or
+ * PrimitiveColors.swift. The deepest matching segment wins so
+ * DesignSystem/Semantic/ComponentTokens.swift classifies as component.
+ * @param {string|undefined} sourcePath Source file path.
+ * @returns {'primitive'|'semantic'|'component'|null} Layer or null when the path says nothing.
+ */
+function classifyLayerFromPath(sourcePath) {
+  let layer = null;
+  for (const segment of String(sourcePath || '').replace(/\\/g, '/').split('/')) {
+    if (/^primitive/i.test(segment)) layer = 'primitive';
+    else if (/^semantic/i.test(segment)) layer = 'semantic';
+    else if (/^component/i.test(segment)) layer = 'component';
+  }
+  return layer;
+}
+
 /**
  * Builds a normalized token record.
  * @param {string} name Token name.
@@ -785,11 +909,13 @@ function classifyTokenBucket(text) {
  * @returns {object} Token record.
  */
 function tokenRecord(name, value, source, extraction, confidence = 'medium') {
+  const cleanName = cleanTokenText(name);
   return {
-    name: cleanTokenText(name),
+    name: cleanName,
     value: cleanTokenText(value),
     source: source.path,
     sourceKind: source.kind || null,
+    layer: classifyTokenLayer(cleanName, source),
     extraction,
     confidence
   };

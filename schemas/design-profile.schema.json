@@ -94,6 +94,9 @@
         "value": { "type": "string" },
         "source": { "type": "string" },
         "sourceKind": { "type": ["string", "null"] },
+        "layer": { "enum": ["primitive", "semantic", "component", "unknown"] },
+        "resolvedValue": { "type": "string" },
+        "aliasOf": { "type": "string" },
         "extraction": { "type": "string" },
         "confidence": { "enum": ["low", "medium", "high"] }
       },
