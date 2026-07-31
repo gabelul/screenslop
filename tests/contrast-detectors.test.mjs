@@ -71,6 +71,19 @@ test('flags light-gray text on white as P1 with the measured ratio in the detail
   assert.match(findings[0].detail, /pixel-sampled estimate/);
   assert.equal(findings[0].evidence.artifact, 'screenshot.jpg');
   assert.deepEqual(findings[0].evidence.screenshotRegion, frame);
+  // 12pt-tall text is caption-size: sampling skews low, so the finding says so.
+  assert.match(findings[0].detail, /anti-aliasing skews sampling low/);
+  assert.equal(findings[0].confidence, 'low');
+});
+
+test('body-size text keeps medium confidence and no tiny-text caveat', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));
+  const findings = detectContrastIssues(context, tree([textNode('Body copy', frame)]), optionsFor(bmp));
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].confidence, 'medium');
+  assert.doesNotMatch(findings[0].detail, /anti-aliasing/);
 });
 
 test('rates a 3.0-4.4 ratio as P2 for normal text but passes it for large text', () => {

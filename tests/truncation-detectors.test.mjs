@@ -46,6 +46,16 @@ test('does not flag a short label with plenty of room', () => {
   assert.equal(findings.length, 0);
 });
 
+test('does not flag a comfortable sentence-length label (dogfood regression)', () => {
+  // Real capture: "Add the first records to start the packet." (42 chars)
+  // rendered fine in a ~350pt frame at ~20pt tall, but the old 15% margin
+  // flagged it. The estimate said ~353pt of text; 25% slack absorbs that.
+  const text = 'Add the first records to start the packet.';
+  const nodes = phoneTree([label(text, { x: 24, y: 300, width: 350, height: 20 })]);
+  const findings = detectTruncationIssues(context, nodes);
+  assert.equal(findings.length, 0);
+});
+
 test('flags a literal ellipsis at medium confidence even when the width fits', () => {
   const nodes = phoneTree([label('Recent do…', { x: 20, y: 100, width: 300, height: 20 })]);
   const findings = detectTruncationIssues(context, nodes);

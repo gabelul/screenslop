@@ -16,8 +16,10 @@ const maxCharWidth = 8.5;
 const maxSingleLineHeight = 34;
 // Frames narrower than this are icons and chevrons, not text containers.
 const minTextFrameWidth = 20;
-// 15% slack absorbs estimate error before we flag anything.
-const overflowMargin = 1.15;
+// 25% slack absorbs estimate error before we flag anything. Dogfood on a real
+// app showed 15% still flagged comfortable ~42-char labels; the character-width
+// guess is too rough for a tighter band.
+const overflowMargin = 1.25;
 // Worst offenders only; a screen of tight labels is one problem, not fifty.
 const maxFindingsPerScreen = 5;
 const maxNameCharsInDetail = 40;

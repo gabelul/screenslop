@@ -7,6 +7,9 @@ import { contrastRatio, loadScreenshotPixels, relativeLuminance } from '../pixel
 const normalTextMinimum = 4.5;
 const largeTextMinimum = 3.0;
 const largeTextMinHeight = 24;
+// Below caption height, sampled ratios read low (anti-aliasing) — the finding
+// text carries a caveat and confidence drops.
+const tinyTextMaxHeight = 14;
 // Below this the two luminance clusters are one surface (photo, fill, divider),
 // not text-on-background, and sampling has nothing meaningful to say.
 const flatClusterRatio = 1.05;
@@ -143,12 +146,20 @@ function measureRegionContrast(image, region) {
 function contrastFinding(context, entry) {
   const { node, ratio, required, isLargeText } = entry;
   const name = accessibleName(node);
+  // Small text is mostly anti-aliased edge pixels, which drag the sampled
+  // text cluster toward the background and understate the true ratio. The
+  // finding stays (a caption that measures 2:1 is failing even if it's really
+  // 3:1), but the number deserves less trust below caption size.
+  const isTinyText = Number(node.frame.height) < tinyTextMaxHeight;
+  const tinyCaveat = isTinyText
+    ? ' At this text size, anti-aliasing skews sampling low — the real ratio is likely somewhat higher, so verify the tokens before trusting the exact number.'
+    : '';
   return createFinding({
     ruleId: 'color.contrast',
     severity: ratio < largeTextMinimum ? 'P1' : 'P2',
     pillar: 'color',
     title: 'Text contrast falls below the WCAG minimum',
-    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.`,
+    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${tinyCaveat}`,
     evidence: {
       artifact: context.artifacts.screenshot?.displayPath || null,
       node: nodeEvidence(node),
@@ -157,7 +168,7 @@ function contrastFinding(context, entry) {
     },
     suggestedFix: 'Darken the text color or lighten the background (or vice versa in dark mode) until the pair clears the WCAG threshold; prefer system label colors, which handle this automatically.',
     verification: `Recapture and confirm the measured ratio for "${name}" is at least ${required}:1, or confirm the real color tokens pass a contrast checker.`,
-    confidence: 'medium',
+    confidence: isTinyText ? 'low' : 'medium',
     effort: 'small',
     fingerprint: `contrast:${node.path}:${Math.round(ratio * 10)}`
   });
