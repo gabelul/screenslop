@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.10](https://github.com/gabelul/screenslop/compare/v0.1.9...v0.1.10) (2026-07-31)
+
+
+### Features
+
+* add cross-run critique trend and wire the new detectors ([650b45a](https://github.com/gabelul/screenslop/commit/650b45aab58dae5fc46b3c373fac0e4c2e887172))
+* add HIG pattern, spacing rhythm, and truncation-risk detectors ([eaef25e](https://github.com/gabelul/screenslop/commit/eaef25e4e8bb106bc177d96428002c15aa217883))
+* add screenshot pixel sampling with contrast and color-balance detectors ([4361456](https://github.com/gabelul/screenslop/commit/4361456dfddd9be5615f43bf08b7ed09b1cfecaa))
+* add semantic token layers with alias resolution to the design profile ([5ed64d5](https://github.com/gabelul/screenslop/commit/5ed64d5b521264a5ad8bf8446838fb47e807f138))
+* add thumb-reach, destructive-adjacency, alignment, and working-memory design detectors ([5018c9c](https://github.com/gabelul/screenslop/commit/5018c9c0ddcb2bed0b20442f3b935917af066618))
+* add token-drift findings and persona walkthroughs to design review ([040e58c](https://github.com/gabelul/screenslop/commit/040e58c41bbad896d07bf9c65067b511fbbab9ad))
+* nudge critique users toward learn when no design profile exists ([972c9f5](https://github.com/gabelul/screenslop/commit/972c9f57243a436b34723e8462b7c68cff7e6ea0))
+
+
+### Bug Fixes
+
+* tune truncation margin and small-text contrast confidence from dogfood ([a4806fc](https://github.com/gabelul/screenslop/commit/a4806fc700000a7c028a01f503c8296a0410ad77))
+
 ## [0.1.9](https://github.com/gabelul/screenslop/compare/v0.1.8...v0.1.9) (2026-06-16)
 
 
