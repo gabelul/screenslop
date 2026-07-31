@@ -14,12 +14,23 @@ Works with Codex, Claude Code, Cursor, plain terminal workflows, Baguette-backed
 
 ## Install
 
+### From npm (recommended)
+
+```bash
+npm install -g screenslop@latest
+screenslop doctor
+```
+
+No global install? `npx -y screenslop@latest doctor` works too.
+
 ### From GitHub
 
 ```bash
-npm install -g github:gabelul/screenslop#v0.1.0
+npm install -g github:gabelul/screenslop
 screenslop doctor
 ```
+
+This tracks `main` instead of a published release — useful for trying unreleased changes, otherwise prefer npm.
 
 ### Local development
 
