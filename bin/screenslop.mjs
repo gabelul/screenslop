@@ -26,6 +26,16 @@ const command = process.argv[2] || 'help';
 const args = process.argv.slice(3);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+// `--help` must never run the command. `screenslop see --help` used to fall
+// through and capture — booting a simulator to answer a question about flags.
+// Handled once here so a future command can't forget it. `setup` and `init`
+// print their own richer help, so they opt out.
+const HELP_HANDLED_BY_COMMAND = new Set(['setup', 'init']);
+if (!HELP_HANDLED_BY_COMMAND.has(command) && (args.includes('--help') || args.includes('-h'))) {
+  printCommandHelp(command);
+  process.exit(0);
+}
+
 switch (command) {
   case 'help':
   case '--help':
@@ -96,7 +106,58 @@ Commands:
   learn      Learn, check, or refresh the private design profile
   verify     Compare previous findings with fresh evidence
   watch      Live review loop (coming next)
+
+Run 'screenslop <command> --help' for per-command flags.
 `);
+}
+
+/**
+ * Returns the flag reference for one command, or null when it has none yet.
+ * A function (not a const map) so the top-level `--help` intercept can call it
+ * before module-level bindings finish initializing.
+ * @param {string} name Command name.
+ * @returns {string|null} Help text.
+ */
+function commandHelpText(name) {
+  if (name !== 'see') return null;
+  return `screenslop see — capture one evidence bundle
+
+Usage:
+  screenslop see [options]
+
+Device targeting (highest precedence first):
+  --udid <udid>          Exact simulator UDID
+  --device <name>        Simulator name, exact or partial (e.g. "DarkSweep")
+  (config defaultDevice) Used when neither flag is passed
+  (booted simulator)     Used when config names no device
+
+  A booted simulator no longer wins over config. When the two disagree,
+  the configured device is captured and the mismatch is reported.
+
+Options:
+  --surface <name>       Label the captured screen
+  --boot                 Boot the target simulator without prompting
+  --logs                 Capture a bounded log sample
+  --log-duration <ms>    Log sample duration (default 3000)
+  --bundle-id <id>       Filter logs to one bundle id
+  --device-set <path>    Custom simulator device set
+  --dry-run              Create a bundle without capturing
+  --json                 Machine-readable output
+`;
+}
+
+/**
+ * Prints flag help for one command, falling back to the command menu.
+ * @param {string} name Command name.
+ * @returns {void}
+ */
+function printCommandHelp(name) {
+  const text = commandHelpText(name);
+  if (text) {
+    console.log(text);
+    return;
+  }
+  printHelp();
 }
 
 /** Prints the Screenslop coding-agent contract. */
