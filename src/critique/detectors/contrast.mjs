@@ -20,6 +20,19 @@ const maxFindingsPerScreen = 5;
 const maxSamplesPerAxis = 20;
 // Anything under 8x8pt is an icon sliver or divider, not readable text.
 const minCandidateSize = 8;
+// Captures are JPEG — Baguette emits nothing else — so sampled channels drift a
+// couple of units on flat fills and far more on antialiased text edges, which is
+// exactly where contrast gets measured. A ratio sitting near its threshold is
+// inside that noise and could flip either way; a ratio far below it is
+// unarguable no matter what the codec did. Confidence tracks that distance,
+// because "2.1 against 4.5" and "4.4 against 4.5" are not the same claim.
+const noiseBandNormal = 0.4;
+const strongMarginNormal = 1.2;
+// Small text is mostly edge pixels, so sampling understates it in one direction.
+// That skew only ever makes the real ratio higher, so tiny text needs a wider
+// margin to earn the same confidence — not a flat downgrade.
+const noiseBandTiny = 1.0;
+const strongMarginTiny = 2.0;
 
 const textLikeRolePattern = /text|static|label|button/i;
 
@@ -154,12 +167,33 @@ function contrastFinding(context, entry) {
   const tinyCaveat = isTinyText
     ? ' At this text size, anti-aliasing skews sampling low — the real ratio is likely somewhat higher, so verify the tokens before trusting the exact number.'
     : '';
+
+  // How far below the threshold the measurement landed decides whether codec
+  // noise could have invented this finding.
+  const margin = required - ratio;
+  const noiseBand = isTinyText ? noiseBandTiny : noiseBandNormal;
+  const strongMargin = isTinyText ? strongMarginTiny : strongMarginNormal;
+  const withinNoise = margin <= noiseBand;
+  const confidence = margin >= strongMargin ? 'high' : withinNoise ? 'low' : 'medium';
+  const marginCaveat = withinNoise
+    ? ` At only ${round(margin)} below the ${required}:1 threshold, this sits inside JPEG sampling noise — treat it as a prompt to check the real color tokens, not as a confirmed failure.`
+    : '';
+
+  // A pair that fails in one appearance can clear the threshold in the other:
+  // status hues get lightened for dark surfaces and collapse against light ones.
+  // A single `see` bundle records `appearance: unspecified`, so critique has no
+  // way to know which one it just measured — say so instead of implying both.
+  const appearance = context.manifest?.environment?.appearance;
+  const appearanceNote = !appearance || appearance === 'unspecified'
+    ? ' This bundle does not record which appearance was captured, and contrast findings are often appearance-specific — run `screenslop matrix` to check the other appearance before assuming this fails everywhere.'
+    : '';
+
   return createFinding({
     ruleId: 'color.contrast',
     severity: ratio < largeTextMinimum ? 'P1' : 'P2',
     pillar: 'color',
     title: 'Text contrast falls below the WCAG minimum',
-    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${tinyCaveat}`,
+    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${marginCaveat}${tinyCaveat}`,
     evidence: {
       artifact: context.artifacts.screenshot?.displayPath || null,
       node: nodeEvidence(node),
@@ -167,8 +201,8 @@ function contrastFinding(context, entry) {
       note: `measured contrast ratio ${round(ratio)}:1 from pixel sampling`
     },
     suggestedFix: 'Darken the text color or lighten the background (or vice versa in dark mode) until the pair clears the WCAG threshold; prefer system label colors, which handle this automatically.',
-    verification: `Recapture and confirm the measured ratio for "${name}" is at least ${required}:1, or confirm the real color tokens pass a contrast checker.`,
-    confidence: isTinyText ? 'low' : 'medium',
+    verification: `Recapture and confirm the measured ratio for "${name}" is at least ${required}:1, or confirm the real color tokens pass a contrast checker.${appearanceNote}`,
+    confidence,
     effort: 'small',
     fingerprint: `contrast:${node.path}:${Math.round(ratio * 10)}`
   });

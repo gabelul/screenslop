@@ -73,17 +73,65 @@ test('flags light-gray text on white as P1 with the measured ratio in the detail
   assert.deepEqual(findings[0].evidence.screenshotRegion, frame);
   // 12pt-tall text is caption-size: sampling skews low, so the finding says so.
   assert.match(findings[0].detail, /anti-aliasing skews sampling low/);
-  assert.equal(findings[0].confidence, 'low');
+  // 1.7:1 against a 4.5:1 threshold is 2.8 clear of the line — no amount of
+  // JPEG noise or anti-aliasing skew turns that into a pass, tiny text or not.
+  assert.equal(findings[0].confidence, 'high');
 });
 
-test('body-size text keeps medium confidence and no tiny-text caveat', () => {
+test('body-size text far below the threshold is high confidence with no tiny-text caveat', () => {
   const frame = { x: 10, y: 20, width: 60, height: 18 };
   const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));
   const findings = detectContrastIssues(context, tree([textNode('Body copy', frame)]), optionsFor(bmp));
 
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].confidence, 'medium');
+  assert.equal(findings[0].confidence, 'high');
   assert.doesNotMatch(findings[0].detail, /anti-aliasing/);
+});
+
+test('a ratio sitting just under the threshold drops to low confidence', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  // rgb(122) on white measures ~4.3:1 — failing, but by less than sampling noise.
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 122, g: 122, b: 122 } }]));
+  const findings = detectContrastIssues(context, tree([textNode('Body copy', frame)]), optionsFor(bmp));
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].confidence, 'low');
+  assert.match(findings[0].detail, /inside JPEG sampling noise/);
+});
+
+test('tiny text needs a wider margin than body text to clear the noise band', () => {
+  // ~4.0:1 is 0.5 under the threshold: comfortably outside the body-text noise
+  // band, still inside the wider band tiny text gets.
+  const gray = { r: 128, g: 128, b: 128 };
+  const bodyFrame = { x: 10, y: 20, width: 60, height: 18 };
+  const tinyFrame = { x: 10, y: 100, width: 60, height: 12 };
+
+  const bodyBmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame: bodyFrame, color: gray }]));
+  const body = detectContrastIssues(context, tree([textNode('Body copy', bodyFrame)]), optionsFor(bodyBmp));
+  assert.equal(body[0].confidence, 'medium');
+
+  const tinyBmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame: tinyFrame, color: gray }]));
+  const tiny = detectContrastIssues(context, tree([textNode('Caption', tinyFrame)]), optionsFor(tinyBmp));
+  assert.equal(tiny[0].confidence, 'low');
+});
+
+test('contrast findings point at matrix when the bundle records no appearance', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));
+  const findings = detectContrastIssues(context, tree([textNode('Body copy', frame)]), optionsFor(bmp));
+
+  assert.match(findings[0].verification, /screenslop matrix/);
+  assert.match(findings[0].verification, /appearance-specific/);
+});
+
+test('contrast findings drop the matrix nudge once appearance is recorded', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));
+  const darkContext = { ...context, manifest: { environment: { appearance: 'dark' } } };
+  const findings = detectContrastIssues(darkContext, tree([textNode('Body copy', frame)]), optionsFor(bmp));
+
+  assert.equal(findings.length, 1);
+  assert.doesNotMatch(findings[0].verification, /screenslop matrix/);
 });
 
 test('rates a 3.0-4.4 ratio as P2 for normal text but passes it for large text', () => {
