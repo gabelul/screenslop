@@ -181,6 +181,23 @@ Outputs:
 - evidence manifest
 - summary
 
+Device targeting, highest precedence first:
+
+1. `--udid <udid>` — exact simulator UDID.
+2. `--device <name>` — exact or partial simulator name.
+3. `defaultDevice` from `.screenslop/config.json`.
+4. The booted simulator.
+5. The first available simulator.
+
+Config beats a booted simulator on purpose. A stray simulator left running would
+otherwise hijack the capture and produce an evidence bundle for the wrong app —
+the capture step reports the mismatch instead of silently following whatever is
+booted. `matrix` already resolved `defaultDevice` this way; `see` now matches it.
+
+An explicit `--device` or `--udid` that matches nothing is an error. A
+`defaultDevice` that matches nothing falls back to the booted simulator and says
+so, so a deleted simulator does not block every capture.
+
 ### `screenslop critique`
 
 Reviews evidence and produces findings.
@@ -191,7 +208,11 @@ Deterministic rule families, by evidence source:
 
 - **AX structure**: `ax.missing-name`, `ax.generic-name`, `evidence.*`, `logs.*`.
 - **AX frame math**: `layout.touch-target`, `layout.offscreen-frame`, `layout.thumb-reach`, `layout.destructive-adjacency`, `layout.alignment-edges`, `layout.spacing-offgrid`, `layout.spacing-monotony`, `layout.empty-state-dead-end`, `platform.hamburger-menu`, `platform.stacked-modals`, `hierarchy.working-memory`, `typography.truncation-risk`.
-- **Screenshot pixels**: `color.contrast`, `color.monochrome-mute`, `color.competing-accents`. Pixel rules sample the real capture through macOS `sips`; on machines without `sips` or on stub screenshots they skip silently instead of failing critique.
+- **Screenshot pixels**: `color.contrast`, `color.monochrome-mute`, `color.competing-accents`. Pixel rules sample the real capture through macOS `sips`; on machines without `sips` or on stub screenshots they skip silently instead of failing critique. Both JPEG and PNG captures are readable — `sips` turns alpha-bearing sources into BITFIELDS BMPs, which the parser decodes using their channel masks.
+
+Captures are JPEG because Baguette writes nothing else, so pixel rules measure lossy data. Screenslop requests `--quality 1.0` rather than accepting Baguette's 0.85 default: measured against a lossless PNG of the same screen, that cuts worst-case channel error from ~71/255 to ~6/255 for roughly 2.4x the bytes. The error that matters concentrates on antialiased text edges, which is exactly where contrast sampling splits text from background.
+
+`color.contrast` confidence reflects how far the measurement sits from the threshold, not just text size. A ratio far below the minimum is reported `high` regardless of text size; one sitting within sampling noise of the threshold drops to `low` and says so. Tiny text needs a wider margin to earn the same confidence, because anti-aliasing only ever understates the true ratio.
 
 Frame-math and pixel rules are heuristics with deliberately conservative thresholds — they lean toward missing a marginal case over flooding a screen with noise, and their findings say so in the detail text.
 
