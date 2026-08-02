@@ -3,7 +3,7 @@ import path from 'node:path';
 import { readProjectConfig, resolveTargetConfig } from '../config/project-config.mjs';
 import { BaguetteDriver } from '../runtime/baguette.mjs';
 import { detectRuntimes } from '../runtime/detect.mjs';
-import { isBooted, selectBaguetteDevice } from '../runtime/device-selection.mjs';
+import { isBooted, resolveCaptureDevice } from '../runtime/device-selection.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 
 /**
@@ -17,6 +17,7 @@ import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
  * @param {string|null} [options.udid] Exact simulator UDID.
  * @param {string|null} [options.device] Exact or partial simulator name.
  * @param {string|null} [options.deviceSet] Custom simulator device set path.
+ * @param {string|null} [options.configuredDevice] Overrides config `defaultDevice` (tests).
  * @param {string|null} [options.bundleId] Optional log filter.
  * @param {number} [options.logDurationMs] Log capture duration.
  * @param {string|null} [options.artifactsDir] Explicit artifact directory override.
@@ -28,7 +29,9 @@ import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 export async function collectSee(options = {}) {
   const root = fs.realpathSync.native(path.resolve(options.root || process.cwd()));
   const detected = (options.detectRuntimesFn || detectRuntimes)();
-  const artifactsDir = resolveCaptureArtifactsDir(root, options.artifactsDir || null);
+  const configTarget = readCaptureTarget(root);
+  const artifactsDir = options.artifactsDir || configTarget.artifactsDir || 'artifacts';
+  const configuredDevice = options.configuredDevice ?? configTarget.device;
   const bundle = createEvidenceBundle({
     surface: options.surface,
     driver: detected.preferred,
@@ -58,21 +61,28 @@ export async function collectSee(options = {}) {
     return { ...result, ok: false, artifacts: bundle.manifest.artifacts, capture: bundle.manifest.capture };
   }
 
-  return captureWithBaguette({ root, bundle, options });
+  return captureWithBaguette({ root, bundle, options: { ...options, configuredDevice } });
 }
 
 /**
- * Resolves the configured capture artifact directory when a valid config exists.
+ * Reads the capture-relevant slice of project config in one pass.
+ *
+ * Both the artifact directory and the default device come from the same config
+ * read, so a project that names a device gets it honoured by `see` the same way
+ * `matrix` already honours it.
+ *
  * @param {string} root Project root.
- * @param {string|null} explicit Explicit artifact directory.
- * @returns {string} Artifact directory path.
+ * @returns {{artifactsDir:string|null, device:string|null}} Capture target defaults.
  */
-function resolveCaptureArtifactsDir(root, explicit) {
-  if (explicit) return explicit;
+function readCaptureTarget(root) {
   const read = readProjectConfig(root);
-  if (!read.exists) return 'artifacts';
+  if (!read.exists) return { artifactsDir: null, device: null };
   if (read.error) throw new Error(read.error);
-  return path.relative(root, resolveTargetConfig(read.config, { root }).artifactsDir) || '.';
+  const target = resolveTargetConfig(read.config, { root });
+  return {
+    artifactsDir: path.relative(root, target.artifactsDir) || '.',
+    device: target.device || null
+  };
 }
 
 /**
@@ -89,9 +99,10 @@ async function captureWithBaguette({ root, bundle, options }) {
     : new BaguetteDriver({ deviceSet: options.deviceSet || null });
   const steps = [];
   const envelope = driver.listDevices();
-  const selection = selectBaguetteDevice(envelope, {
+  const selection = resolveCaptureDevice(envelope, {
     udid: options.udid || null,
-    deviceName: options.device || null
+    deviceName: options.device || null,
+    configuredDeviceName: options.configuredDevice || null
   });
 
   if (!selection.device) {
@@ -105,7 +116,15 @@ async function captureWithBaguette({ root, bundle, options }) {
   }
 
   let device = selection.device;
-  steps.push({ name: 'list-devices', ok: true, message: `${selection.devices.length} simulator(s) found.` });
+  steps.push({
+    name: 'list-devices',
+    ok: true,
+    message: `${selection.devices.length} simulator(s) found. Target chosen by ${selection.source}.`
+  });
+  // Surface config-vs-booted disagreement instead of silently capturing the wrong device.
+  for (const note of selection.notes) {
+    steps.push({ name: 'device-selection', ok: true, message: note });
+  }
   setDevice(bundle, device);
 
   if (!isBooted(device)) {
