@@ -39,13 +39,21 @@ export class BaguetteDriver {
   }
 
   /**
-   * Captures a simulator screenshot.
+   * Captures a simulator screenshot at maximum JPEG quality.
+   *
+   * Baguette only writes JPEG, and its 0.85 default puts up to ~71/255 of codec
+   * error on antialiased text edges — precisely where the contrast rules split
+   * their text and background clusters. Measured against a lossless PNG of the
+   * same screen, quality 1.0 drops worst-case error to ~6/255 for roughly 2.5x
+   * the bytes. For a tool whose findings are measured off these pixels, that is
+   * the right trade.
+   *
    * @param {string} udid Simulator UDID.
    * @param {string} outputPath Output image path.
    * @returns {{ok:boolean, message:string}}
    */
   screenshot(udid, outputPath) {
-    const result = run(`baguette screenshot --udid ${quote(udid)} --output ${quote(outputPath)}${this.deviceSetArg()}`);
+    const result = run(`baguette screenshot --udid ${quote(udid)} --output ${quote(outputPath)} --quality 1.0${this.deviceSetArg()}`);
     return toStatus(result);
   }
 

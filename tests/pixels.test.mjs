@@ -34,6 +34,64 @@ test('parseBmp rejects non-BMP buffers and unsupported depths', () => {
   assert.throws(() => parseBmp(bmp), /Unsupported BMP depth/);
 });
 
+/**
+ * Builds a 32bpp BI_BITFIELDS BMP — the shape sips emits from any image with an
+ * alpha channel. Channels are laid out RGBA rather than the classic BGRA, so a
+ * parser that ignores the masks and assumes byte order reads them swapped.
+ * @param {number} width Image width.
+ * @param {number} height Image height.
+ * @param {(x:number,y:number)=>{r:number,g:number,b:number}} paint Pixel source.
+ * @returns {Buffer} BMP bytes.
+ */
+function buildBitfieldsBmp(width, height, paint) {
+  const pixelOffset = 66;
+  const stride = width * 4;
+  const buffer = Buffer.alloc(pixelOffset + stride * height);
+  buffer.write('BM', 0, 'ascii');
+  buffer.writeUInt32LE(buffer.length, 2);
+  buffer.writeUInt32LE(pixelOffset, 10);
+  buffer.writeUInt32LE(40, 14);
+  buffer.writeInt32LE(width, 18);
+  buffer.writeInt32LE(height, 22);
+  buffer.writeUInt16LE(1, 26);
+  buffer.writeUInt16LE(32, 28);
+  buffer.writeUInt32LE(3, 30);
+  buffer.writeUInt32LE(0x000000ff, 54); // red
+  buffer.writeUInt32LE(0x0000ff00, 58); // green
+  buffer.writeUInt32LE(0x00ff0000, 62); // blue
+
+  for (let y = 0; y < height; y += 1) {
+    const row = height - 1 - y;
+    for (let x = 0; x < width; x += 1) {
+      const pixel = paint(x, y);
+      const offset = pixelOffset + row * stride + x * 4;
+      buffer[offset] = pixel.r;
+      buffer[offset + 1] = pixel.g;
+      buffer[offset + 2] = pixel.b;
+      buffer[offset + 3] = 255;
+    }
+  }
+  return buffer;
+}
+
+test('parseBmp reads BITFIELDS BMPs using their channel masks, not assumed byte order', () => {
+  const image = parseBmp(buildBitfieldsBmp(2, 2, () => ({ r: 226, g: 155, b: 11 })));
+  assert.equal(image.width, 2);
+  // Swapped channels here would mean the masks were ignored.
+  assert.deepEqual(image.getPixel(0, 0), { r: 226, g: 155, b: 11 });
+});
+
+test('parseBmp still rejects compression modes it cannot decode', () => {
+  const bmp = buildBitfieldsBmp(2, 2, () => ({ r: 1, g: 2, b: 3 }));
+  const rle = Buffer.from(bmp);
+  rle.writeUInt32LE(2, 30);
+  assert.throws(() => parseBmp(rle), /Unsupported BMP compression/);
+
+  const shallow = Buffer.from(bmp);
+  shallow.writeUInt16LE(24, 28);
+  assert.throws(() => parseBmp(shallow), /Unsupported BITFIELDS depth/);
+});
+
 test('getPixel clamps out-of-range coordinates instead of crashing', () => {
   const image = parseBmp(buildBmp(2, 2, () => ({ r: 9, g: 9, b: 9 })));
   assert.deepEqual(image.getPixel(-5, 99), { r: 9, g: 9, b: 9 });
@@ -67,6 +125,26 @@ test('loadScreenshotPixels uses an injected converter', () => {
     assert.deepEqual(image.getPixel(1, 1), { r: 1, g: 2, b: 3 });
   } finally {
     fs.rmSync(fakePath, { force: true });
+  }
+});
+
+test('live sips conversion reads a PNG screenshot instead of skipping it', { skip: !sipsAvailable }, () => {
+  // sips converts PNG to a BITFIELDS BMP. That used to throw, loadScreenshotPixels
+  // swallowed it, and every pixel rule silently found nothing on PNG captures.
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-pixels-png-'));
+  const sourceBmp = path.join(tempDir, 'source.bmp');
+  const png = path.join(tempDir, 'source.png');
+  try {
+    fs.writeFileSync(sourceBmp, buildBmp(8, 8, (x) => (x < 4 ? { r: 226, g: 155, b: 11 } : { r: 0, g: 0, b: 0 })));
+    assert.equal(run(`sips -s format png ${JSON.stringify(sourceBmp)} --out ${JSON.stringify(png)}`).status, 0);
+
+    const image = loadScreenshotPixels(png);
+    assert.ok(image, 'expected a PNG screenshot to produce pixels');
+    assert.equal(image.width, 8);
+    assert.deepEqual(image.getPixel(0, 0), { r: 226, g: 155, b: 11 });
+    assert.deepEqual(image.getPixel(7, 7), { r: 0, g: 0, b: 0 });
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
 

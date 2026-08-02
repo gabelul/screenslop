@@ -48,9 +48,18 @@ function sipsConvert(sourcePath) {
 }
 
 /**
- * Parses an uncompressed 24/32bpp BMP buffer.
+ * Parses a 24/32bpp BMP buffer.
+ *
  * sips emits 24bpp with negative height (top-down rows); classic BMPs are
  * bottom-up with positive height. Both are handled.
+ *
+ * It also emits BI_BITFIELDS (compression 3) whenever the source image carries
+ * an alpha channel, which every PNG screenshot does. Rejecting that used to
+ * make `loadScreenshotPixels` return null, and since pixel rules skip silently
+ * on a null image, a PNG capture quietly produced zero color findings instead
+ * of an error. Channel positions come from the header masks rather than an
+ * assumed BGRA order.
+ *
  * @param {Buffer} buffer BMP bytes.
  * @returns {{width:number,height:number,getPixel:(x:number,y:number)=>{r:number,g:number,b:number}}} Pixel accessor.
  */
@@ -67,8 +76,12 @@ export function parseBmp(buffer) {
 
   if (width <= 0 || rawHeight === 0) throw new Error('Invalid BMP dimensions.');
   if (bitsPerPixel !== 24 && bitsPerPixel !== 32) throw new Error(`Unsupported BMP depth: ${bitsPerPixel}bpp.`);
-  if (compression !== 0) throw new Error(`Unsupported BMP compression: ${compression}.`);
+  if (compression !== 0 && compression !== 3) throw new Error(`Unsupported BMP compression: ${compression}.`);
+  if (compression === 3 && bitsPerPixel !== 32) {
+    throw new Error(`Unsupported BITFIELDS depth: ${bitsPerPixel}bpp.`);
+  }
 
+  const masks = compression === 3 ? readChannelMasks(buffer) : null;
   const height = Math.abs(rawHeight);
   const topDown = rawHeight < 0;
   const bytesPerPixel = bitsPerPixel / 8;
@@ -83,10 +96,56 @@ export function parseBmp(buffer) {
       const clampedY = Math.min(Math.max(Math.floor(y), 0), height - 1);
       const row = topDown ? clampedY : height - 1 - clampedY;
       const offset = pixelOffset + row * stride + clampedX * bytesPerPixel;
-      // BMP stores channels as BGR(A).
+      if (masks) {
+        const raw = buffer.readUInt32LE(offset);
+        return {
+          r: channelValue(raw, masks.r),
+          g: channelValue(raw, masks.g),
+          b: channelValue(raw, masks.b)
+        };
+      }
+      // BI_RGB stores channels as BGR(A).
       return { r: buffer[offset + 2], g: buffer[offset + 1], b: buffer[offset] };
     }
   };
+}
+
+/**
+ * Reads the RGB channel masks that follow a BITFIELDS header.
+ * They sit at a fixed offset in both BITMAPINFOHEADER and the V4/V5 headers.
+ * @param {Buffer} buffer BMP bytes.
+ * @returns {{r:object,g:object,b:object}} Decoded channel masks.
+ */
+function readChannelMasks(buffer) {
+  if (buffer.length < 66) throw new Error('Truncated BMP channel masks.');
+  const red = describeMask(buffer.readUInt32LE(54));
+  const green = describeMask(buffer.readUInt32LE(58));
+  const blue = describeMask(buffer.readUInt32LE(62));
+  if (!red || !green || !blue) throw new Error('Missing BMP channel masks.');
+  return { r: red, g: green, b: blue };
+}
+
+/**
+ * Precomputes the shift and full-scale value for one channel mask.
+ * @param {number} mask Channel bit mask.
+ * @returns {{mask:number,shift:number,max:number}|null} Mask descriptor, or null when empty.
+ */
+function describeMask(mask) {
+  if (!mask) return null;
+  let shift = 0;
+  while (shift < 32 && !((mask >>> shift) & 1)) shift += 1;
+  return { mask, shift, max: mask >>> shift };
+}
+
+/**
+ * Extracts one 0-255 channel from a packed BITFIELDS pixel.
+ * @param {number} raw Packed 32-bit pixel.
+ * @param {{mask:number,shift:number,max:number}} descriptor Channel mask descriptor.
+ * @returns {number} Channel value 0-255.
+ */
+function channelValue(raw, descriptor) {
+  const value = (raw & descriptor.mask) >>> descriptor.shift;
+  return descriptor.max === 255 ? value : Math.round((value * 255) / descriptor.max);
 }
 
 /**
