@@ -115,6 +115,69 @@ test('tiny text needs a wider margin than body text to clear the noise band', ()
   assert.equal(tiny[0].confidence, 'low');
 });
 
+// Shaped on a real measurement: an app rendering its warning token #D4A441 as a
+// derived variant. #E8C478 is the lightened form — 67 RGB units away, which the
+// old distance-only matching would have called an unknown color, and 1.67:1 on
+// white, which is the failure this rule exists to catch.
+const warningToken = { name: 'Theme.warning', hex: '#D4A441', r: 212, g: 164, b: 65 };
+const derivedAmber = { r: 232, g: 196, b: 120 };
+
+test('a contrast finding names the token its sampled color came from', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: derivedAmber }]));
+  const findings = detectContrastIssues(context, tree([textNode('Expiring soon', frame)]), {
+    ...optionsFor(bmp),
+    colorTokens: [warningToken]
+  });
+
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].detail, /`Theme\.warning` token \(#D4A441\)/);
+  assert.match(findings[0].detail, /lightness points lighter/);
+  assert.equal(findings[0].evidence.attributedToken, 'Theme.warning');
+  assert.equal(findings[0].evidence.attribution, 'derived');
+  assert.equal(findings[0].evidence.sampledTextColor, '#E8C478');
+});
+
+test('token attribution never moves the severity or confidence of a measured finding', () => {
+  // The failing ratio is measured from the capture; the token name comes from a
+  // profile that may be stale. Naming it must not strengthen the claim.
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: derivedAmber }]));
+  const nodes = tree([textNode('Expiring soon', frame)]);
+
+  const without = detectContrastIssues(context, nodes, optionsFor(bmp))[0];
+  const withTokens = detectContrastIssues(context, nodes, { ...optionsFor(bmp), colorTokens: [warningToken] })[0];
+
+  assert.equal(withTokens.severity, without.severity);
+  assert.equal(withTokens.confidence, without.confidence);
+  assert.equal(withTokens.ruleId, without.ruleId);
+  assert.equal(withTokens.id, without.id, 'attribution must not change the fingerprint');
+});
+
+test('contrast findings read exactly as before when no design profile exists', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: derivedAmber }]));
+  const findings = detectContrastIssues(context, tree([textNode('Expiring soon', frame)]), optionsFor(bmp));
+
+  assert.equal(findings.length, 1);
+  assert.doesNotMatch(findings[0].detail, /token \(#/);
+  assert.equal(findings[0].evidence.attributedToken, undefined);
+});
+
+test('an untraceable color leaves the finding unnamed rather than guessing', () => {
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  // Gray text: near-neutral, so its hue cannot identify a token.
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 190, g: 190, b: 190 } }]));
+  const findings = detectContrastIssues(context, tree([textNode('Muted', frame)]), {
+    ...optionsFor(bmp),
+    colorTokens: [warningToken]
+  });
+
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].detail, /near-neutral/);
+  assert.equal(findings[0].evidence.attributedToken, undefined);
+});
+
 test('contrast findings point at matrix when the bundle records no appearance', () => {
   const frame = { x: 10, y: 20, width: 60, height: 18 };
   const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));

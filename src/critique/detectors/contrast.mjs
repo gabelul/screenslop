@@ -1,3 +1,4 @@
+import { attributeColor, describeAttribution } from '../../design/color-attribution.mjs';
 import { accessibleName, isVisibleEnabled, nodeEvidence, rootFrame } from '../ax-tree.mjs';
 import { createFinding } from '../findings.mjs';
 import { contrastRatio, loadScreenshotPixels, relativeLuminance } from '../pixels.mjs';
@@ -20,6 +21,10 @@ const maxFindingsPerScreen = 5;
 const maxSamplesPerAxis = 20;
 // Anything under 8x8pt is an icon sliver or divider, not readable text.
 const minCandidateSize = 8;
+// Share of the text cluster treated as glyph core when estimating the drawn
+// color. Most text samples are antialiased edge pixels blended toward the
+// background; the quarter furthest from it carries the real color.
+const textCoreShare = 0.25;
 // Captures are JPEG — Baguette emits nothing else — so sampled channels drift a
 // couple of units on flat fills and far more on antialiased text edges, which is
 // exactly where contrast gets measured. A ratio sitting near its threshold is
@@ -70,11 +75,13 @@ export function detectContrastIssues(context, nodes, options = {}) {
     const required = isLargeText ? largeTextMinimum : normalTextMinimum;
     if (measured.ratio >= required) continue;
 
-    failing.push({ node, ratio: measured.ratio, required, isLargeText });
+    failing.push({ node, ratio: measured.ratio, required, isLargeText, textColor: measured.textColor });
   }
 
   failing.sort((left, right) => left.ratio - right.ratio);
-  return failing.slice(0, maxFindingsPerScreen).map((entry) => contrastFinding(context, entry));
+  return failing
+    .slice(0, maxFindingsPerScreen)
+    .map((entry) => contrastFinding(context, entry, options.colorTokens || []));
 }
 
 /**
@@ -117,37 +124,105 @@ function pixelRegion(frame, bounds, scale, image) {
  * assumed to be text, the larger one background.
  * @param {object} image Pixel accessor.
  * @param {{x:number,y:number,width:number,height:number}} region Pixel region.
- * @returns {{ratio:number}|null} Measured contrast, or null for flat regions.
+ * @returns {{ratio:number, textColor:object|null}|null} Measured contrast, or null for flat regions.
  */
 function measureRegionContrast(image, region) {
   const stepX = Math.max(1, Math.floor(region.width / maxSamplesPerAxis));
   const stepY = Math.max(1, Math.floor(region.height / maxSamplesPerAxis));
 
-  const luminances = [];
+  const samples = [];
   for (let y = region.y; y < region.y + region.height; y += stepY) {
     for (let x = region.x; x < region.x + region.width; x += stepX) {
-      luminances.push(relativeLuminance(image.getPixel(x, y)));
+      const pixel = image.getPixel(x, y);
+      samples.push({ pixel, luminance: relativeLuminance(pixel) });
     }
   }
-  if (luminances.length < 2) return null;
+  if (samples.length < 2) return null;
 
-  luminances.sort((left, right) => left - right);
+  samples.sort((left, right) => left.luminance - right.luminance);
   let splitIndex = 1;
   let largestGap = -1;
-  for (let i = 1; i < luminances.length; i += 1) {
-    const gap = luminances[i] - luminances[i - 1];
+  for (let i = 1; i < samples.length; i += 1) {
+    const gap = samples[i].luminance - samples[i - 1].luminance;
     if (gap > largestGap) {
       largestGap = gap;
       splitIndex = i;
     }
   }
 
-  const lowerMean = mean(luminances.slice(0, splitIndex));
-  const upperMean = mean(luminances.slice(splitIndex));
+  const lower = samples.slice(0, splitIndex);
+  const upper = samples.slice(splitIndex);
+  const lowerMean = mean(lower.map((entry) => entry.luminance));
+  const upperMean = mean(upper.map((entry) => entry.luminance));
   const ratio = contrastRatio(lowerMean, upperMean);
   // Nearly identical clusters = solid fill or photo, not text over a background.
   if (ratio < flatClusterRatio) return null;
-  return { ratio };
+
+  // Glyphs cover less of a label's box than its background does, so the smaller
+  // cluster is the text.
+  const [text, background] = lower.length <= upper.length ? [lower, upper] : [upper, lower];
+  return { ratio, textColor: representativeTextColor(text, background) };
+}
+
+/**
+ * Estimates the color the glyphs were actually drawn in.
+ *
+ * Averaging the whole text cluster reports a color blended toward the
+ * background, because most glyph samples land on antialiased edges. Averaging a
+ * single extreme pixel is noise. So this averages the most saturated core of
+ * the cluster — the pixels furthest from the background — which on a real
+ * device reproduced the app's rendered token variant closely enough to
+ * attribute it.
+ *
+ * @param {{pixel:object}[]} text Text cluster samples.
+ * @param {{pixel:object}[]} background Background cluster samples.
+ * @returns {{r:number,g:number,b:number}|null} Representative glyph color.
+ */
+function representativeTextColor(text, background) {
+  if (text.length === 0 || background.length === 0) return null;
+  const backgroundMean = meanPixel(background.map((entry) => entry.pixel));
+  const ranked = [...text].sort((left, right) => (
+    pixelDistance(right.pixel, backgroundMean) - pixelDistance(left.pixel, backgroundMean)
+  ));
+  const coreCount = Math.max(1, Math.round(ranked.length * textCoreShare));
+  return meanPixel(ranked.slice(0, coreCount).map((entry) => entry.pixel));
+}
+
+/**
+ * Averages a list of pixels channel by channel.
+ * @param {{r:number,g:number,b:number}[]} pixels Pixels to average.
+ * @returns {{r:number,g:number,b:number}} Mean pixel, rounded.
+ */
+function meanPixel(pixels) {
+  const total = pixels.reduce((acc, pixel) => ({
+    r: acc.r + pixel.r,
+    g: acc.g + pixel.g,
+    b: acc.b + pixel.b
+  }), { r: 0, g: 0, b: 0 });
+  return {
+    r: Math.round(total.r / pixels.length),
+    g: Math.round(total.g / pixels.length),
+    b: Math.round(total.b / pixels.length)
+  };
+}
+
+/**
+ * Formats a pixel as a hex string for finding evidence.
+ * @param {{r:number,g:number,b:number}} pixel Pixel to format.
+ * @returns {string} Uppercase hex color.
+ */
+function hexOf(pixel) {
+  return `#${[pixel.r, pixel.g, pixel.b].map((value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+}
+
+/**
+ * Euclidean RGB distance between two pixels.
+ * @param {{r:number,g:number,b:number}} a First pixel.
+ * @param {{r:number,g:number,b:number}} b Second pixel.
+ * @returns {number} Distance.
+ */
+function pixelDistance(a, b) {
+  return Math.sqrt((a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2);
 }
 
 /**
@@ -156,8 +231,8 @@ function measureRegionContrast(image, region) {
  * @param {{node:object,ratio:number,required:number,isLargeText:boolean}} entry Measured failure.
  * @returns {object} Contrast finding.
  */
-function contrastFinding(context, entry) {
-  const { node, ratio, required, isLargeText } = entry;
+function contrastFinding(context, entry, colorTokens) {
+  const { node, ratio, required, isLargeText, textColor } = entry;
   const name = accessibleName(node);
   // Small text is mostly anti-aliased edge pixels, which drag the sampled
   // text cluster toward the background and understate the true ratio. The
@@ -183,6 +258,16 @@ function contrastFinding(context, entry) {
   // status hues get lightened for dark surfaces and collapse against light ones.
   // A single `see` bundle records `appearance: unspecified`, so critique has no
   // way to know which one it just measured — say so instead of implying both.
+  // Naming the token turns "sampled #8A6410 measures 2.9:1" into a root cause a
+  // reader can act on. It is additive context only: it never moves the severity
+  // or the confidence, because the failing ratio is measured from the capture
+  // while the token name comes from a learned profile that may be stale. If no
+  // profile exists, or the color cannot be traced, the finding reads as before.
+  const attribution = textColor && colorTokens.length > 0
+    ? attributeColor(textColor, colorTokens)
+    : null;
+  const attributionNote = attribution ? describeAttribution(attribution) : '';
+
   const appearance = context.manifest?.environment?.appearance;
   const appearanceNote = !appearance || appearance === 'unspecified'
     ? ' This bundle does not record which appearance was captured, and contrast findings are often appearance-specific — run `screenslop matrix` to check the other appearance before assuming this fails everywhere.'
@@ -193,12 +278,16 @@ function contrastFinding(context, entry) {
     severity: ratio < largeTextMinimum ? 'P1' : 'P2',
     pillar: 'color',
     title: 'Text contrast falls below the WCAG minimum',
-    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${marginCaveat}${tinyCaveat}`,
+    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${attributionNote}${marginCaveat}${tinyCaveat}`,
     evidence: {
       artifact: context.artifacts.screenshot?.displayPath || null,
       node: nodeEvidence(node),
       screenshotRegion: node.frame,
-      note: `measured contrast ratio ${round(ratio)}:1 from pixel sampling`
+      note: `measured contrast ratio ${round(ratio)}:1 from pixel sampling`,
+      ...(textColor ? { sampledTextColor: hexOf(textColor) } : {}),
+      ...(attribution && attribution.token
+        ? { attributedToken: attribution.token.name || attribution.token.hex, attribution: attribution.status }
+        : {})
     },
     suggestedFix: 'Darken the text color or lighten the background (or vice versa in dark mode) until the pair clears the WCAG threshold; prefer system label colors, which handle this automatically.',
     verification: `Recapture and confirm the measured ratio for "${name}" is at least ${required}:1, or confirm the real color tokens pass a contrast checker.${appearanceNote}`,

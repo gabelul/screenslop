@@ -10,7 +10,8 @@ import { collectCritique } from '../src/critique/collect-critique.mjs';
 import { collectFix } from '../src/fix/collect-fix.mjs';
 import { collectVerify } from '../src/verify/collect-verify.mjs';
 import { collectMatrix } from '../src/matrix/collect-matrix.mjs';
-import { collectDesignProfile, resolveDesignProfilePath, summarizeDesignProfile } from '../src/design/profile.mjs';
+import { collectDesignProfile, loadDesignProfile, resolveDesignProfilePath, summarizeDesignProfile } from '../src/design/profile.mjs';
+import { extractProfileColorTokens } from '../src/design/token-drift.mjs';
 import { collectDesignReview } from '../src/design/review.mjs';
 import { buildAgentInstructions, formatAgentInstructions } from '../src/agent-instructions.mjs';
 import { chooseSetupDefaults, detectAppleProject } from '../src/config/project-detection.mjs';
@@ -158,6 +159,27 @@ function printCommandHelp(name) {
     return;
   }
   printHelp();
+}
+
+/**
+ * Reads learned color tokens so contrast findings can name the color they sampled.
+ *
+ * The composition happens here, at the edge, on purpose. `collectCritique` must
+ * not import the design lane: its findings feed the verified-fixed track, and a
+ * profile can be stale. Injecting tokens from the CLI keeps that boundary intact
+ * while still letting a finding say which token it found. Missing or unreadable
+ * profiles yield an empty list and findings read exactly as they did before.
+ *
+ * @param {string|null} profilePath Optional profile path override.
+ * @returns {object[]} Parsed color tokens, or an empty list.
+ */
+function readColorTokens(profilePath) {
+  try {
+    const resolved = resolveDesignProfilePath(process.cwd(), profilePath || undefined);
+    return extractProfileColorTokens(loadDesignProfile(resolved).profile);
+  } catch {
+    return [];
+  }
 }
 
 /** Prints the Screenslop coding-agent contract. */
@@ -1308,7 +1330,8 @@ async function critique() {
   try {
     let result = await collectCritique({
       root: process.cwd(),
-      bundlePath
+      bundlePath,
+      colorTokens: readColorTokens(options.values['design-profile'] || null)
     });
     result = { ...result, designProfile: designProfileStatus() };
 

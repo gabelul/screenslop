@@ -23,6 +23,12 @@ import { computeCritiqueTrend, writeTrendArtifact } from './trend.mjs';
  * @param {object} options Critique options.
  * @param {string} [options.root] Project root.
  * @param {string} options.bundlePath Evidence bundle directory or manifest path.
+ * @param {object[]} [options.colorTokens] Learned color tokens, injected by the caller.
+ *   Critique never reads the design profile itself — that would put a lane whose
+ *   findings feed the verified-fixed track at the mercy of a profile that may be
+ *   stale. Tokens are strictly additive: they let a contrast finding name the
+ *   color it already measured, and never create a finding or move a severity or
+ *   confidence. Omitted, findings read exactly as they did before.
  * @returns {Promise<object>} Critique result.
  */
 export async function collectCritique(options) {
@@ -49,7 +55,10 @@ export async function collectCritique(options) {
       ? loadScreenshotPixels(context.artifacts.screenshot.absolutePath)
       : null;
     const loadPixels = () => image;
-    findings.push(...detectContrastIssues(context, nodes, { loadPixels }));
+    findings.push(...detectContrastIssues(context, nodes, {
+      loadPixels,
+      colorTokens: Array.isArray(options.colorTokens) ? options.colorTokens : []
+    }));
     findings.push(...detectColorBalanceIssues(context, nodes, { loadPixels }));
   }
 
