@@ -4,6 +4,55 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { collectSee } from '../src/evidence/collect-see.mjs';
+import { buildBmp, parseBmp } from '../src/critique/pixels.mjs';
+
+test('collectSee records a stable verdict when the screen holds still', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-stable-'));
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: () => new FakeBaguetteDriver()
+  });
+
+  // The fake driver rewrites identical bytes, so the byte fast path applies.
+  assert.equal(result.capture.stability.status, 'stable');
+  assert.equal(result.capture.stability.changedRatio, 0);
+  assert.equal(result.capture.steps.some((step) => step.name === 'stability' && step.ok), true);
+});
+
+test('collectSee flags a bundle captured while the screen was still moving', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-unstable-'));
+  // Each capture writes different bytes; the injected loader turns them into
+  // completely different frames, standing in for a mid-transition screen.
+  class DriftingDriver extends FakeBaguetteDriver {
+    screenshot(_udid, outputPath) {
+      this.frames = (this.frames || 0) + 1;
+      fs.writeFileSync(outputPath, `frame-${this.frames}`);
+      return { ok: true, message: 'screenshot ok' };
+    }
+  }
+
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: () => new DriftingDriver(),
+    loadPixels: (file) => {
+      const first = fs.readFileSync(file, 'utf8').endsWith('1');
+      const shade = first ? 255 : 0;
+      return parseBmp(buildBmp(40, 40, () => ({ r: shade, g: shade, b: shade })));
+    }
+  });
+
+  assert.equal(result.capture.stability.status, 'unstable');
+  assert.equal(result.capture.stability.changedRatio, 1);
+  const step = result.capture.steps.find((entry) => entry.name === 'stability');
+  assert.equal(step.ok, false);
+  assert.match(step.message, /still moving/);
+});
 
 test('collectSee writes a dry-run bundle without runtime capture', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-dry-'));

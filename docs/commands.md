@@ -181,6 +181,10 @@ Outputs:
 - evidence manifest
 - summary
 
+After the screenshot lands, `see` waits 250ms, takes a throwaway second frame, and compares the two. The verdict goes into `capture.stability` as `stable`, `unstable`, or `unknown`, with the fraction of sampled pixels that moved. Measured on a real simulator the two cases are far apart: a still screen changes 0% of sampled pixels, a screen mid-transition changes about 40%, and the threshold sits at 1%. The probe frame is written outside the bundle and deleted — it is a measurement, not evidence.
+
+This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) when it sees an unstable bundle. Note that short transitions usually finish before `see` reaches the screenshot; the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
+
 Device targeting, highest precedence first:
 
 1. `--udid <udid>` — exact simulator UDID.

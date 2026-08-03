@@ -1,9 +1,12 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { readProjectConfig, resolveTargetConfig } from '../config/project-config.mjs';
 import { BaguetteDriver } from '../runtime/baguette.mjs';
 import { detectRuntimes } from '../runtime/detect.mjs';
+import { loadScreenshotPixels } from '../critique/pixels.mjs';
 import { isBooted, resolveCaptureDevice } from '../runtime/device-selection.mjs';
+import { compareFrames, describeStability, frameBytesMatch } from './stability.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 
 /**
@@ -165,6 +168,16 @@ async function captureWithBaguette({ root, bundle, options }) {
   });
   if (screenshotOk) bundle.manifest.artifacts.screenshot = path.relative(root, screenshotPath);
 
+  let stability = null;
+  if (screenshotOk) {
+    stability = await measureStability({ driver, device, screenshotPath, options });
+    steps.push({
+      name: 'stability',
+      ok: stability.status !== 'unstable',
+      message: describeStability(stability, stability.delayMs)
+    });
+  }
+
   const accessibilityPath = path.join(bundle.dir, 'accessibility.json');
   const accessibilityStatus = driver.accessibilityTree(device.udid, accessibilityPath);
   const accessibilityOk = accessibilityStatus.ok && fs.existsSync(accessibilityPath);
@@ -192,8 +205,65 @@ async function captureWithBaguette({ root, bundle, options }) {
   }
 
   const ok = screenshotOk && accessibilityOk;
-  setCapture(bundle, root, { status: ok ? 'complete' : 'partial', steps });
+  setCapture(bundle, root, {
+    status: ok ? 'complete' : 'partial',
+    steps,
+    ...(stability ? { stability } : {})
+  });
   return captureResult({ root, bundle, ok, device });
+}
+
+/**
+ * Takes a second capture a moment later and reports whether the screen moved.
+ *
+ * The probe frame is written outside the bundle and deleted: it is a
+ * measurement, not evidence, and shipping a second screenshot would double
+ * every bundle for no reviewer benefit.
+ *
+ * @param {object} params Probe parameters.
+ * @param {object} params.driver Runtime driver.
+ * @param {object} params.device Selected simulator.
+ * @param {string} params.screenshotPath Path of the captured screenshot.
+ * @param {object} params.options Capture options.
+ * @returns {Promise<{status:string, changedRatio:number|null, delayMs:number}>} Stability verdict.
+ */
+async function measureStability({ driver, device, screenshotPath, options }) {
+  const delayMs = Number.isFinite(options.stabilityDelayMs) ? Number(options.stabilityDelayMs) : 250;
+  const loadPixels = options.loadPixels || loadScreenshotPixels;
+  let probeDir = null;
+
+  try {
+    await sleep(delayMs);
+    probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-stability-'));
+    const probePath = path.join(probeDir, 'probe.jpg');
+    const probeStatus = driver.screenshot(device.udid, probePath);
+    if (!probeStatus.ok || !fs.existsSync(probePath)) {
+      return { status: 'unknown', changedRatio: null, delayMs };
+    }
+
+    // Opportunistic: identical bytes prove stillness without decoding, but a
+    // live simulator usually changes something across the gap, so this is a
+    // shortcut rather than the expected path.
+    if (frameBytesMatch(fs.readFileSync(screenshotPath), fs.readFileSync(probePath))) {
+      return { status: 'stable', changedRatio: 0, delayMs };
+    }
+
+    const verdict = compareFrames(loadPixels(screenshotPath), loadPixels(probePath));
+    return { ...verdict, delayMs };
+  } catch {
+    return { status: 'unknown', changedRatio: null, delayMs };
+  } finally {
+    if (probeDir) fs.rmSync(probeDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Waits without blocking the event loop.
+ * @param {number} ms Delay in milliseconds.
+ * @returns {Promise<void>} Resolves after the delay.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
 /**

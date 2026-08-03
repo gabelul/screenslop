@@ -30,6 +30,32 @@ export function detectEvidenceQuality(context) {
     }));
   }
 
+  // A mid-animation frame produces a manifest indistinguishable from a clean
+  // one, and every rule downstream inherits it: wrong frames for layout math,
+  // half-faded colors for contrast. Say so before any of them run.
+  const stability = context.manifest.capture?.stability;
+  if (stability?.status === 'unstable') {
+    const percent = Number.isFinite(stability.changedRatio)
+      ? `${(stability.changedRatio * 100).toFixed(1)}% of sampled pixels`
+      : 'a large share of the screen';
+    findings.push(createFinding({
+      ruleId: 'evidence.unstable-capture',
+      severity: 'P1',
+      pillar: 'platform',
+      title: 'Screen was still moving when captured',
+      detail: `Two captures ${stability.delayMs ?? 0}ms apart differ across ${percent}, so this bundle likely caught an animation or transition mid-flight. Layout frames and sampled colors from a moving screen describe a frame no user ever sees.`,
+      evidence: {
+        artifact: context.manifestPathDisplay,
+        note: `capture.stability.status=unstable`
+      },
+      suggestedFix: 'Let the screen settle before capturing — wait for transitions and loading states to finish, then rerun `screenslop see`.',
+      verification: 'Recapture and confirm `capture.stability.status` is stable.',
+      confidence: 'high',
+      effort: 'low',
+      fingerprint: 'unstable-capture'
+    }));
+  }
+
   if (!context.artifacts.screenshot.exists) {
     findings.push(createFinding({
       ruleId: 'evidence.missing-screenshot',

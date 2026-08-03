@@ -61,6 +61,16 @@
               "message": { "type": ["string", "null"] }
             }
           }
+        },
+        "stability": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["stable", "unstable", "unknown"] },
+            "changedRatio": { "type": ["number", "null"] },
+            "sampled": { "type": "number" },
+            "delayMs": { "type": "number" }
+          }
         }
       }
     },
