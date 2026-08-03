@@ -77,6 +77,43 @@ test('flags a screen accent far from every profile token as design.token-drift',
   assert.doesNotMatch(item.detail, /verified-fixed/i);
 });
 
+test('calls a darkened token variant derived rather than unknown drift', () => {
+  // Real measurement: a warning token #D4A441 rendered as #8A6410. RGB distance
+  // is 109, so the old path called it a color the profile never learned.
+  const profile = profileWith([colorToken('Theme.warning', '#D4A441', 'semantic')]);
+  const items = detectTokenDrift({ profile, image: solidImage({ r: 138, g: 100, b: 16 }) });
+
+  assert.equal(items.length, 1);
+  const item = items[0];
+  assert.equal(item.ruleId, 'design.token-derived-variant');
+  assert.equal(item.nearestTokenName, 'Theme.warning');
+  assert.equal(item.severity, 'P3');
+  assert.ok(item.lightnessDelta < 0, 'the variant is darker than its token');
+  assert.match(item.detail, /derived variant, not an unknown accent/);
+  assert.match(item.detail, /stale/i);
+});
+
+test('a genuinely unknown accent is still reported as drift', () => {
+  // Guard against the derived-variant path swallowing real drift: #3366FF
+  // shares no hue family with the orange token.
+  const items = detectTokenDrift({ profile: knownProfile, image: solidImage({ r: 51, g: 102, b: 255 }) });
+  assert.equal(items[0].ruleId, 'design.token-drift');
+});
+
+test('same-hue tokens make a derived variant ambiguous rather than named', () => {
+  const profile = profileWith([
+    colorToken('Theme.success', '#A7B89A', 'semantic'),
+    colorToken('Theme.successContainer', '#AFC0A2', 'semantic')
+  ]);
+  const items = detectTokenDrift({ profile, image: solidImage({ r: 91, g: 107, b: 79 }) });
+
+  assert.equal(items.length, 1);
+  assert.equal(items[0].ruleId, 'design.token-derived-variant');
+  assert.equal(items[0].nearestTokenName, null);
+  assert.equal(items[0].confidence, 'low');
+  assert.match(items[0].detail, /cannot say which token/);
+});
+
 test('stays quiet when the screen accent matches a profile token', () => {
   const image = solidImage(profileAccent); // distance 0 from the learned token
   assert.deepEqual(detectTokenDrift({ profile: knownProfile, image }), []);

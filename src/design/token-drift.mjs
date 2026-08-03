@@ -6,6 +6,8 @@
 // itself be stale, so findings stay low-confidence and never claim the
 // verified-fixed track.
 
+import { attributeColor } from './color-attribution.mjs';
+
 // ~2000 grid samples keeps the scan cheap while still catching any accent
 // region that covers a few percent of the screen.
 const targetSampleCount = 2000;
@@ -51,12 +53,57 @@ export function detectTokenDrift({ profile, image } = {}) {
     // token is on-token, even when a semantic tie-break would report a
     // slightly farther role as the nearest.
     if (!nearest || nearest.minDistance <= nearMissDistance) continue;
-    items.push(driftItem(accent, nearest));
+    items.push(driftItem(accent, nearest, tokenColors));
   }
 
   return items
     .sort((left, right) => (right.share - left.share) || left.screenColor.localeCompare(right.screenColor))
     .slice(0, maxDriftItems);
+}
+
+/**
+ * Builds the item for an accent that turned out to be a derived token variant.
+ *
+ * This is deliberately not called drift. An app rendering its warning token 22
+ * lightness points darker for legibility is using its palette, not abandoning
+ * it. The review question is whether that variant deserves a name of its own.
+ *
+ * @param {object} params Item parameters.
+ * @param {object} params.accent Sampled accent bucket.
+ * @param {object} params.attribution Attribution result.
+ * @param {number} params.sharePercent Rounded share percentage.
+ * @param {number} params.share Raw share.
+ * @param {string} params.staleness Shared profile-staleness caveat.
+ * @returns {object} Design-lane item.
+ */
+function derivedVariantItem({ accent, attribution, sharePercent, share, staleness }) {
+  const ambiguous = attribution.status === 'ambiguous';
+  const named = ambiguous
+    ? attribution.candidates.map((token) => token.name || token.hex).join(' or ')
+    : attribution.token.name || attribution.token.hex;
+  const points = Math.abs(Math.round((attribution.lightnessDelta || 0) * 100));
+  const direction = (attribution.lightnessDelta || 0) < 0 ? 'darker' : 'lighter';
+
+  return {
+    kind: 'design',
+    ruleId: 'design.token-derived-variant',
+    severity: 'P3',
+    confidence: ambiguous ? 'low' : 'medium',
+    proofLevel: 'profile-informed',
+    screenColor: accent.hex,
+    nearestToken: ambiguous ? null : attribution.token.hex,
+    nearestTokenName: ambiguous ? null : (attribution.token.name || null),
+    nearestTokenLayer: 'unknown',
+    distance: null,
+    lightnessDelta: Math.round((attribution.lightnessDelta || 0) * 1000) / 1000,
+    share,
+    title: ambiguous
+      ? `Screen accent ${accent.hex} looks like a derived variant of ${named}`
+      : `Screen accent ${accent.hex} is ${named} rendered ${points} points ${direction}`,
+    detail: ambiguous
+      ? `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}. Its hue and chroma match more than one learned token (${named}), so this is a derived variant of the palette rather than an unknown color — but the evidence cannot say which token it came from. ${staleness}`
+      : `About ${sharePercent}% of the screen's chromatic pixels are ${accent.hex}, which shares hue and chroma with the learned token ${attribution.token.hex} (${named}) at ${points} OKLCh lightness points ${direction}. That is a derived variant, not an unknown accent: RGB distance alone would have called it drift. Worth checking whether this variant should be a named token in its own right rather than computed at the call site. ${staleness}`
+  };
 }
 
 /**
@@ -191,11 +238,24 @@ function nearestToken(accent, tokenColors) {
  * @param {{hex:string,name:string|null,layer:string,distance:number,semanticAlternative:object|null}} nearest Nearest token match.
  * @returns {object} Design-lane drift item.
  */
-function driftItem(accent, nearest) {
+function driftItem(accent, nearest, tokenColors = []) {
   const isDrift = nearest.distance > driftDistance;
   const share = Math.round(accent.share * 1000) / 1000;
   const sharePercent = Math.round(share * 100);
   const staleness = 'Drift is measured against the learned design profile, which may itself be stale — treat this as a review prompt, not a measured defect.';
+
+  // Before claiming the profile never learned this color, check whether it is a
+  // derived variant of one. Apps darken status hues for legibility constantly,
+  // and RGB distance puts those variants 100+ away from their own token —
+  // measured at 109 and 132 on a real device. Calling that "an accent the
+  // profile never learned" is simply wrong, and it is the loudest way to be
+  // wrong, because it reads as "someone hardcoded a color".
+  if (isDrift) {
+    const attribution = attributeColor(accent, tokenColors);
+    if (attribution.status === 'derived' || attribution.status === 'ambiguous') {
+      return derivedVariantItem({ accent, attribution, sharePercent, share, staleness });
+    }
+  }
   // When the nearest token is a raw primitive but a semantic role also sits
   // within the near-miss band, nudge toward the role — that's the fix a
   // layered design system actually wants.
