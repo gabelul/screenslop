@@ -229,8 +229,13 @@ async function runMatrixCell(options) {
       });
     }
 
-    const status = see.ok ? 'captured' : 'failed';
+    // A cell claims "built this, then captured it". Without both identities it
+    // cannot claim that, so it does not count as captured. The bundle and its
+    // critique are still written and still inspectable — the gap is a status,
+    // not an omission — but an unproven target must not land in the captured
+    // tally or the successful exit path.
     const targetIdentity = build.resolvedUdid && see.device?.udid ? 'verified' : 'unverified';
+    const status = !see.ok ? 'failed' : (targetIdentity === 'verified' ? 'captured' : 'unavailable');
     const shouldCritique = options.includeCritique || options.includeDesign;
     let critique = see.ok && shouldCritique
       ? await options.collectCritiqueFn({ root, bundlePath: see.dir })
@@ -352,13 +357,29 @@ function runBuildTarget({ target, cell, commandRunner }) {
 }
 
 /**
- * Pulls a simulator UDID out of build output.
+ * Reads the simulator identity XcodeBuildMCP reports for a build-and-run.
+ *
+ * The tool declares this in its structured output as
+ * `data.artifacts.simulatorId` (schema `xcodebuildmcp.output.build-run-result`,
+ * shipped in its own installation). An earlier version scraped the first
+ * UUID-shaped substring out of stdout instead, which happily picked up an
+ * unrelated identifier from diagnostics and then handed it to capture as the
+ * device to photograph. A wrong identity is worse than none, so this reads the
+ * declared field and returns null for anything it cannot parse.
+ *
  * @param {string} output Build stdout.
- * @returns {string|null} First UDID found, or null.
+ * @returns {string|null} Reported simulator UDID, or null.
  */
 function extractUdid(output) {
-  const match = /\b[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\b/i.exec(String(output || ''));
-  return match ? match[0].toUpperCase() : null;
+  try {
+    const payload = JSON.parse(String(output || ''));
+    if (payload?.schema && payload.schema !== 'xcodebuildmcp.output.build-run-result') return null;
+    if (payload?.didError) return null;
+    const simulatorId = payload?.data?.artifacts?.simulatorId;
+    return typeof simulatorId === 'string' && simulatorId.trim() ? simulatorId.trim().toUpperCase() : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

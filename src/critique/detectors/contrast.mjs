@@ -180,9 +180,9 @@ function measureRegionContrast(image, region) {
   // so "smaller cluster wins" silently reverses foreground and background for
   // light-on-dark text — naming the background token with full confidence.
   // The border of a label's box is background almost by definition, so ask it.
-  const border = borderColor(image, region);
   const lowerColor = meanPixel(lower.map((entry) => entry.pixel));
   const upperColor = meanPixel(upper.map((entry) => entry.pixel));
+  const border = chooseBackgroundReference(borderColor(image, region), lowerColor, upperColor);
   const ownership = assignOwnership({ border, lower, upper, lowerColor, upperColor });
   if (!ownership) return { ratio, textColor: null, backgroundColor: null };
 
@@ -237,16 +237,44 @@ function borderColor(image, region) {
   const outerColor = outer.length >= minRingSamples ? medianPixel(outer) : null;
   const innerColor = inner.length > 0 ? medianPixel(inner) : null;
 
-  if (!outerColor) return innerColor;
-  if (!innerColor) return outerColor;
+  return { outer: outerColor, inner: innerColor };
+}
 
-  // "Outside the frame" is not the same as "background". A label sitting on a
-  // button, inside a card, or against a neighbouring control has foreign UI
-  // outside it — trusting that ring named the real background as the text
-  // color. Two independent references have to agree before either is believed;
-  // when they disagree, something other than plain text-on-background is here
-  // and ownership is left unresolved rather than guessed.
-  return pixelDistance(outerColor, innerColor) <= backgroundAgreementDistance ? outerColor : null;
+/**
+ * Picks the background reference that decisively matches one measured cluster.
+ *
+ * Neither reference is trustworthy on its own. "Outside the frame" is not
+ * "background" — a label on a button or inside a card has foreign UI around it,
+ * which once named the page background as the label's text color. The frame's
+ * own perimeter is not reliable either, since a tight frame's glyphs reach the
+ * edge.
+ *
+ * Requiring the two to agree fixed the wrong answers but created a worse
+ * problem: tight labels and buttons — both ordinary — have references that
+ * legitimately differ, and every one of them lost attribution. So instead each
+ * reference is scored against the two clusters, and the one that decisively
+ * resembles a cluster wins. Attribution is dropped only when neither can.
+ *
+ * @param {{outer:object|null, inner:object|null}|null} references Background references.
+ * @param {{r:number,g:number,b:number}} lowerColor Darker cluster mean.
+ * @param {{r:number,g:number,b:number}} upperColor Lighter cluster mean.
+ * @returns {{r:number,g:number,b:number}|null} Chosen background reference.
+ */
+function chooseBackgroundReference(references, lowerColor, upperColor) {
+  const candidates = [references?.outer, references?.inner].filter(Boolean);
+  let best = null;
+  for (const candidate of candidates) {
+    const toLower = pixelDistance(candidate, lowerColor);
+    const toUpper = pixelDistance(candidate, upperColor);
+    const decisiveness = Math.abs(toLower - toUpper);
+    // A reference that sits between the clusters describes neither.
+    if (decisiveness < ownershipMargin) continue;
+    // Prefer the reference that most closely resembles the cluster it picks.
+    const closeness = Math.min(toLower, toUpper);
+    if (closeness > backgroundAgreementDistance) continue;
+    if (!best || closeness < best.closeness) best = { color: candidate, closeness };
+  }
+  return best ? best.color : null;
 }
 
 /**

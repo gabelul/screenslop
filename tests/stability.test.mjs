@@ -132,9 +132,12 @@ const bars = (pt) => (dx, dy) => {
     || (Math.abs(dx) < strokePx / 2 && Math.abs(dy) < half);
 };
 
-test('compareFrames tolerates a blinking caret without crying unstable', () => {
-  // Built at capture resolution: a 2x16pt caret is 6x48 device pixels. It moves
-  // less area than the smallest indicator worth flagging, and stays tolerated.
+test('a blinking caret counts as motion, because it is motion', () => {
+  // An earlier threshold was tuned to tolerate a caret. Detecting a rotating
+  // indicator — which changes only its leading and trailing edges — needs a
+  // floor below what a caret produces, so the two cannot both be satisfied.
+  // The costs are not symmetric: a missed animation silently licenses a
+  // verified-fixed claim, while a flagged caret downgrades a result visibly.
   const still = blankScreen();
   const caret = screenWithShape(
     (dx, dy) => dx >= 0 && dx < 2 * pointScale && dy >= 0 && dy < 16 * pointScale,
@@ -143,7 +146,16 @@ test('compareFrames tolerates a blinking caret without crying unstable', () => {
   );
 
   const verdict = compareFrames(still, caret);
+  assert.equal(verdict.status, 'unstable');
+  assert.equal(verdict.localizedMotion, true);
+});
+
+test('an unchanged capture is never called moving', () => {
+  // The floor is deliberately low, so this is the assertion that has to hold:
+  // real captures of a still screen change zero samples.
+  const verdict = compareFrames(blankScreen(), blankScreen());
   assert.equal(verdict.status, 'stable');
+  assert.equal(verdict.changedRatio, 0);
   assert.equal(verdict.localizedMotion, false);
 });
 
@@ -157,7 +169,7 @@ test('spinner shapes are caught, not just solid blocks', () => {
   }
 });
 
-test('the documented floor holds at every tile phase, and specks stay below it', () => {
+test('24pt motion is caught at every tile phase, shape regardless', () => {
   // Positions are stepped to land on tile centres, edges, and corners of all
   // four offset grids rather than a convenient subset.
   const still = blankScreen();
@@ -178,11 +190,6 @@ test('the documented floor holds at every tile phase, and specks stay below it',
     }
   }
   assert.deepEqual(missed, [], `24pt motion escaped at phases: ${missed.join(' ')}`);
-
-  // Pin the other side of the floor: motion smaller than roughly an 8pt square
-  // of area — a caret, a one-pixel underline tick — stays tolerated.
-  const sliver = compareFrames(still, screenWithShape(solid(6), 600, 1200));
-  assert.equal(sliver.status, 'stable', 'a 6pt speck is below the documented floor');
 });
 
 test('localized motion is caught wherever it sits, not just where the grid is kind', () => {
@@ -220,5 +227,47 @@ test('a small busy region is unstable even though the screen barely moved', () =
   assert.equal(verdict.status, 'unstable');
   assert.ok(verdict.changedRatio <= 0.01, `global ratio stayed small: ${verdict.changedRatio}`);
   assert.ok(verdict.busiestTileRatio > 0.2, `one tile was busy: ${verdict.busiestTileRatio}`);
-  assert.match(describeStability(verdict, 250), /Motion is localized/);
+  // The message must name the signal that tripped; quoting only the global
+  // percentage reported "0.0% changed" on a capture flagged as moving.
+  assert.match(describeStability(verdict, 250), /moving in one place/);
+  assert.doesNotMatch(describeStability(verdict, 250), /^Screen was still moving: 0\.0%/);
+});
+
+test('a rotating indicator is caught at 2x and 3x, at every lattice phase', () => {
+  // This is the transition that matters. Comparing a blank screen against a
+  // fully drawn spinner tests that a spinner *appeared*; a sustained spinner
+  // shows one phase in both captures and only its edges differ. That case read
+  // as perfectly stable while every earlier fixture passed.
+  const quarterArc = (scale, deg) => (dx, dy) => {
+    const distance = Math.hypot(dx, dy);
+    const radius = (24 * scale) / 2;
+    if (!(distance > radius - 2 * scale && distance < radius)) return false;
+    let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (angle < 0) angle += 360;
+    return angle >= deg && angle < deg + 90;
+  };
+
+  const geometries = [
+    ['3x phone', 1206, 2622, 3],
+    ['2x iPad', 2048, 2732, 2],
+    ['2x phone', 750, 1334, 2]
+  ];
+
+  for (const [name, width, height, scale] of geometries) {
+    const paint = (shape, cx, cy) => parseBmp(buildBmp(width, height, (x, y) => (
+      shape(x - cx, y - cy) ? black : white
+    )));
+    // Sweep the sample lattice: the original miss depended on sub-step phase.
+    for (let phaseX = 0; phaseX < 4; phaseX += 1) {
+      for (let phaseY = 0; phaseY < 4; phaseY += 1) {
+        const cx = Math.round(width / 2) + phaseX;
+        const cy = Math.round(height / 2) + phaseY;
+        const verdict = compareFrames(
+          paint(quarterArc(scale, 0), cx, cy),
+          paint(quarterArc(scale, 45), cx, cy)
+        );
+        assert.equal(verdict.status, 'unstable', `${name} spinner missed at phase ${phaseX},${phaseY}`);
+      }
+    }
+  }
 });

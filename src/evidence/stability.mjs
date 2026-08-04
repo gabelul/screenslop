@@ -48,21 +48,36 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // clustered — so changed samples are also bounded, and a small bounding box
 // holding enough changes counts as localized motion regardless of how sparse
 // it is inside. Static captures change zero samples, so the floor can be low.
-// Measured on 1206x2622 captures: a blinking caret changes 8 sample points, the
-// smallest realistic activity indicator (20pt ring) changes 20. Sixteen sits in
-// that gap. The floor this creates is one of moving *area*, not element size —
-// roughly an 8pt square's worth of pixels, however that area is shaped.
-const minLocalizedChanges = 16;
+// Changed samples are grouped into connected clusters and each is judged alone.
+// A single global bounding box was non-monotonic: two spinners in opposite
+// corners inflated one box past the area limit and the screen came back *more*
+// stable than either spinner produced by itself. Adding motion must never
+// reduce detection.
+// Three, not more. A rotating arc changes only its leading and trailing edges,
+// which land on opposite sides of the indicator and cluster separately — six
+// changed samples in total became two groups of three. Static captures come
+// back byte-identical, so zero is the noise floor and three sits far above it.
+//
+// This does mean a blinking caret reads as motion, because it is motion. The
+// costs are not symmetric: a false `stable` silently licenses a verified-fixed
+// claim, while a false `unstable` downgrades a result visibly and recoverably.
+// When in doubt, say the screen was moving.
+const minLocalizedChanges = 3;
 const maxLocalizedArea = 0.05;
+// Sparse strokes leave gaps on the sample lattice, so neighbours within two
+// cells join the same cluster rather than splintering into unqualified specks.
+const clusterGap = 2;
 // Sampling density is what actually limits the smallest detectable motion, and
-// the limit is stroke width, not overall size. Captures are device pixels, so a
-// 2pt spinner stroke is 6px wide. At ~20k samples the grid stepped 9px on a
-// 1206x2622 capture and walked straight over those strokes — a ring-shaped
-// indicator landed on almost no sample points and read as perfectly still. ~90k
-// brings the step to 6px, so any 6px-wide stroke is guaranteed to contain a
-// sample row. It is more pixel reads of a cheap operation, spent on the one
-// thing that decides whether real spinners are visible at all.
+// the limit is stroke width, not overall size.
+//
+// Deriving the step from total pixel area ties it to one device: a 2pt stroke
+// is 6px on a 3x phone but 4px on a 2x iPad, whose larger capture pushed the
+// step to 8px and walked straight over it. So the step is capped absolutely
+// rather than trusted to fall out of an area budget. Four pixels intercepts a
+// 2pt stroke at 2x and 3x alike; the sample count then follows from whatever
+// the capture actually is.
 const targetSampleCount = 90000;
+const maxSampleStep = 4;
 
 /**
  * Checks whether two capture files are byte-for-byte identical.
@@ -97,10 +112,13 @@ export function compareFrames(first, second) {
     return { status: 'unstable', changedRatio: 1, sampled: 0 };
   }
 
-  const step = Math.max(1, Math.round(Math.sqrt((first.width * first.height) / targetSampleCount)));
+  const step = Math.min(
+    maxSampleStep,
+    Math.max(1, Math.round(Math.sqrt((first.width * first.height) / targetSampleCount)))
+  );
   // One tile map per offset grid; a sample lands in exactly one tile of each.
   const grids = tileOffsets.map(() => new Map());
-  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  const changedCells = [];
   let changed = 0;
   let sampled = 0;
 
@@ -112,10 +130,7 @@ export function compareFrames(first, second) {
       const moved = delta > changedChannelTolerance;
       if (moved) {
         changed += 1;
-        if (x < bounds.minX) bounds.minX = x;
-        if (x > bounds.maxX) bounds.maxX = x;
-        if (y < bounds.minY) bounds.minY = y;
-        if (y > bounds.maxY) bounds.maxY = y;
+        changedCells.push([Math.round(x / step), Math.round(y / step)]);
       }
       sampled += 1;
 
@@ -142,11 +157,15 @@ export function compareFrames(first, second) {
     }
   }
 
-  // Enough changes packed into a small box is motion, however thin the shape.
-  const boxWidth = changed > 0 ? bounds.maxX - bounds.minX + 1 : 0;
-  const boxHeight = changed > 0 ? bounds.maxY - bounds.minY + 1 : 0;
-  const boxArea = (boxWidth * boxHeight) / (first.width * first.height);
-  const localized = changed >= minLocalizedChanges && boxArea > 0 && boxArea <= maxLocalizedArea;
+  // Enough changes packed into one compact cluster is motion, however thin the
+  // shape. Each cluster stands alone, so a second animation elsewhere can only
+  // add detections, never cancel one.
+  const localized = clustersOf(changedCells).some((cluster) => {
+    if (cluster.count < minLocalizedChanges) return false;
+    const boxArea = ((cluster.maxX - cluster.minX + 1) * (cluster.maxY - cluster.minY + 1) * step * step)
+      / (first.width * first.height);
+    return boxArea > 0 && boxArea <= maxLocalizedArea;
+  });
 
   const unstable = changedRatio > unstableChangedRatio
     || busiestTile > unstableTileRatio
@@ -174,12 +193,61 @@ export function describeStability(verdict, delayMs) {
   if (verdict.status === 'stable') return `Screen held still across ${delayMs}ms.`;
 
   const percent = ((verdict.changedRatio ?? 0) * 100).toFixed(1);
-  // A spinner barely registers globally but dominates its own tile, so say
-  // which measurement actually tripped rather than quoting a tiny percentage.
-  const localized = (verdict.busiestTileRatio ?? 0) > unstableTileRatio && (verdict.changedRatio ?? 0) <= unstableChangedRatio
-    ? ` Motion is localized: one region changed ${((verdict.busiestTileRatio ?? 0) * 100).toFixed(0)}% while the screen overall barely moved.`
-    : '';
-  return `Screen was still moving: ${percent}% of sampled pixels changed across ${delayMs}ms.${localized} Findings from this bundle may reflect a mid-animation frame.`;
+  // A rotating indicator changes a rounding error's worth of the screen, so
+  // quoting only the global percentage read "0.0% changed" on a capture that
+  // was flagged as moving. Name whichever signal actually tripped.
+  const globalTripped = (verdict.changedRatio ?? 0) > unstableChangedRatio;
+  if (globalTripped) {
+    return `Screen was still moving: ${percent}% of sampled pixels changed across ${delayMs}ms. Findings from this bundle may reflect a mid-animation frame.`;
+  }
+
+  const where = (verdict.busiestTileRatio ?? 0) > unstableTileRatio
+    ? `one region changed ${((verdict.busiestTileRatio ?? 0) * 100).toFixed(0)}%`
+    : 'a small area kept changing';
+  return `Screen was still moving in one place across ${delayMs}ms: ${where} while the screen overall barely moved (${percent}%). That is the signature of a spinner or loading state. Findings from this bundle may reflect a mid-animation frame.`;
+}
+
+/**
+ * Groups changed lattice cells into connected clusters.
+ *
+ * Flood fill over the sample lattice, joining cells within `clusterGap` so a
+ * dashed arc or a spoke with gaps stays one shape instead of fragmenting into
+ * pieces too small to qualify.
+ *
+ * @param {Array<[number, number]>} cells Changed cell coordinates.
+ * @returns {{count:number, minX:number, maxX:number, minY:number, maxY:number}[]} Clusters.
+ */
+function clustersOf(cells) {
+  const remaining = new Map(cells.map(([x, y]) => [`${x},${y}`, [x, y]]));
+  const clusters = [];
+
+  while (remaining.size > 0) {
+    const [firstKey, firstCell] = remaining.entries().next().value;
+    remaining.delete(firstKey);
+    const cluster = { count: 0, minX: firstCell[0], maxX: firstCell[0], minY: firstCell[1], maxY: firstCell[1] };
+    const queue = [firstCell];
+
+    while (queue.length > 0) {
+      const [x, y] = queue.pop();
+      cluster.count += 1;
+      if (x < cluster.minX) cluster.minX = x;
+      if (x > cluster.maxX) cluster.maxX = x;
+      if (y < cluster.minY) cluster.minY = y;
+      if (y > cluster.maxY) cluster.maxY = y;
+
+      for (let dx = -clusterGap; dx <= clusterGap; dx += 1) {
+        for (let dy = -clusterGap; dy <= clusterGap; dy += 1) {
+          const key = `${x + dx},${y + dy}`;
+          const neighbour = remaining.get(key);
+          if (!neighbour) continue;
+          remaining.delete(key);
+          queue.push(neighbour);
+        }
+      }
+    }
+    clusters.push(cluster);
+  }
+  return clusters;
 }
 
 /**

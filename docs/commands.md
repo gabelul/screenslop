@@ -187,11 +187,11 @@ Three signals, because each is blind to something the others see:
 
 1. **Global** — more than 1% of sampled pixels moving. On a real simulator a still screen changes 0% and a screen mid-transition about 40%.
 2. **Per-tile** — the frame is split into a 16×16 grid and any single tile above 20% counts. A 44×44pt spinner is only 0.55% of the screen, so the global rule alone would never see it. The grid is evaluated at four independent axis offsets: with one fixed grid the same region scored 0.24 inside a tile and 0.10 straddling a corner, so detection depended on where the motion happened to sit.
-3. **Localized cluster** — enough changed samples packed into a small bounding box. Tiles measure *density*, which is the wrong question for a real activity indicator: it is thin arcs and gaps, not a filled square. A 24pt ring changed only 12% of its tile and read as stable until this was added.
+3. **Localized cluster** — changed samples are grouped into connected clusters and each is judged alone. Tiles measure *density*, which is the wrong question for a real activity indicator: it is thin arcs and gaps, not a filled square. Clusters are evaluated independently because a single global bounding box was non-monotonic — two spinners in opposite corners inflated one box past the area limit and the screen came back *more* stable than either produced alone. Adding motion must never reduce detection.
 
-Sampling density sets the real limit, and the limiting dimension is stroke width rather than element size. Captures are device pixels, so a 2pt spinner stroke is 6px wide; the sample grid steps 6px to guarantee any such stroke contains a sample row. At the earlier density the grid stepped 9px and walked straight over those strokes.
+Sampling geometry sets the real limit, and the limiting dimension is stroke width rather than element size. The step is capped at 4px absolutely rather than derived from total pixel area: a 2pt stroke is 6px on a 3× phone but 4px on a 2× iPad, whose larger capture pushed an area-derived step to 8px and walked straight over it.
 
-The resulting floor is one of **moving area, not element size** — roughly an 8pt square's worth of pixels, however that area is shaped. Measured on 1206×2622 captures: a blinking caret changes 8 sample points and is tolerated; the smallest realistic indicator (a 20pt ring) changes 20 and is flagged. Ring, crossed-bar, and solid shapes at 24pt are caught at every tile phase.
+**The floor is deliberately low.** The transition that matters is not a spinner appearing but a spinner *turning* — a sustained indicator shows one phase in both captures, and only its leading and trailing edges differ. That is six changed samples in total, arriving as two separate clusters, so three per cluster is the threshold. A blinking caret trips it too. That is accepted rather than tuned around: the costs are asymmetric, since a missed animation silently licenses a `verified-fixed` claim while a flagged caret downgrades a result visibly and recoverably. A genuinely unchanged capture changes zero samples, which is the property the low floor depends on.
 
 This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) for an unstable bundle, and `verify` gates on it (below). Short transitions usually finish before `see` reaches the screenshot, so the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
 
@@ -429,7 +429,13 @@ capture, fix, or verify.
 
 Writes a bounded matrix report and one evidence bundle per matrix cell.
 
-Each cell records `targetIdentity`, saying whether it can prove the build and the capture touched the same simulator. A cell builds through XcodeBuildMCP and captures through Baguette, and both used to resolve the simulator *name* independently — with duplicate names across installed runtimes, that can build one device and critique another. Capture now receives the UDID the build resolved, and the cell fails outright when the evidence records a different one. When the build tool reports no device identity at all, the cell is marked `unverified` rather than quietly assumed correct: like every other matrix gap, it is a first-class status instead of an omission.
+Each cell records `targetIdentity`, saying whether it can prove the build and the capture touched the same simulator. A cell builds through XcodeBuildMCP and captures through Baguette, and both used to resolve the simulator *name* independently — with duplicate names across installed runtimes, that can build one device and critique another.
+
+The identity comes from XcodeBuildMCP's structured output (`data.artifacts.simulatorId`), not from scraping stdout for something UUID-shaped, which would happily pick up an unrelated identifier from diagnostics and hand it to capture as the device to photograph.
+
+- `verified` — both ends reported the same device. The cell counts as `captured`.
+- `mismatch` — they reported different devices. The cell **fails**.
+- `unverified` — the build reported no identity, so the two resolved a name independently. The bundle and its critique are still written and still inspectable, but the cell status is `unavailable` and it is **not** counted in `summary.captured`. A cell claims "built this, then captured it"; without both identities it cannot claim that, and an unproven target must not sit in the captured tally.
 
 MVP usage:
 

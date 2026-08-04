@@ -85,7 +85,17 @@ test('matrix live path records capture and optional critique per cell', async ()
   const report = await collectMatrix({
     root,
     includeCritique: true,
-    commandRunner: () => ({ status: 0, stdout: '{}', stderr: '' }),
+    // Structured build output, the way XcodeBuildMCP actually reports it. The
+    // cell can only claim build-then-capture if both ends name the same device.
+    commandRunner: () => ({
+      status: 0,
+      stdout: JSON.stringify({
+        schema: 'xcodebuildmcp.output.build-run-result',
+        didError: false,
+        data: { artifacts: { simulatorId: 'SIM-UDID-1' } }
+      }),
+      stderr: ''
+    }),
     collectSeeFn: async (options) => {
       seen.push(options);
       const dir = path.join('artifacts', `fake-${seen.length}`);
@@ -95,6 +105,7 @@ test('matrix live path records capture and optional critique per cell', async ()
       return {
         ok: true,
         dir,
+        device: { name: 'iPhone Test', udid: 'SIM-UDID-1' },
         evidence: path.join(dir, 'evidence.json'),
         artifacts: { screenshot: path.join(dir, 'screenshot.jpg'), accessibilityTree: path.join(dir, 'accessibility.json') }
       };
@@ -116,6 +127,73 @@ test('matrix live path records capture and optional critique per cell', async ()
   assert.equal(report.cells.find((cell) => cell.id === 'dark-appearance').settingStatus.appearance.status, 'requested-only');
   assert.equal(report.cells.find((cell) => cell.id === 'dynamic-type-normal').settingStatus.dynamicType.status, 'requested-only');
   assert.equal(report.cells[0].settingStatus.appearance.status, 'not-requested');
+  assert.equal(report.cells[0].targetIdentity, 'verified');
+});
+
+test('a cell that cannot prove its target does not count as captured', async () => {
+  // Build reports no simulator identity, so the cell resolved the device name
+  // twice independently and cannot claim it built what it photographed.
+  const root = createWorkspace();
+  writeConfig(root);
+
+  const report = await collectMatrix({
+    root,
+    commandRunner: () => ({ status: 0, stdout: '{}', stderr: '' }),
+    collectSeeFn: async () => {
+      const dir = path.join('artifacts', 'fake-unverified');
+      const absolute = path.join(root, dir);
+      fs.mkdirSync(absolute, { recursive: true });
+      fs.writeFileSync(path.join(absolute, 'evidence.json'), '{}');
+      return {
+        ok: true,
+        dir,
+        device: { name: 'iPhone Test', udid: 'SIM-UDID-1' },
+        evidence: path.join(dir, 'evidence.json'),
+        artifacts: { screenshot: path.join(dir, 'screenshot.jpg'), accessibilityTree: path.join(dir, 'accessibility.json') }
+      };
+    }
+  });
+
+  assert.equal(report.summary.captured, 0, 'an unproven target must not be tallied as captured');
+  assert.equal(report.cells[0].targetIdentity, 'unverified');
+  assert.equal(report.cells[0].status, 'unavailable');
+  // The evidence is still written and still inspectable.
+  assert.ok(report.cells[0].evidenceBundle || report.cells[0].reason);
+});
+
+test('a build and capture on different simulators fails the cell', async () => {
+  const root = createWorkspace();
+  writeConfig(root);
+
+  const report = await collectMatrix({
+    root,
+    commandRunner: () => ({
+      status: 0,
+      stdout: JSON.stringify({
+        schema: 'xcodebuildmcp.output.build-run-result',
+        didError: false,
+        data: { artifacts: { simulatorId: 'SIM-BUILT' } }
+      }),
+      stderr: ''
+    }),
+    collectSeeFn: async () => {
+      const dir = path.join('artifacts', 'fake-mismatch');
+      const absolute = path.join(root, dir);
+      fs.mkdirSync(absolute, { recursive: true });
+      fs.writeFileSync(path.join(absolute, 'evidence.json'), '{}');
+      return {
+        ok: true,
+        dir,
+        device: { name: 'Other', udid: 'SIM-CAPTURED' },
+        evidence: path.join(dir, 'evidence.json'),
+        artifacts: { screenshot: path.join(dir, 'screenshot.jpg') }
+      };
+    }
+  });
+
+  assert.equal(report.summary.captured, 0);
+  assert.equal(report.cells[0].status, 'failed');
+  assert.match(report.cells[0].reason, /target-mismatch/);
 });
 
 
