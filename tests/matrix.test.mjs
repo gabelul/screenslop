@@ -206,7 +206,11 @@ test('a build envelope missing its schema or error flag authorizes nothing', asy
     { data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
     { schema: 'xcodebuildmcp.output.build-run-result', data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
     { schema: 'xcodebuildmcp.output.build-run-result', schemaVersion: '1', didError: true, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
-    { schema: 'something.else', schemaVersion: '1', didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } }
+    { schema: 'something.else', schemaVersion: '1', didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    // String() coercion once turned all of these into a valid "1".
+    { schema: 'xcodebuildmcp.output.build-run-result', schemaVersion: 1, didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    { schema: 'xcodebuildmcp.output.build-run-result', schemaVersion: ['1'], didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    { schema: 'xcodebuildmcp.output.build-run-result', schemaVersion: [1], didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } }
   ];
 
   for (const payload of bogus) {
@@ -224,6 +228,8 @@ test('a build envelope missing its schema or error flag authorizes nothing', asy
     });
     assert.equal(report.cells[0].targetIdentity, 'unverified', `accepted ${JSON.stringify(payload).slice(0, 60)}`);
     assert.equal(report.summary.captured, 0);
+    // A run with nothing proven must not report success either.
+    assert.equal(report.ok, false, 'a matrix with zero proven captures must not exit successfully');
   }
 });
 

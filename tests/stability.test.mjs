@@ -168,6 +168,45 @@ test('a blinking caret is exempt only inside a text field, and only when caret-s
   assert.equal(repaint.status, 'unstable');
 });
 
+test('the caret exemption cannot be widened, split, or outrun by truncation', () => {
+  const edge = 1000;
+  const field = { x: 100, y: 100, width: 800, height: 120 };
+  const blank = parseBmp(buildBmp(edge, edge, () => white));
+  const paint = (rects) => parseBmp(buildBmp(edge, edge, (x, y) => (
+    rects.some(([rx, ry, rw, rh]) => x >= rx && x < rx + rw && y >= ry && y < ry + rh) ? black : white
+  )));
+
+  // A caret-width sliver inside the focused field is the only exempt case.
+  const caret = compareFrames(blank, paint([[110, 110, 6, 48]]), { editableRegions: [field] });
+  assert.equal(caret.status, 'stable');
+  assert.equal(caret.caretExempt, true);
+
+  // Width was once allowed to scale with the field, so an 800px field
+  // authorized 100px of motion. A repaint is not a caret at any field size.
+  assert.equal(
+    compareFrames(blank, paint([[110, 110, 79, 60]]), { editableRegions: [field] }).status,
+    'unstable'
+  );
+
+  // Two fields cannot be combined into one exemption.
+  const second = { x: 100, y: 400, width: 800, height: 120 };
+  assert.equal(
+    compareFrames(blank, paint([[110, 110, 6, 48], [110, 410, 6, 48]]), { editableRegions: [field, second] }).status,
+    'unstable'
+  );
+
+  // Monotonicity across the recording cap: changed cells stop being recorded
+  // past a budget, and judging confinement on that prefix once let later
+  // out-of-field motion disappear from a strict superset.
+  const outside = [[900, 900, 8, 8], [908, 900, 8, 8]];
+  assert.equal(compareFrames(blank, paint(outside), { editableRegions: [field] }).status, 'unstable');
+  assert.equal(
+    compareFrames(blank, paint([[110, 110, 97, 103], ...outside]), { editableRegions: [field] }).status,
+    'unstable',
+    'a superset must not become stable because the change record was truncated'
+  );
+});
+
 test('localized detection is monotonic: a superset of moving pixels stays moving', () => {
   // Two earlier designs failed this. A global bounding box merged distant
   // motion past its area limit; connected components merged it through a sparse

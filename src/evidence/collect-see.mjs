@@ -287,14 +287,17 @@ async function measureStability({ driver, device, screenshotPath, options, captu
 }
 
 /**
- * Collects the frames of editable text fields from a captured accessibility tree.
+ * Finds the focused editable field in a captured accessibility tree.
  *
- * Used only to exempt caret blink from the stability check. The tree carries no
- * focused flag, so this is every text field on screen rather than the focused
- * one — the tightest bound the runtime actually offers.
+ * Used only to exempt caret blink from the stability check, so it must be as
+ * narrow as the evidence allows. Baguette reports a `focused` boolean per node;
+ * an earlier version of this claimed it did not and fell back to exempting
+ * *every* text field on screen, which is far too broad for something that
+ * suppresses a proof signal. If nothing is focused, there is no caret to
+ * exempt and the exemption is simply unavailable.
  *
  * @param {string} accessibilityPath Path to the captured AX tree.
- * @returns {{frame:object, rootWidth:number}[]} Editable frames in point space.
+ * @returns {{frame:object, rootWidth:number}[]} At most one focused field, in point space.
  */
 function readEditableRegions(accessibilityPath) {
   try {
@@ -304,11 +307,14 @@ function readEditableRegions(accessibilityPath) {
     const frames = [];
     const walk = (node) => {
       if (!node || typeof node !== 'object') return;
-      if (editableRolePattern.test(String(node.role || '')) && node.frame) frames.push(node.frame);
+      const editable = editableRolePattern.test(String(node.role || ''))
+        || editableRolePattern.test(String(node.subrole || ''));
+      if (editable && node.focused === true && node.frame) frames.push(node.frame);
       for (const child of node.children || []) walk(child);
     };
     walk(tree);
-    return frames.map((frame) => ({ frame, rootWidth }));
+    // More than one field claiming focus is a contradiction, not a caret.
+    return frames.length === 1 ? [{ frame: frames[0], rootWidth }] : [];
   } catch {
     return [];
   }

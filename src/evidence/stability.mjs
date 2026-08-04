@@ -61,8 +61,10 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // superset of it stays unstable.
 //
 // A rotating arc changes only its leading and trailing edges — six samples for
-// a 45 degree step, four for 22.5 — and they land on opposite sides of the
-// indicator, which is what the window has to be wide enough to hold.
+// a 45 degree step, four for 22.5. The radius below is what an empirical sweep
+// of scales, start angles, rotation steps and lattice phases actually catches;
+// it is not derived from spinner geometry, and samples further apart than the
+// radius are not treated as neighbours.
 //
 // Two is the floor. Three missed slower rotations, and the floor can go this
 // low because the noise level is genuinely zero: three real captures of a live
@@ -73,8 +75,7 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // 40 degrees per second, far slower than the ~360 a real indicator runs at —
 // can still escape.
 const localizedWindowRadius = 10;
-// Packs a cell pair into one integer key; comfortably above any lattice width.
-const cellKeyStride = 100000;
+
 // A caret is about 2pt wide; this covers it at every display scale.
 const caretMaxWidthPx = 8;
 const minLocalizedChanges = 2;
@@ -192,7 +193,7 @@ export function compareFrames(first, second, options = {}) {
   // rather than by focus: the runtime's accessibility tree exposes no focused
   // flag, so a field is the tightest bound available.
   const caretExempt = (alreadyUnstable || localized)
-    && isCaretConfined(changedCells, step, options.editableRegions);
+    && isCaretConfined(changedCells, step, options.editableRegions, changed > cellBudget);
 
   return {
     status: (alreadyUnstable || localized) && !caretExempt ? 'unstable' : 'stable',
@@ -212,34 +213,46 @@ export function compareFrames(first, second, options = {}) {
  * @param {{x:number,y:number,width:number,height:number}[]} [regions] Editable field frames, in pixels.
  * @returns {boolean} Whether the motion is caret-shaped and field-confined.
  */
-function isCaretConfined(cells, step, regions) {
-  if (!Array.isArray(regions) || regions.length === 0 || cells.length === 0) return false;
+function isCaretConfined(cells, step, regions, truncated) {
+  // A truncated record is a prefix, not the change set. Judging confinement on
+  // it let later out-of-field motion vanish, so a strict superset of an
+  // unstable capture came back stable — the exact invariant this signal is
+  // supposed to hold.
+  if (truncated) return false;
+  // Exactly one focused field, or no exemption. "Inside some field" is not a
+  // caret claim.
+  if (!Array.isArray(regions) || regions.length !== 1 || cells.length === 0) return false;
+  const region = regions[0];
 
   let minX = Infinity;
   let maxX = -Infinity;
   for (let i = 0; i < cells.length; i += 2) {
     const x = cells[i] * step;
     const y = cells[i + 1] * step;
-    const inside = regions.some((region) => (
-      x >= region.x && x < region.x + region.width && y >= region.y && y < region.y + region.height
-    ));
-    // One changed sample outside every field disqualifies the whole capture.
+    const inside = x >= region.x && x < region.x + region.width
+      && y >= region.y && y < region.y + region.height;
+    // One changed sample outside the field disqualifies the whole capture.
     if (!inside) return false;
     if (x < minX) minX = x;
     if (x > maxX) maxX = x;
   }
 
-  // A caret is a narrow vertical bar. A field whose whole content repaints is
-  // not a caret, and must not borrow the exemption.
-  const widest = Math.max(...regions.map((region) => region.width));
-  return (maxX - minX + step) <= Math.max(caretMaxWidthPx, widest / 8);
+  // A caret is a narrow vertical bar, full stop. An earlier version allowed
+  // `fieldWidth / 8`, which let an 800px field authorize 100px of motion — that
+  // is a repaint wearing a caret's exemption.
+  return (maxX - minX + step) <= caretMaxWidthPx;
 }
 
 /**
- * Reports whether any fixed window holds enough changed samples.
+ * Reports whether any changed sample has enough changed neighbours near it.
  *
- * Monotonic by construction: every changed cell can only add to the windows it
- * falls in, so a superset of an unstable change set can never become stable.
+ * This is a radius search centred on each changed cell, not a freely sliding
+ * window: two samples 11 cells apart are not neighbours even though some window
+ * could contain both. The radius is set by what the rotation sweep actually
+ * catches rather than by a geometric argument about spinner diameters.
+ *
+ * Monotonic by construction: adding a changed cell can only raise neighbour
+ * counts, so a superset of an unstable change set can never become stable.
  *
  * @param {Int32Array|number[]} cells Packed changed-cell coordinates, x then y.
  * @returns {boolean} Whether localized motion was found.
@@ -250,8 +263,13 @@ function hasLocalizedMotion(cells) {
 
   // Numeric keys, not strings: a full-frame diff would otherwise materialize
   // hundreds of thousands of string keys purely to be discarded.
+  // Stride comes from the lattice actually in use. A fixed constant collided
+  // once y reached it, making (x, stride) indistinguishable from (x + 1, 0).
+  let stride = 1;
+  for (let i = 1; i < cells.length; i += 2) if (cells[i] >= stride) stride = cells[i] + 1;
+
   const occupied = new Set();
-  for (let i = 0; i < cells.length; i += 2) occupied.add(cells[i] * cellKeyStride + cells[i + 1]);
+  for (let i = 0; i < cells.length; i += 2) occupied.add(cells[i] * stride + cells[i + 1]);
 
   for (let i = 0; i < cells.length; i += 2) {
     const cx = cells[i];
@@ -259,7 +277,8 @@ function hasLocalizedMotion(cells) {
     let neighbours = 0;
     for (let dx = -localizedWindowRadius; dx <= localizedWindowRadius; dx += 1) {
       for (let dy = -localizedWindowRadius; dy <= localizedWindowRadius; dy += 1) {
-        if (occupied.has((cx + dx) * cellKeyStride + (cy + dy))) {
+        const ny = cy + dy;
+        if (ny >= 0 && ny < stride && occupied.has((cx + dx) * stride + ny)) {
           neighbours += 1;
           if (neighbours >= minLocalizedChanges) return true;
         }

@@ -99,6 +99,11 @@ export async function collectMatrix(options = {}) {
   }
 
   finalizeDesignSummary(report);
+  // A run that failed cells, or captured evidence it cannot tie to the device it
+  // built, is not a successful matrix. `ok` was fixed from config state alone,
+  // so a run with zero proven captures still exited zero — which contradicted
+  // the rule that an unproven target must not reach the successful exit path.
+  if (!dryRun && (report.summary.failed > 0 || report.summary.captured === 0)) report.ok = false;
   writeMatrixReport({ report, reportPath, reportMarkdownPath });
   return report;
 }
@@ -379,7 +384,8 @@ function extractUdid(output) {
     // simulatorId authorized a capture target. The envelope must be present and
     // say the build succeeded before its identity means anything.
     if (payload?.schema !== 'xcodebuildmcp.output.build-run-result') return null;
-    if (String(payload?.schemaVersion) !== '1') return null;
+    // Exact, not coerced: String() happily turned 1, [1] and ["1"] into "1".
+    if (payload?.schemaVersion !== '1') return null;
     if (payload?.didError !== false) return null;
     const simulatorId = payload?.data?.artifacts?.simulatorId;
     return typeof simulatorId === 'string' && simulatorId.trim() ? simulatorId.trim().toUpperCase() : null;
