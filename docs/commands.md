@@ -183,11 +183,15 @@ Outputs:
 
 After the accessibility tree is captured, `see` waits 250ms, takes a throwaway second frame, and compares it to the screenshot. The verdict goes into `capture.stability` as `stable`, `unstable`, or `unknown`. The probe runs last on purpose: putting the wait between the screenshot and the AX capture would push the tree further from the frame it describes, widening the very correlation this tool depends on. The probe frame is written outside the bundle and deleted — it is a measurement, not evidence.
 
-Two thresholds, because one is not enough. Globally, more than 1% of sampled pixels moving is unstable — measured on a real simulator, a still screen changes 0% and a screen mid-transition about 40%. But a 44×44pt spinner is only 0.55% of a 402×874 screen, so the frame is also split into a 16×16 tile grid and any single tile above 20% counts as unstable.
+Three signals, because each is blind to something the others see:
 
-The grid is evaluated at four offsets rather than once. A single fixed grid makes detection depend on where the motion happens to sit: the same 44×44 region scored 0.24 inside a tile and 0.10 straddling a corner, so a spinner could hide by being unlucky. Offsetting each axis independently means every placement sits clear of a boundary in at least one grid.
+1. **Global** — more than 1% of sampled pixels moving. On a real simulator a still screen changes 0% and a screen mid-transition about 40%.
+2. **Per-tile** — the frame is split into a 16×16 grid and any single tile above 20% counts. A 44×44pt spinner is only 0.55% of the screen, so the global rule alone would never see it. The grid is evaluated at four independent axis offsets: with one fixed grid the same region scored 0.24 inside a tile and 0.10 straddling a corner, so detection depended on where the motion happened to sit.
+3. **Localized cluster** — enough changed samples packed into a small bounding box. Tiles measure *density*, which is the wrong question for a real activity indicator: it is thin arcs and gaps, not a filled square. A 24pt ring changed only 12% of its tile and read as stable until this was added.
 
-The measured floor is about **24pt square** — swept across every position on a 402×874 frame, regions that size and larger are always caught, and a 16pt region is not. That is small enough for a standard activity indicator and large enough to ignore a blinking caret, which is the trade intended.
+Sampling density sets the real limit, and the limiting dimension is stroke width rather than element size. Captures are device pixels, so a 2pt spinner stroke is 6px wide; the sample grid steps 6px to guarantee any such stroke contains a sample row. At the earlier density the grid stepped 9px and walked straight over those strokes.
+
+The resulting floor is one of **moving area, not element size** — roughly an 8pt square's worth of pixels, however that area is shaped. Measured on 1206×2622 captures: a blinking caret changes 8 sample points and is tolerated; the smallest realistic indicator (a 20pt ring) changes 20 and is flagged. Ring, crossed-bar, and solid shapes at 24pt are caught at every tile phase.
 
 This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) for an unstable bundle, and `verify` gates on it (below). Short transitions usually finish before `see` reaches the screenshot, so the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
 
@@ -230,7 +234,7 @@ When a design profile exists, `color.contrast` also names the token its sampled 
 
 Which cluster is the text is decided from a ring sampled just *outside* the label frame, not from cluster size. Deciding by size silently reversed foreground and background for light-on-dark text and confidently named the background token; sampling the frame's own perimeter fixes the common case but still inverts on a tight frame whose glyphs reach the edge. A ring outside the frame cannot contain the label's glyphs at all. Frames flush against the image edge fall back to the inner perimeter, and when neither can separate the two clusters the ratio is still reported and attribution is omitted rather than guessed.
 
-Attribution also refuses to name a token when a *different* token, drawn at partial opacity over the measured background, explains the sample equally well — checked in linear light, and applied to exact matches too, since landing on a token is not proof it was the token used. The check is skipped when the sample, background, and rival are all near-neutral: on the gray axis every value lies between black and white, so a blend "explanation" there is arithmetic rather than evidence.
+Attribution also refuses to name a token when a *different* token, drawn at partial opacity over the measured background, explains the sample equally well — checked in linear light, and applied to exact matches too, since landing on a token is not proof it was the token used. Neutrals get no exemption: `.opacity(0.6)` on a label color is ordinary SwiftUI, so "black at 60% over white" is a real alternative explanation for a gray, and gray text with both a muted token and a black token in the palette reports both candidates rather than picking one. That is deliberately noisier than naming a winner, because the alternative is being confidently wrong about the most common text on screen.
 
 `collectCritique` never reads the design profile — the CLI resolves tokens and injects them via `colorTokens`, so no profile access happens inside the deterministic lane. The pure color math lives in `src/color/attribution.mjs`, a neutral module both lanes import; `tests/design-module.test.mjs` walks the critique import graph transitively to keep it that way.
 
@@ -424,6 +428,8 @@ capture, fix, or verify.
 ### `screenslop matrix`
 
 Writes a bounded matrix report and one evidence bundle per matrix cell.
+
+Each cell records `targetIdentity`, saying whether it can prove the build and the capture touched the same simulator. A cell builds through XcodeBuildMCP and captures through Baguette, and both used to resolve the simulator *name* independently — with duplicate names across installed runtimes, that can build one device and critique another. Capture now receives the UDID the build resolved, and the cell fails outright when the evidence records a different one. When the build tool reports no device identity at all, the cell is marked `unverified` rather than quietly assumed correct: like every other matrix gap, it is a first-class status instead of an omission.
 
 MVP usage:
 

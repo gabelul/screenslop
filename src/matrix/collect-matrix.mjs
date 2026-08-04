@@ -230,6 +230,7 @@ async function runMatrixCell(options) {
     }
 
     const status = see.ok ? 'captured' : 'failed';
+    const targetIdentity = build.resolvedUdid && see.device?.udid ? 'verified' : 'unverified';
     const shouldCritique = options.includeCritique || options.includeDesign;
     let critique = see.ok && shouldCritique
       ? await options.collectCritiqueFn({ root, bundlePath: see.dir })
@@ -249,6 +250,12 @@ async function runMatrixCell(options) {
       status,
       requested: requestedEnvironment(cell),
       settingStatus: matrixSettingStatus(cell, { runtimeAttempted: true }),
+      // Whether this cell can prove the build and the capture touched the same
+      // simulator. `unverified` means the build tool did not report a device
+      // identity, so the two resolved a name independently and may disagree —
+      // a real gap in the cell's proof, recorded rather than assumed away. A
+      // disagreement between two known identities fails the cell outright.
+      targetIdentity,
       build,
       evidenceBundle: see.dir,
       evidence: see.evidence,

@@ -108,6 +108,12 @@
               "failed"
             ]
           },
+          "targetIdentity": {
+            "enum": [
+              "verified",
+              "unverified"
+            ]
+          },
           "reason": {
             "type": "string"
           },

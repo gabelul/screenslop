@@ -40,8 +40,29 @@ const minTileSamples = 24;
 // independently gives four grids, and every placement sits away from a boundary
 // in at least one of them. Swept across the screen, no position now escapes.
 const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
-// ~20k samples resolves a 1% change with room to spare and stays cheap.
-const targetSampleCount = 20000;
+// Tiles measure density, and density is the wrong question for a real spinner.
+// An activity indicator is thin arcs and gaps, not a filled square: a 24pt
+// spinner drawn as two crossed bars changed only 12% of its tile and read as
+// stable, while a solid 24pt block of the same size read as unstable. What
+// separates a spinner from sensor noise is not how dense it is but how tightly
+// clustered — so changed samples are also bounded, and a small bounding box
+// holding enough changes counts as localized motion regardless of how sparse
+// it is inside. Static captures change zero samples, so the floor can be low.
+// Measured on 1206x2622 captures: a blinking caret changes 8 sample points, the
+// smallest realistic activity indicator (20pt ring) changes 20. Sixteen sits in
+// that gap. The floor this creates is one of moving *area*, not element size —
+// roughly an 8pt square's worth of pixels, however that area is shaped.
+const minLocalizedChanges = 16;
+const maxLocalizedArea = 0.05;
+// Sampling density is what actually limits the smallest detectable motion, and
+// the limit is stroke width, not overall size. Captures are device pixels, so a
+// 2pt spinner stroke is 6px wide. At ~20k samples the grid stepped 9px on a
+// 1206x2622 capture and walked straight over those strokes — a ring-shaped
+// indicator landed on almost no sample points and read as perfectly still. ~90k
+// brings the step to 6px, so any 6px-wide stroke is guaranteed to contain a
+// sample row. It is more pixel reads of a cheap operation, spent on the one
+// thing that decides whether real spinners are visible at all.
+const targetSampleCount = 90000;
 
 /**
  * Checks whether two capture files are byte-for-byte identical.
@@ -79,6 +100,7 @@ export function compareFrames(first, second) {
   const step = Math.max(1, Math.round(Math.sqrt((first.width * first.height) / targetSampleCount)));
   // One tile map per offset grid; a sample lands in exactly one tile of each.
   const grids = tileOffsets.map(() => new Map());
+  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   let changed = 0;
   let sampled = 0;
 
@@ -88,7 +110,13 @@ export function compareFrames(first, second) {
       const b = second.getPixel(x, y);
       const delta = Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
       const moved = delta > changedChannelTolerance;
-      if (moved) changed += 1;
+      if (moved) {
+        changed += 1;
+        if (x < bounds.minX) bounds.minX = x;
+        if (x > bounds.maxX) bounds.maxX = x;
+        if (y < bounds.minY) bounds.minY = y;
+        if (y > bounds.maxY) bounds.maxY = y;
+      }
       sampled += 1;
 
       tileOffsets.forEach(([offsetX, offsetY], index) => {
@@ -114,11 +142,20 @@ export function compareFrames(first, second) {
     }
   }
 
-  const unstable = changedRatio > unstableChangedRatio || busiestTile > unstableTileRatio;
+  // Enough changes packed into a small box is motion, however thin the shape.
+  const boxWidth = changed > 0 ? bounds.maxX - bounds.minX + 1 : 0;
+  const boxHeight = changed > 0 ? bounds.maxY - bounds.minY + 1 : 0;
+  const boxArea = (boxWidth * boxHeight) / (first.width * first.height);
+  const localized = changed >= minLocalizedChanges && boxArea > 0 && boxArea <= maxLocalizedArea;
+
+  const unstable = changedRatio > unstableChangedRatio
+    || busiestTile > unstableTileRatio
+    || localized;
   return {
     status: unstable ? 'unstable' : 'stable',
     changedRatio,
     busiestTileRatio: busiestTile,
+    localizedMotion: localized,
     sampled
   };
 }

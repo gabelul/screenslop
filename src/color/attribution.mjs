@@ -191,18 +191,14 @@ export function attributeColor(sampled, tokens = [], options = {}) {
  */
 function blendExplanations(sampled, background, tokens, winner) {
   if (!background) return [];
-  return tokens.filter((token) => {
-    if (token === winner) return false;
-    if (!fitsAsBlend(sampled, background, token)) return false;
-    // On the neutral axis a blend hypothesis is vacuous: every gray lies
-    // between black and white, so "black at 60% over white explains #AAAAAA"
-    // is arithmetic, not evidence. Requiring one of the three to carry real
-    // chroma keeps the check meaningful instead of making every piece of gray
-    // text ambiguous — which is most text in most apps.
-    const allNeutral = [sampled, background, token]
-      .every((color) => srgbToOklch(color).C < neutralChromaFloor);
-    return !allNeutral;
-  });
+  // No exemption for neutrals. `.opacity(0.6)` on a label color is ordinary
+  // SwiftUI, so "black at 60% over white" is a real alternative explanation for
+  // a gray, not a contrived one. An earlier version skipped this case on the
+  // grounds that gray ambiguity is too common to be worth reporting — which had
+  // it backwards: neutrality makes the source less identifiable, not more, and
+  // answering `exact` with high confidence because the ambiguity is frequent is
+  // exactly the confident-and-wrong failure this whole check exists to stop.
+  return tokens.filter((token) => token !== winner && fitsAsBlend(sampled, background, token));
 }
 
 /**

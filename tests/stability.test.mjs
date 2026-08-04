@@ -66,20 +66,6 @@ test('compareFrames calls a screen mid-transition unstable', () => {
   assert.ok(verdict.changedRatio > 0.5, `expected a large change, got ${verdict.changedRatio}`);
 });
 
-test('compareFrames tolerates a blinking caret without crying unstable', () => {
-  // Proportions matter here, so this uses a real screen size. A text caret is
-  // about 2x16pt on a 402x874 screen — far smaller than the ~24pt square the
-  // tile grid can resolve, and it should stay tolerated.
-  const still = parseBmp(buildBmp(402, 874, () => ({ r: 255, g: 255, b: 255 })));
-  const caret = parseBmp(buildBmp(402, 874, (x, y) => (
-    x >= 100 && x < 102 && y >= 300 && y < 316 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 }
-  )));
-
-  const verdict = compareFrames(still, caret);
-  assert.equal(verdict.status, 'stable');
-  assert.ok(verdict.changedRatio < 0.01, `expected under 1%, got ${verdict.changedRatio}`);
-});
-
 test('compareFrames reports unknown when either frame is unusable', () => {
   assert.equal(compareFrames(null, frameWithBlock(0)).status, 'unknown');
   assert.equal(compareFrames(frameWithBlock(0), null).status, 'unknown');
@@ -108,6 +94,95 @@ test('describeStability explains each verdict in the capture steps', () => {
     describeStability({ status: 'unknown', changedRatio: null, reason: 'probe-capture-failed' }, 250),
     /probe-capture-failed/
   );
+});
+
+// Captures are device pixels, not points: a 402x874pt screen arrives as
+// 1206x2622. Building fixtures in point space made every stroke three times
+// thinner than reality, so a spinner's arms fell between sample rows.
+const pointScale = 3;
+const screenWidth = 402 * pointScale;
+const screenHeight = 874 * pointScale;
+const white = { r: 255, g: 255, b: 255 };
+const black = { r: 0, g: 0, b: 0 };
+const blankScreen = () => parseBmp(buildBmp(screenWidth, screenHeight, () => white));
+
+/**
+ * Paints a shape onto a blank screen at a given centre.
+ * @param {(dx:number,dy:number)=>boolean} shape Membership test in shape-local coordinates.
+ * @param {number} cx Centre x.
+ * @param {number} cy Centre y.
+ * @returns {object} Pixel accessor.
+ */
+function screenWithShape(shape, cx, cy) {
+  return parseBmp(buildBmp(screenWidth, screenHeight, (x, y) => (shape(x - cx, y - cy) ? black : white)));
+}
+
+// Shapes are described in points and scaled to device pixels, the way UIKit
+// draws them. A 2pt stroke is 6px on screen.
+const strokePx = 2 * pointScale;
+const solid = (pt) => (dx, dy) => Math.abs(dx) < (pt * pointScale) / 2 && Math.abs(dy) < (pt * pointScale) / 2;
+const ring = (pt) => (dx, dy) => {
+  const radius = (pt * pointScale) / 2;
+  const distance = Math.hypot(dx, dy);
+  return distance > radius - strokePx && distance < radius;
+};
+const bars = (pt) => (dx, dy) => {
+  const half = (pt * pointScale) / 2;
+  return (Math.abs(dy) < strokePx / 2 && Math.abs(dx) < half)
+    || (Math.abs(dx) < strokePx / 2 && Math.abs(dy) < half);
+};
+
+test('compareFrames tolerates a blinking caret without crying unstable', () => {
+  // Built at capture resolution: a 2x16pt caret is 6x48 device pixels. It moves
+  // less area than the smallest indicator worth flagging, and stays tolerated.
+  const still = blankScreen();
+  const caret = screenWithShape(
+    (dx, dy) => dx >= 0 && dx < 2 * pointScale && dy >= 0 && dy < 16 * pointScale,
+    600,
+    1200
+  );
+
+  const verdict = compareFrames(still, caret);
+  assert.equal(verdict.status, 'stable');
+  assert.equal(verdict.localizedMotion, false);
+});
+
+test('spinner shapes are caught, not just solid blocks', () => {
+  // An activity indicator is arcs and gaps. Testing only filled squares meant a
+  // realistic 24pt ring measured 12% of its tile and passed as stable.
+  const still = blankScreen();
+  for (const [name, shape] of [['ring', ring(24)], ['bars', bars(24)], ['solid', solid(24)]]) {
+    const verdict = compareFrames(still, screenWithShape(shape, 600, 1200));
+    assert.equal(verdict.status, 'unstable', `a 24pt ${name} spinner should not read as stable`);
+  }
+});
+
+test('the documented floor holds at every tile phase, and specks stay below it', () => {
+  // Positions are stepped to land on tile centres, edges, and corners of all
+  // four offset grids rather than a convenient subset.
+  const still = blankScreen();
+  const tileWidth = screenWidth / 16;
+  const tileHeight = screenHeight / 16;
+  const phases = [0, 0.25, 0.5, 0.75];
+
+  const missed = [];
+  for (const phaseX of phases) {
+    for (const phaseY of phases) {
+      const cx = Math.round(tileWidth * (5 + phaseX));
+      const cy = Math.round(tileHeight * (7 + phaseY));
+      for (const shape of [solid(24), ring(24), bars(24)]) {
+        if (compareFrames(still, screenWithShape(shape, cx, cy)).status !== 'unstable') {
+          missed.push(`${cx},${cy}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(missed, [], `24pt motion escaped at phases: ${missed.join(' ')}`);
+
+  // Pin the other side of the floor: motion smaller than roughly an 8pt square
+  // of area — a caret, a one-pixel underline tick — stays tolerated.
+  const sliver = compareFrames(still, screenWithShape(solid(6), 600, 1200));
+  assert.equal(sliver.status, 'stable', 'a 6pt speck is below the documented floor');
 });
 
 test('localized motion is caught wherever it sits, not just where the grid is kind', () => {

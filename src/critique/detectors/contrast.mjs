@@ -32,6 +32,9 @@ const ownershipMargin = 12;
 // and how many of those pixels must land inside the image to trust it.
 const backgroundRingWidth = 2;
 const minRingSamples = 16;
+// How far the inside and outside background references may differ and still be
+// treated as describing the same surface.
+const backgroundAgreementDistance = 24;
 // Captures are JPEG — Baguette emits nothing else — so sampled channels drift a
 // couple of units on flat fills and far more on antialiased text edges, which is
 // exactly where contrast gets measured. A ratio sitting near its threshold is
@@ -230,10 +233,20 @@ function assignOwnership({ border, lower, upper, lowerColor, upperColor }) {
  */
 function borderColor(image, region) {
   const outer = ringPixels(image, region, backgroundRingWidth, true);
-  if (outer.length >= minRingSamples) return medianPixel(outer);
-
   const inner = ringPixels(image, region, 1, false);
-  return inner.length > 0 ? medianPixel(inner) : null;
+  const outerColor = outer.length >= minRingSamples ? medianPixel(outer) : null;
+  const innerColor = inner.length > 0 ? medianPixel(inner) : null;
+
+  if (!outerColor) return innerColor;
+  if (!innerColor) return outerColor;
+
+  // "Outside the frame" is not the same as "background". A label sitting on a
+  // button, inside a card, or against a neighbouring control has foreign UI
+  // outside it — trusting that ring named the real background as the text
+  // color. Two independent references have to agree before either is believed;
+  // when they disagree, something other than plain text-on-background is here
+  // and ownership is left unresolved rather than guessed.
+  return pixelDistance(outerColor, innerColor) <= backgroundAgreementDistance ? outerColor : null;
 }
 
 /**
