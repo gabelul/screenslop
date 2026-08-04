@@ -96,5 +96,25 @@ test('frameBytesMatch is the fast path for a still screen', () => {
 test('describeStability explains each verdict in the capture steps', () => {
   assert.match(describeStability({ status: 'stable', changedRatio: 0 }, 250), /held still across 250ms/);
   assert.match(describeStability({ status: 'unstable', changedRatio: 0.42 }, 250), /42\.0% of sampled pixels/);
-  assert.match(describeStability({ status: 'unknown', changedRatio: null }, 250), /stability unknown/);
+  assert.match(describeStability({ status: 'unknown', changedRatio: null }, 250), /stability was not established/);
+  assert.match(
+    describeStability({ status: 'unknown', changedRatio: null, reason: 'probe-capture-failed' }, 250),
+    /probe-capture-failed/
+  );
+});
+
+test('a small busy region is unstable even though the screen barely moved', () => {
+  // A spinner is a fraction of a percent of the screen. Under a global-only
+  // threshold it could animate forever and still be called stable, while the
+  // docs claimed spinners were caught.
+  const still = frameWithBlock(0);
+  const spinner = parseBmp(buildBmp(size, size, (x, y) => (
+    x < 20 && y < 20 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 }
+  )));
+
+  const verdict = compareFrames(still, spinner);
+  assert.equal(verdict.status, 'unstable');
+  assert.ok(verdict.changedRatio <= 0.01, `global ratio stayed small: ${verdict.changedRatio}`);
+  assert.ok(verdict.busiestTileRatio > 0.2, `one tile was busy: ${verdict.busiestTileRatio}`);
+  assert.match(describeStability(verdict, 250), /Motion is localized/);
 });

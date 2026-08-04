@@ -36,19 +36,30 @@ function textNode(label, frame) {
   return { role: 'AXStaticText', label, enabled: true, hidden: false, frame };
 }
 
+// Real labels have padding, so the edge of an AX frame is background. The
+// detector relies on that to tell foreground from background, and a fixture
+// with glyphs flush to the border is not a label — it is a filled rectangle.
+const glyphInset = 2;
+
 /**
- * Paints a white screenshot with text regions rendered as alternating columns
- * of text color and background, so cluster splitting sees both surfaces.
+ * Paints a screenshot with text regions rendered as alternating columns of text
+ * color and background, so cluster splitting sees both surfaces. Text is inset
+ * from the frame edge, leaving a background border as a real label has.
  * @param {{frame:object,color:object}[]} regions Regions to paint.
+ * @param {{r:number,g:number,b:number}} [surface] Background color.
  * @returns {(x:number,y:number)=>object} Painter for buildBmp.
  */
-function paintRegions(regions) {
+function paintRegions(regions, surface = white) {
   return (x, y) => {
     for (const { frame, color } of regions) {
       const inside = x >= frame.x && x < frame.x + frame.width && y >= frame.y && y < frame.y + frame.height;
-      if (inside) return x % 2 === 0 ? color : white;
+      if (!inside) continue;
+      const inCore = x >= frame.x + glyphInset && x < frame.x + frame.width - glyphInset
+        && y >= frame.y + glyphInset && y < frame.y + frame.height - glyphInset;
+      if (!inCore) return surface;
+      return x % 2 === 0 ? color : surface;
     }
-    return white;
+    return surface;
   };
 }
 
@@ -136,6 +147,45 @@ test('a contrast finding names the token its sampled color came from', () => {
   assert.equal(findings[0].evidence.attributedToken, 'Theme.warning');
   assert.equal(findings[0].evidence.attribution, 'derived');
   assert.equal(findings[0].evidence.sampledTextColor, '#E8C478');
+});
+
+test('light-on-dark text attributes the text token, not the background token', () => {
+  // Deciding ownership by cluster size named the background token here with
+  // full confidence: the contrast ratio is symmetric, so nothing else caught it.
+  const black = { r: 0, g: 0, b: 0 };
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintRegions([{ frame, color: { r: 68, g: 68, b: 68 } }], black));
+  const tokens = [
+    { name: 'Theme.bgDark', hex: '#000000', r: 0, g: 0, b: 0 },
+    { name: 'Theme.mutedDark', hex: '#444444', r: 68, g: 68, b: 68 }
+  ];
+  const findings = detectContrastIssues(context, tree([textNode('On dark', frame)]), {
+    ...optionsFor(bmp),
+    colorTokens: tokens
+  });
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].evidence.sampledTextColor, '#444444');
+  assert.equal(findings[0].evidence.attributedToken, 'Theme.mutedDark');
+});
+
+test('omits attribution when the border cannot settle foreground from background', () => {
+  // Glyphs flush to every edge: this is a filled rectangle, not a label, and
+  // guessing which cluster is text would be a coin flip.
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, (x, y) => {
+    const inside = x >= frame.x && x < frame.x + frame.width && y >= frame.y && y < frame.y + frame.height;
+    if (!inside) return white;
+    return x % 2 === 0 ? derivedAmber : white;
+  });
+  const findings = detectContrastIssues(context, tree([textNode('Ambiguous', frame)]), {
+    ...optionsFor(bmp),
+    colorTokens: [warningToken]
+  });
+
+  assert.equal(findings.length, 1, 'the ratio is still measured and reported');
+  assert.equal(findings[0].evidence.sampledTextColor, undefined);
+  assert.equal(findings[0].evidence.attributedToken, undefined);
 });
 
 test('token attribution never moves the severity or confidence of a measured finding', () => {

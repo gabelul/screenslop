@@ -60,6 +60,49 @@ test('resolveCaptureDevice fails hard when an explicit device is missing', () =>
   assert.equal(selection.reason, 'device-not-found');
 });
 
+// Two simulators sharing a name across runtimes is a stock Xcode setup.
+const duplicateNames = {
+  running: [],
+  available: [
+    { name: 'iPhone 17 Pro', runtime: 'iOS 26.4', state: 'Shutdown', udid: 'OLD-RUNTIME' },
+    { name: 'iPhone 17 Pro', runtime: 'iOS 26.5', state: 'Shutdown', udid: 'NEW-RUNTIME' }
+  ]
+};
+
+test('an ambiguous device name is an error, not the first list entry', () => {
+  const selection = selectBaguetteDevice(duplicateNames, { deviceName: 'iPhone 17 Pro' });
+  assert.equal(selection.device, null);
+  assert.equal(selection.reason, 'device-name-ambiguous');
+  assert.equal(selection.matches.length, 2);
+});
+
+test('an ambiguous partial name is rejected too', () => {
+  const selection = selectBaguetteDevice(duplicateNames, { deviceName: '17 pro' });
+  assert.equal(selection.device, null);
+  assert.equal(selection.reason, 'device-name-ambiguous');
+});
+
+test('resolveCaptureDevice names the colliding runtimes and points at --udid', () => {
+  const selection = resolveCaptureDevice(duplicateNames, { deviceName: 'iPhone 17 Pro' });
+  assert.equal(selection.device, null);
+  assert.equal(selection.reason, 'device-name-ambiguous');
+  assert.match(selection.notes[0], /matches 2 simulators/);
+  assert.match(selection.notes[0], /iOS 26\.4/);
+  assert.match(selection.notes[0], /--udid/);
+});
+
+test('config fallback describes where it actually landed', () => {
+  // Nothing is booted here, so claiming a fallback to "the booted simulator"
+  // would describe a device that does not exist.
+  const nothingBooted = { running: [], available: [{ name: 'iPad mini', runtime: 'iOS 26.5', state: 'Shutdown', udid: 'IPAD' }] };
+  const selection = resolveCaptureDevice(nothingBooted, { configuredDeviceName: 'iPhone Air' });
+
+  assert.equal(selection.device.udid, 'IPAD');
+  assert.equal(selection.source, 'first-available');
+  assert.match(selection.notes[0], /No simulator is booted/);
+  assert.doesNotMatch(selection.notes[0], /Falling back to the booted simulator/);
+});
+
 test('resolveCaptureDevice without config keeps the booted simulator', () => {
   const selection = resolveCaptureDevice(envelope);
   assert.equal(selection.device.udid, 'RUNNING-1');

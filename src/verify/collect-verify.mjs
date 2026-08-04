@@ -1,6 +1,7 @@
 import { displayPath } from '../critique/load-evidence.mjs';
 import { loadVerifyInput } from './load-verify-input.mjs';
 import { matchFindings, summarizeVerification } from './match-findings.mjs';
+import { applyStabilityGate, readStability } from './stability-gate.mjs';
 import { writeVerificationArtifacts } from './verification-report.mjs';
 
 /**
@@ -16,13 +17,17 @@ import { writeVerificationArtifacts } from './verification-report.mjs';
  */
 export async function collectVerify(options) {
   const input = await loadVerifyInput(options);
-  const items = matchFindings({
+  const matched = matchFindings({
     baselineFindings: input.baselineFindings,
     freshFindings: input.freshFindings,
     freshHasDesignReview: input.freshHasDesignReview,
     selectedIds: options.findingIds || [],
     fixSession: input.fixSession
   });
+  // A finding can vanish because the fresh capture caught an animation. Gate the
+  // verified-fixed track on whether that capture was proven still.
+  const freshStability = readStability(input.fresh.manifest);
+  const items = applyStabilityGate(matched, freshStability);
   const summary = summarizeVerification(items);
   const result = {
     ok: true,
@@ -35,6 +40,7 @@ export async function collectVerify(options) {
     freshCritiqueRefreshed: input.freshCritiqueRefreshed,
     freshHasDesignReview: input.freshHasDesignReview,
     fixSessionPath: input.fixSessionPath,
+    freshStability,
     summary,
     items,
     artifacts: null

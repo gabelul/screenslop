@@ -1,4 +1,4 @@
-import { attributeColor, describeAttribution } from '../../design/color-attribution.mjs';
+import { attributeColor, describeAttribution } from '../../color/attribution.mjs';
 import { accessibleName, isVisibleEnabled, nodeEvidence, rootFrame } from '../ax-tree.mjs';
 import { createFinding } from '../findings.mjs';
 import { contrastRatio, loadScreenshotPixels, relativeLuminance } from '../pixels.mjs';
@@ -25,6 +25,9 @@ const minCandidateSize = 8;
 // color. Most text samples are antialiased edge pixels blended toward the
 // background; the quarter furthest from it carries the real color.
 const textCoreShare = 0.25;
+// How much closer the border must sit to one cluster than the other before
+// foreground/background ownership is considered settled.
+const ownershipMargin = 12;
 // Captures are JPEG — Baguette emits nothing else — so sampled channels drift a
 // couple of units on flat fills and far more on antialiased text edges, which is
 // exactly where contrast gets measured. A ratio sitting near its threshold is
@@ -75,7 +78,14 @@ export function detectContrastIssues(context, nodes, options = {}) {
     const required = isLargeText ? largeTextMinimum : normalTextMinimum;
     if (measured.ratio >= required) continue;
 
-    failing.push({ node, ratio: measured.ratio, required, isLargeText, textColor: measured.textColor });
+    failing.push({
+      node,
+      ratio: measured.ratio,
+      required,
+      isLargeText,
+      textColor: measured.textColor,
+      backgroundColor: measured.backgroundColor
+    });
   }
 
   failing.sort((left, right) => left.ratio - right.ratio);
@@ -158,34 +168,108 @@ function measureRegionContrast(image, region) {
   // Nearly identical clusters = solid fill or photo, not text over a background.
   if (ratio < flatClusterRatio) return null;
 
-  // Glyphs cover less of a label's box than its background does, so the smaller
-  // cluster is the text.
-  const [text, background] = lower.length <= upper.length ? [lower, upper] : [upper, lower];
-  return { ratio, textColor: representativeTextColor(text, background) };
+  // Which cluster is the text cannot be decided by size. Cluster counts tie
+  // often, and a dense glyph run can own more of the box than its background,
+  // so "smaller cluster wins" silently reverses foreground and background for
+  // light-on-dark text — naming the background token with full confidence.
+  // The border of a label's box is background almost by definition, so ask it.
+  const border = borderColor(image, region);
+  const lowerColor = meanPixel(lower.map((entry) => entry.pixel));
+  const upperColor = meanPixel(upper.map((entry) => entry.pixel));
+  const ownership = assignOwnership({ border, lower, upper, lowerColor, upperColor });
+  if (!ownership) return { ratio, textColor: null, backgroundColor: null };
+
+  return {
+    ratio,
+    textColor: representativeTextColor(ownership.text, ownership.backgroundColor),
+    backgroundColor: ownership.backgroundColor
+  };
+}
+
+/**
+ * Decides which luminance cluster is text by comparing both to the region border.
+ *
+ * Returns null when the border cannot separate them — an ambiguous call is
+ * reported as "no attribution" rather than a coin flip, because a confidently
+ * named wrong token is worse than an unnamed color.
+ *
+ * @param {object} params Ownership parameters.
+ * @returns {{text:object[], backgroundColor:object}|null} Assignment, or null when ambiguous.
+ */
+function assignOwnership({ border, lower, upper, lowerColor, upperColor }) {
+  if (!border) return null;
+  const lowerToBorder = pixelDistance(lowerColor, border);
+  const upperToBorder = pixelDistance(upperColor, border);
+  // The two clusters sit on opposite sides of a real contrast edge, so the
+  // border should clearly resemble one of them. If it does not, something other
+  // than text-on-background is in this box.
+  if (Math.abs(lowerToBorder - upperToBorder) < ownershipMargin) return null;
+
+  return lowerToBorder < upperToBorder
+    ? { text: upper, backgroundColor: lowerColor }
+    : { text: lower, backgroundColor: upperColor };
+}
+
+/**
+ * Samples the perimeter of a region to estimate its background color.
+ * @param {object} image Pixel accessor.
+ * @param {{x:number,y:number,width:number,height:number}} region Pixel region.
+ * @returns {{r:number,g:number,b:number}|null} Median border color.
+ */
+function borderColor(image, region) {
+  const right = region.x + region.width - 1;
+  const bottom = region.y + region.height - 1;
+  const pixels = [];
+  for (let x = region.x; x <= right; x += 1) {
+    pixels.push(image.getPixel(x, region.y));
+    pixels.push(image.getPixel(x, bottom));
+  }
+  for (let y = region.y; y <= bottom; y += 1) {
+    pixels.push(image.getPixel(region.x, y));
+    pixels.push(image.getPixel(right, y));
+  }
+  // Median, not mean: a descender or a glyph touching the edge should not drag
+  // the estimate toward the text color.
+  return pixels.length > 0 ? medianPixel(pixels) : null;
 }
 
 /**
  * Estimates the color the glyphs were actually drawn in.
  *
  * Averaging the whole text cluster reports a color blended toward the
- * background, because most glyph samples land on antialiased edges. Averaging a
- * single extreme pixel is noise. So this averages the most saturated core of
- * the cluster — the pixels furthest from the background — which on a real
- * device reproduced the app's rendered token variant closely enough to
- * attribute it.
+ * background, because most glyph samples land on antialiased edges. So this
+ * takes the quarter furthest from the background — the least-blended samples —
+ * and reduces them with a per-channel median rather than a mean. Ranking by
+ * distance preferentially surfaces compression ringing and outliers at the very
+ * top, and a median discards those where an average would bake them in.
  *
  * @param {{pixel:object}[]} text Text cluster samples.
- * @param {{pixel:object}[]} background Background cluster samples.
+ * @param {{r:number,g:number,b:number}} backgroundColor Measured background color.
  * @returns {{r:number,g:number,b:number}|null} Representative glyph color.
  */
-function representativeTextColor(text, background) {
-  if (text.length === 0 || background.length === 0) return null;
-  const backgroundMean = meanPixel(background.map((entry) => entry.pixel));
+function representativeTextColor(text, backgroundColor) {
+  if (text.length === 0 || !backgroundColor) return null;
   const ranked = [...text].sort((left, right) => (
-    pixelDistance(right.pixel, backgroundMean) - pixelDistance(left.pixel, backgroundMean)
+    pixelDistance(right.pixel, backgroundColor) - pixelDistance(left.pixel, backgroundColor)
   ));
   const coreCount = Math.max(1, Math.round(ranked.length * textCoreShare));
-  return meanPixel(ranked.slice(0, coreCount).map((entry) => entry.pixel));
+  return medianPixel(ranked.slice(0, coreCount).map((entry) => entry.pixel));
+}
+
+/**
+ * Takes a per-channel median of a pixel list.
+ * @param {{r:number,g:number,b:number}[]} pixels Pixels to reduce.
+ * @returns {{r:number,g:number,b:number}} Median pixel.
+ */
+function medianPixel(pixels) {
+  const channel = (key) => {
+    const values = pixels.map((pixel) => pixel[key]).sort((a, b) => a - b);
+    const middle = Math.floor(values.length / 2);
+    return values.length % 2 === 0
+      ? Math.round((values[middle - 1] + values[middle]) / 2)
+      : values[middle];
+  };
+  return { r: channel('r'), g: channel('g'), b: channel('b') };
 }
 
 /**
@@ -232,7 +316,7 @@ function pixelDistance(a, b) {
  * @returns {object} Contrast finding.
  */
 function contrastFinding(context, entry, colorTokens) {
-  const { node, ratio, required, isLargeText, textColor } = entry;
+  const { node, ratio, required, isLargeText, textColor, backgroundColor } = entry;
   const name = accessibleName(node);
   // Small text is mostly anti-aliased edge pixels, which drag the sampled
   // text cluster toward the background and understate the true ratio. The
@@ -264,7 +348,7 @@ function contrastFinding(context, entry, colorTokens) {
   // while the token name comes from a learned profile that may be stale. If no
   // profile exists, or the color cannot be traced, the finding reads as before.
   const attribution = textColor && colorTokens.length > 0
-    ? attributeColor(textColor, colorTokens)
+    ? attributeColor(textColor, colorTokens, { background: backgroundColor })
     : null;
   const attributionNote = attribution ? describeAttribution(attribution) : '';
 

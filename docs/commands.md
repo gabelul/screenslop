@@ -181,9 +181,13 @@ Outputs:
 - evidence manifest
 - summary
 
-After the screenshot lands, `see` waits 250ms, takes a throwaway second frame, and compares the two. The verdict goes into `capture.stability` as `stable`, `unstable`, or `unknown`, with the fraction of sampled pixels that moved. Measured on a real simulator the two cases are far apart: a still screen changes 0% of sampled pixels, a screen mid-transition changes about 40%, and the threshold sits at 1%. The probe frame is written outside the bundle and deleted — it is a measurement, not evidence.
+After the accessibility tree is captured, `see` waits 250ms, takes a throwaway second frame, and compares it to the screenshot. The verdict goes into `capture.stability` as `stable`, `unstable`, or `unknown`. The probe runs last on purpose: putting the wait between the screenshot and the AX capture would push the tree further from the frame it describes, widening the very correlation this tool depends on. The probe frame is written outside the bundle and deleted — it is a measurement, not evidence.
 
-This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) when it sees an unstable bundle. Note that short transitions usually finish before `see` reaches the screenshot; the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
+Two thresholds, because one is not enough. Globally, more than 1% of sampled pixels moving is unstable — measured on a real simulator, a still screen changes 0% and a screen mid-transition about 40%. But a 44×44pt spinner is only 0.55% of a 402×874 screen, so the frame is also split into an 8×8 tile grid and any single tile above 20% counts as unstable. Without that, small busy things could animate indefinitely and still be called still.
+
+This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) for an unstable bundle, and `verify` gates on it (below). Short transitions usually finish before `see` reaches the screenshot, so the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
+
+Only a measured `stable` is a passing stability step. `unknown` means the probe itself failed and carries a `reason`; it is reported as a failed step rather than a quiet success, because an unproven capture that looks proven is the failure mode this whole check exists to prevent.
 
 Device targeting, highest precedence first:
 
@@ -218,7 +222,11 @@ Captures are JPEG because Baguette writes nothing else, so pixel rules measure l
 
 Design review attributes screen accents to learned tokens in OKLCh, not RGB. Apps routinely render a token as a derived variant — darkened for legibility, or blended for a disabled state — and Euclidean RGB puts those variants 100+ away from their own token (measured at 109 and 132 on a real device) while their hue moves under two degrees. Matching on hue and chroma, with lightness reported as the change, turns a false `design.token-drift` ("an accent the profile never learned") into `design.token-derived-variant` ("your `warning` token, 22 OKLCh lightness points darker"). Hue is a candidate gate, not a verdict: near-neutral colors are refused outright because their hue is numerically unstable, and when two tokens in one hue family both explain a sample the item reports both and names neither.
 
-When a design profile exists, `color.contrast` also names the token its sampled color came from — "this is your `Theme.warning` token rendered 22 OKLCh lightness points lighter" instead of just "sampled #E8C478". That is additive context only: it never creates a finding, changes a severity, moves a confidence, or alters a fingerprint, because the failing ratio is measured from the capture while the token name comes from a profile that may be stale. With no profile, or a color that cannot be traced, findings read exactly as they did before. `collectCritique` never reads the profile itself — the CLI injects tokens via `colorTokens`, which keeps the deterministic lane free of design-lane imports (enforced by `tests/design-module.test.mjs`).
+When a design profile exists, `color.contrast` also names the token its sampled color came from — "this is your `Theme.warning` token rendered 22 OKLCh lightness points lighter" instead of just "sampled #E8C478". That is additive context only: it never creates a finding, changes a severity, moves a confidence, or alters a fingerprint, because the failing ratio is measured from the capture while the token name comes from a profile that may be stale. With no profile, or a color that cannot be traced, findings read exactly as they did before.
+
+Which cluster is the text is decided from the region's border, not from cluster size. The border of a label box is background almost by definition; deciding by size silently reversed foreground and background for light-on-dark text and confidently named the background token. When the border cannot separate the two, the ratio is still reported and attribution is omitted rather than guessed.
+
+`collectCritique` never reads the design profile — the CLI resolves tokens and injects them via `colorTokens`, so no profile access happens inside the deterministic lane. The pure color math lives in `src/color/attribution.mjs`, a neutral module both lanes import; `tests/design-module.test.mjs` walks the critique import graph transitively to keep it that way.
 
 `color.contrast` confidence reflects how far the measurement sits from the threshold, not just text size. A ratio far below the minimum is reported `high` regardless of text size; one sitting within sampling noise of the threshold drops to `low` and says so. Tiny text needs a wider margin to earn the same confidence, because anti-aliasing only ever understates the true ratio.
 
@@ -271,6 +279,14 @@ No fresh evidence means no verified fix claim. Design findings need fresh eviden
 ### `screenslop verify`
 
 Compares previous findings against fresh evidence and writes proof artifacts.
+
+Verification gates on the fresh bundle's capture stability, because a finding can disappear for two very different reasons: someone fixed it, or the fresh screenshot caught an animation and the evidence never showed up. Those are indistinguishable from the finding list alone.
+
+- Fresh capture **stable** — verification proceeds unchanged.
+- Fresh capture **unstable** — `verified-fixed` is downgraded to `needs-human-review`, with the measured change stated in the reason. Nothing that rests on a moving frame gets to claim deterministic proof.
+- Stability **not measured or unknown** — bundles captured before this check existed, or a probe that failed. These do not block, since that would retroactively invalidate every older bundle, but confidence drops to `medium` and the item says stability was not established.
+
+Only `verified-fixed` is gated. A `still-present` finding is untouched: an unstable capture can fake the *absence* of a problem, never its presence. The normalized verdict is echoed on the result as `freshStability`.
 
 MVP usage:
 

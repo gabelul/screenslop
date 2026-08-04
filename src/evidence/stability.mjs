@@ -12,9 +12,18 @@
 // real difference clears this easily. The tolerance only guards against a
 // runtime whose encoder is less deterministic than Baguette's.
 const changedChannelTolerance = 8;
-// A blinking cursor or a small spinner moves a fraction of a percent. A real
-// transition moves tens of percent. One percent sits in the empty middle.
+// A full-screen transition moves tens of percent, so one percent globally is a
+// safe line for large-area motion.
 const unstableChangedRatio = 0.01;
+// But a global ratio is blind to small, busy things. A 44x44pt spinner is only
+// 0.55% of a 402x874 screen, so it would spin forever under the global line
+// alone. Splitting the frame into tiles and flagging any single tile that is
+// substantially in motion catches localized animation without lowering the
+// global threshold to somewhere noise lives.
+const tileGridSize = 8;
+const unstableTileRatio = 0.2;
+// A tile needs enough samples for its ratio to mean anything.
+const minTileSamples = 24;
 // ~20k samples resolves a 1% change with room to spare and stays cheap.
 const targetSampleCount = 20000;
 
@@ -52,6 +61,7 @@ export function compareFrames(first, second) {
   }
 
   const step = Math.max(1, Math.round(Math.sqrt((first.width * first.height) / targetSampleCount)));
+  const tiles = Array.from({ length: tileGridSize * tileGridSize }, () => ({ changed: 0, sampled: 0 }));
   let changed = 0;
   let sampled = 0;
 
@@ -60,16 +70,31 @@ export function compareFrames(first, second) {
       const a = first.getPixel(x, y);
       const b = second.getPixel(x, y);
       const delta = Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
-      if (delta > changedChannelTolerance) changed += 1;
+      const moved = delta > changedChannelTolerance;
+      if (moved) changed += 1;
       sampled += 1;
+
+      const tileX = Math.min(tileGridSize - 1, Math.floor((x / first.width) * tileGridSize));
+      const tileY = Math.min(tileGridSize - 1, Math.floor((y / first.height) * tileGridSize));
+      const tile = tiles[tileY * tileGridSize + tileX];
+      tile.sampled += 1;
+      if (moved) tile.changed += 1;
     }
   }
 
   if (sampled === 0) return { status: 'unknown', changedRatio: null, sampled: 0 };
   const changedRatio = changed / sampled;
+  const busiestTile = tiles.reduce((worst, tile) => {
+    if (tile.sampled < minTileSamples) return worst;
+    const ratio = tile.changed / tile.sampled;
+    return ratio > worst ? ratio : worst;
+  }, 0);
+
+  const unstable = changedRatio > unstableChangedRatio || busiestTile > unstableTileRatio;
   return {
-    status: changedRatio > unstableChangedRatio ? 'unstable' : 'stable',
+    status: unstable ? 'unstable' : 'stable',
     changedRatio,
+    busiestTileRatio: busiestTile,
     sampled
   };
 }
@@ -81,10 +106,19 @@ export function compareFrames(first, second) {
  * @returns {string} Step message.
  */
 export function describeStability(verdict, delayMs) {
-  if (verdict.status === 'unknown') return 'Could not compare frames; stability unknown.';
+  if (verdict.status === 'unknown') {
+    const reason = verdict.reason ? ` (${verdict.reason})` : '';
+    return `Could not compare frames${reason}; stability was not established for this capture.`;
+  }
   if (verdict.status === 'stable') return `Screen held still across ${delayMs}ms.`;
+
   const percent = ((verdict.changedRatio ?? 0) * 100).toFixed(1);
-  return `Screen was still moving: ${percent}% of sampled pixels changed across ${delayMs}ms. Findings from this bundle may reflect a mid-animation frame.`;
+  // A spinner barely registers globally but dominates its own tile, so say
+  // which measurement actually tripped rather than quoting a tiny percentage.
+  const localized = (verdict.busiestTileRatio ?? 0) > unstableTileRatio && (verdict.changedRatio ?? 0) <= unstableChangedRatio
+    ? ` Motion is localized: one region changed ${((verdict.busiestTileRatio ?? 0) * 100).toFixed(0)}% while the screen overall barely moved.`
+    : '';
+  return `Screen was still moving: ${percent}% of sampled pixels changed across ${delayMs}ms.${localized} Findings from this bundle may reflect a mid-animation frame.`;
 }
 
 /**

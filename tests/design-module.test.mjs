@@ -26,11 +26,47 @@ test('design intelligence helpers reject measured proof concepts', () => {
   assert.equal(isDesignProofLevel('measured'), false);
 });
 
-test('deterministic critique does not import design intelligence by default', () => {
-  const source = fs.readFileSync(new URL('../src/critique/collect-critique.mjs', import.meta.url), 'utf8');
+test('deterministic critique does not import design intelligence, transitively', () => {
+  // This used to read collect-critique.mjs as a single string, which said
+  // nothing about what its detectors import. A detector reaching into the
+  // design lane passed the check while breaking the boundary it named.
+  const critiqueRoot = new URL('../src/critique/', import.meta.url);
+  const visited = new Set();
+  const offenders = [];
 
-  assert.equal(source.includes('../design'), false);
-  assert.equal(source.includes('src/design'), false);
+  /**
+   * Walks the import graph from one module, staying inside src/.
+   * @param {URL} moduleUrl Module to inspect.
+   * @param {string[]} trail Import chain that reached it.
+   * @returns {void}
+   */
+  function walk(moduleUrl, trail) {
+    const key = moduleUrl.pathname;
+    if (visited.has(key)) return;
+    visited.add(key);
+
+    const source = fs.readFileSync(moduleUrl, 'utf8');
+    for (const match of source.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.')) continue;
+      const resolved = new URL(specifier, moduleUrl);
+      const chain = [...trail, specifier];
+      if (resolved.pathname.includes('/src/design/')) {
+        offenders.push(`${trail[0]} -> ${chain.join(' -> ')}`);
+        continue;
+      }
+      walk(resolved, chain);
+    }
+  }
+
+  for (const entry of fs.readdirSync(critiqueRoot).filter((name) => name.endsWith('.mjs'))) {
+    walk(new URL(entry, critiqueRoot), [`src/critique/${entry}`]);
+  }
+  for (const entry of fs.readdirSync(new URL('detectors/', critiqueRoot)).filter((name) => name.endsWith('.mjs'))) {
+    walk(new URL(`detectors/${entry}`, critiqueRoot), [`src/critique/detectors/${entry}`]);
+  }
+
+  assert.deepEqual(offenders, [], `deterministic critique reaches the design lane:\n${offenders.join('\n')}`);
 });
 
 test('default design profile stays private by git default', () => {

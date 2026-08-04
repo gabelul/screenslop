@@ -6,7 +6,7 @@
 // itself be stale, so findings stay low-confidence and never claim the
 // verified-fixed track.
 
-import { attributeColor } from './color-attribution.mjs';
+import { attributeColor } from '../color/attribution.mjs';
 
 // ~2000 grid samples keeps the scan cheap while still catching any accent
 // region that covers a few percent of the screen.
@@ -93,7 +93,9 @@ function derivedVariantItem({ accent, attribution, sharePercent, share, stalenes
     screenColor: accent.hex,
     nearestToken: ambiguous ? null : attribution.token.hex,
     nearestTokenName: ambiguous ? null : (attribution.token.name || null),
-    nearestTokenLayer: 'unknown',
+    // attributeColor hands back the original token record, layer included.
+    // Overwriting it with 'unknown' threw away metadata we already had.
+    nearestTokenLayer: ambiguous ? 'unknown' : (attribution.token.layer || 'unknown'),
     distance: null,
     lightnessDelta: Math.round((attribution.lightnessDelta || 0) * 1000) / 1000,
     share,

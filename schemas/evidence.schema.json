@@ -68,8 +68,10 @@
           "properties": {
             "status": { "enum": ["stable", "unstable", "unknown"] },
             "changedRatio": { "type": ["number", "null"] },
+            "busiestTileRatio": { "type": ["number", "null"] },
             "sampled": { "type": "number" },
-            "delayMs": { "type": "number" }
+            "delayMs": { "type": "number" },
+            "reason": { "type": ["string", "null"] }
           }
         }
       }

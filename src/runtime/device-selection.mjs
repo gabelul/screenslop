@@ -33,11 +33,18 @@ export function selectBaguetteDevice(envelope, options = {}) {
   }
 
   if (deviceName) {
-    const exact = devices.find((candidate) => normalize(candidate.name) === deviceName);
-    if (exact) return { device: exact, reason: null, devices };
+    // Duplicate simulator names across installed runtimes are normal — two
+    // "iPhone 17 Pro" devices on iOS 26.4 and 26.5 is a stock setup. Taking the
+    // first match silently captured from whichever the list happened to order
+    // first, so ambiguity is an error rather than a coin flip.
+    const exact = devices.filter((candidate) => normalize(candidate.name) === deviceName);
+    if (exact.length === 1) return { device: exact[0], reason: null, devices };
+    if (exact.length > 1) return { device: null, reason: 'device-name-ambiguous', matches: exact, devices };
 
-    const partial = devices.find((candidate) => normalize(candidate.name).includes(deviceName));
-    return { device: partial || null, reason: partial ? null : 'device-not-found', devices };
+    const partial = devices.filter((candidate) => normalize(candidate.name).includes(deviceName));
+    if (partial.length === 1) return { device: partial[0], reason: null, devices };
+    if (partial.length > 1) return { device: null, reason: 'device-name-ambiguous', matches: partial, devices };
+    return { device: null, reason: 'device-not-found', devices };
   }
 
   const running = devices.find((candidate) => candidate.state === 'Booted' || candidate.bucket === 'running');
@@ -77,6 +84,9 @@ export function resolveCaptureDevice(envelope, options = {}) {
 
   if (udid || deviceName) {
     const selection = selectBaguetteDevice(envelope, { udid: options.udid, deviceName: options.deviceName });
+    if (selection.reason === 'device-name-ambiguous') {
+      notes.push(ambiguityNote(options.deviceName, selection.matches));
+    }
     return {
       device: selection.device,
       source: udid ? 'udid-flag' : 'device-flag',
@@ -95,8 +105,20 @@ export function resolveCaptureDevice(envelope, options = {}) {
   const configured = selectBaguetteDevice(envelope, { deviceName: configuredName });
 
   if (!configured.device) {
-    notes.push(`Config targets "${configuredName}" but no simulator matched it. Falling back to the booted simulator.`);
-    return { device: auto.device, source: autoSource(auto), reason: auto.reason, notes, devices: auto.devices };
+    // Describe where the fallback actually landed. Claiming "falling back to
+    // the booted simulator" while returning a shut-down iPad was a lie the
+    // reader had no way to catch.
+    const source = autoSource(auto);
+    const landing = {
+      booted: 'Falling back to the booted simulator.',
+      'first-available': 'No simulator is booted, so falling back to the first available one.',
+      none: 'No simulator is available to fall back to.'
+    }[source];
+    const why = configured.reason === 'device-name-ambiguous'
+      ? ambiguityNote(configuredName, configured.matches)
+      : `Config targets "${configuredName}" but no simulator matched it.`;
+    notes.push(`${why} ${landing}`);
+    return { device: auto.device, source, reason: auto.reason, notes, devices: auto.devices };
   }
 
   if (auto.device && auto.device.udid !== configured.device.udid && isBooted(auto.device)) {
@@ -104,6 +126,19 @@ export function resolveCaptureDevice(envelope, options = {}) {
   }
 
   return { device: configured.device, source: 'config', reason: null, notes, devices: configured.devices };
+}
+
+/**
+ * Describes an ambiguous name match, naming the runtimes that collided.
+ * @param {string} requested Requested device name.
+ * @param {Array<object>} matches Devices that matched.
+ * @returns {string} Note text.
+ */
+function ambiguityNote(requested, matches = []) {
+  const described = matches
+    .map((device) => `${device.name}${device.runtime ? ` (${device.runtime})` : ''}`)
+    .join(', ');
+  return `"${requested}" matches ${matches.length} simulators — ${described}. Pass --udid to say which one.`;
 }
 
 /**

@@ -29,9 +29,16 @@ const chromaRatioMin = 0.5;
 const chromaRatioMax = 2;
 // The winner must beat the runner-up by this much, or both get reported.
 const ambiguityMargin = 0.25;
-// Distance at which a sample is simply the raw token, no derivation involved.
-// Matches the existing token-drift band so the two agree on "on token".
+// Distance at which a sample is the raw token as far as a lossy capture can
+// tell. Matches the existing token-drift band so the two agree on "on token".
+// This is codec tolerance, not equality — `exact` is reserved for equality,
+// because calling #F4F4F5 an exact rendering of #FCFDFC is simply untrue.
 const directRgbDistance = 20;
+// An opacity blend needs to contribute real color; below this alpha the sample
+// is mostly background and any token would "fit".
+const minOpacityAlpha = 0.15;
+// Per-channel RMS residual (0-255) accepted when testing a blend hypothesis.
+const opacityResidualTolerance = 4;
 
 /**
  * Converts an sRGB pixel to OKLCh.
@@ -69,18 +76,36 @@ export function srgbToOklch(pixel) {
  * @param {{name:string,r:number,g:number,b:number,hex:string}[]} tokens Profile color tokens.
  * @returns {{status:string, token:object|null, candidates:object[], lightnessDelta:number|null, confidence:string}}
  */
-export function attributeColor(sampled, tokens = []) {
-  const usable = tokens.filter((token) => Number.isFinite(token?.r) && Number.isFinite(token?.g) && Number.isFinite(token?.b));
-  if (!sampled || usable.length === 0) {
+export function attributeColor(sampled, tokens = [], options = {}) {
+  const usable = tokens.filter(isValidColor);
+  if (!isValidColor(sampled) || usable.length === 0) {
     return { status: 'unknown', token: null, candidates: [], lightnessDelta: null, confidence: 'low' };
   }
+  const background = isValidColor(options.background) ? options.background : null;
 
-  // A sample sitting on a raw token needs no derivation story.
-  const direct = usable
+  // Everything inside the codec-tolerance band is a candidate, not just the
+  // closest one. Picking the nearest and calling it high confidence let array
+  // order decide the answer whenever two tokens sat in the band together.
+  const inBand = usable
     .map((token) => ({ token, distance: rgbDistance(sampled, token) }))
-    .sort((left, right) => left.distance - right.distance)[0];
-  if (direct.distance <= directRgbDistance) {
-    return { status: 'exact', token: direct.token, candidates: [direct.token], lightnessDelta: 0, confidence: 'high' };
+    .filter((entry) => entry.distance <= directRgbDistance)
+    .sort((left, right) => left.distance - right.distance);
+
+  if (inBand.length > 0) {
+    const equal = inBand.filter((entry) => entry.distance === 0);
+    if (equal.length === 1) {
+      return { status: 'exact', token: equal[0].token, candidates: [equal[0].token], lightnessDelta: 0, confidence: 'high' };
+    }
+    if (inBand.length === 1) {
+      return { status: 'close', token: inBand[0].token, candidates: [inBand[0].token], lightnessDelta: 0, confidence: 'medium' };
+    }
+    return {
+      status: 'ambiguous',
+      token: null,
+      candidates: inBand.map((entry) => entry.token),
+      lightnessDelta: 0,
+      confidence: 'low'
+    };
   }
 
   const sample = srgbToOklch(sampled);
@@ -126,6 +151,24 @@ export function attributeColor(sampled, tokens = []) {
     };
   }
 
+  // Hue survives opacity, so a token blended over the background can look like
+  // a derived variant of a different token. When the background is known, any
+  // other token that explains the sample as a blend makes this ambiguous.
+  if (background) {
+    const blendFits = usable.filter((token) => (
+      token !== best.token && fitsAsBlend(sampled, background, token)
+    ));
+    if (blendFits.length > 0) {
+      return {
+        status: 'ambiguous',
+        token: null,
+        candidates: [best.token, ...blendFits],
+        lightnessDelta: best.lightnessDelta,
+        confidence: 'low'
+      };
+    }
+  }
+
   return {
     status: 'derived',
     token: best.token,
@@ -133,6 +176,79 @@ export function attributeColor(sampled, tokens = []) {
     lightnessDelta: best.lightnessDelta,
     confidence: 'medium'
   };
+}
+
+/**
+ * Tests whether a sample could be a token drawn at partial opacity over a background.
+ *
+ * Solves for the alpha that best explains the sample in linear light, then
+ * checks the residual. Alpha below the floor is rejected: a nearly transparent
+ * layer leaves the background almost untouched, so every token "fits".
+ *
+ * @param {{r:number,g:number,b:number}} sampled Observed color.
+ * @param {{r:number,g:number,b:number}} background Measured background color.
+ * @param {{r:number,g:number,b:number}} token Candidate token.
+ * @returns {boolean} Whether a plausible blend explains the sample.
+ */
+function fitsAsBlend(sampled, background, token) {
+  const channels = ['r', 'g', 'b'];
+  let numerator = 0;
+  let denominator = 0;
+  for (const channel of channels) {
+    const delta = linearChannel(token[channel]) - linearChannel(background[channel]);
+    numerator += (linearChannel(sampled[channel]) - linearChannel(background[channel])) * delta;
+    denominator += delta * delta;
+  }
+  if (denominator === 0) return false;
+
+  const alpha = numerator / denominator;
+  if (!(alpha >= minOpacityAlpha) || alpha > 1) return false;
+
+  // Composite in linear light, then convert back so the residual is expressed
+  // in the same 0-255 units as the tolerance. Solving in one space and scoring
+  // in another silently never fits.
+  let squaredError = 0;
+  for (const channel of channels) {
+    const predictedLinear = alpha * linearChannel(token[channel]) + (1 - alpha) * linearChannel(background[channel]);
+    squaredError += (srgbChannel(predictedLinear) - sampled[channel]) ** 2;
+  }
+  return Math.sqrt(squaredError / channels.length) <= opacityResidualTolerance;
+}
+
+/**
+ * Converts a linear-light value back to an sRGB channel.
+ * @param {number} value Linear value 0-1.
+ * @returns {number} Channel 0-255.
+ */
+function srgbChannel(value) {
+  const clamped = Math.min(1, Math.max(0, value));
+  const encoded = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
+  return encoded * 255;
+}
+
+/**
+ * Converts one sRGB channel to linear light.
+ * @param {number} value Channel 0-255.
+ * @returns {number} Linear value 0-1.
+ */
+function linearChannel(value) {
+  const scaled = value / 255;
+  return scaled <= 0.04045 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+}
+
+/**
+ * Rejects colors whose channels are missing, non-finite, or out of range.
+ * Unvalidated NaN propagated all the way to a confident attribution with a
+ * non-finite lightness delta.
+ * @param {object|null} color Candidate color.
+ * @returns {boolean} Whether every channel is a real 0-255 value.
+ */
+function isValidColor(color) {
+  if (!color || typeof color !== 'object') return false;
+  return ['r', 'g', 'b'].every((channel) => {
+    const value = color[channel];
+    return Number.isFinite(value) && value >= 0 && value <= 255;
+  });
 }
 
 /**
@@ -144,6 +260,7 @@ export function describeAttribution(result) {
   if (!result || result.status === 'unknown') return '';
   if (result.status === 'neutral') return ' The sampled color is a near-neutral, so it cannot be traced to a color token.';
   if (result.status === 'exact') return ` This is your \`${result.token.name}\` token (${result.token.hex}) rendered directly.`;
+  if (result.status === 'close') return ` This matches your \`${result.token.name}\` token (${result.token.hex}) to within capture noise.`;
   if (result.status === 'ambiguous') {
     const names = result.candidates.map((token) => `\`${token.name}\``).join(' or ');
     return ` The sampled color looks like a derived variant of ${names}, but the evidence cannot separate them.`;

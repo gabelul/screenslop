@@ -168,16 +168,6 @@ async function captureWithBaguette({ root, bundle, options }) {
   });
   if (screenshotOk) bundle.manifest.artifacts.screenshot = path.relative(root, screenshotPath);
 
-  let stability = null;
-  if (screenshotOk) {
-    stability = await measureStability({ driver, device, screenshotPath, options });
-    steps.push({
-      name: 'stability',
-      ok: stability.status !== 'unstable',
-      message: describeStability(stability, stability.delayMs)
-    });
-  }
-
   const accessibilityPath = path.join(bundle.dir, 'accessibility.json');
   const accessibilityStatus = driver.accessibilityTree(device.udid, accessibilityPath);
   const accessibilityOk = accessibilityStatus.ok && fs.existsSync(accessibilityPath);
@@ -187,6 +177,23 @@ async function captureWithBaguette({ root, bundle, options }) {
     message: accessibilityStatus.message || (accessibilityOk ? 'Captured accessibility tree.' : 'Accessibility capture failed.')
   });
   if (accessibilityOk) bundle.manifest.artifacts.accessibilityTree = path.relative(root, accessibilityPath);
+
+  // The stability probe runs after the AX capture, not between it and the
+  // screenshot. Putting the 250ms wait in the middle pushed the AX tree further
+  // from the frame it describes — widening exactly the screenshot-to-AX gap
+  // this tool depends on, in the name of proving the screen was still.
+  let stability = null;
+  if (screenshotOk) {
+    stability = await measureStability({ driver, device, screenshotPath, options });
+    steps.push({
+      name: 'stability',
+      // Only a measured 'stable' is a pass. 'unknown' means the probe failed,
+      // and reporting that as ok is how an unproven capture starts looking
+      // like a proven one.
+      ok: stability.status === 'stable',
+      message: describeStability(stability, stability.delayMs)
+    });
+  }
 
   if (options.includeLogs) {
     const logsPath = path.join(bundle.dir, 'logs.ndjson');
@@ -238,20 +245,24 @@ async function measureStability({ driver, device, screenshotPath, options }) {
     const probePath = path.join(probeDir, 'probe.jpg');
     const probeStatus = driver.screenshot(device.udid, probePath);
     if (!probeStatus.ok || !fs.existsSync(probePath)) {
-      return { status: 'unknown', changedRatio: null, delayMs };
+      return { status: 'unknown', changedRatio: null, delayMs, reason: 'probe-capture-failed' };
     }
 
     // Opportunistic: identical bytes prove stillness without decoding, but a
     // live simulator usually changes something across the gap, so this is a
     // shortcut rather than the expected path.
     if (frameBytesMatch(fs.readFileSync(screenshotPath), fs.readFileSync(probePath))) {
-      return { status: 'stable', changedRatio: 0, delayMs };
+      // Same shape as the sampled path so consumers see one contract.
+      return { status: 'stable', changedRatio: 0, busiestTileRatio: 0, delayMs };
     }
 
     const verdict = compareFrames(loadPixels(screenshotPath), loadPixels(probePath));
+    // Both frames captured but neither decodable — sips missing, or a format the
+    // parser cannot read. Distinct from a failed probe capture.
+    if (verdict.status === 'unknown') return { ...verdict, delayMs, reason: 'frames-not-decodable' };
     return { ...verdict, delayMs };
-  } catch {
-    return { status: 'unknown', changedRatio: null, delayMs };
+  } catch (error) {
+    return { status: 'unknown', changedRatio: null, delayMs, reason: `probe-error: ${error.message}` };
   } finally {
     if (probeDir) fs.rmSync(probeDir, { recursive: true, force: true });
   }
