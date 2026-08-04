@@ -103,7 +103,11 @@ export async function collectMatrix(options = {}) {
   // built, is not a successful matrix. `ok` was fixed from config state alone,
   // so a run with zero proven captures still exited zero — which contradicted
   // the rule that an unproven target must not reach the successful exit path.
-  if (!dryRun && (report.summary.failed > 0 || report.summary.captured === 0)) report.ok = false;
+  // Any cell that is not a proven capture makes the run unproven. Counting only
+  // failures and all-empty runs let five verified cells plus one unverified
+  // cell exit zero, which is exactly the mixed matrix nobody would notice.
+  const unproven = report.summary.failed + report.summary.unavailable;
+  if (!dryRun && (unproven > 0 || report.summary.captured === 0)) report.ok = false;
   writeMatrixReport({ report, reportPath, reportMarkdownPath });
   return report;
 }

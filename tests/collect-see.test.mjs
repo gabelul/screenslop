@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectSee } from '../src/evidence/collect-see.mjs';
+import { collectSee, readEditableRegions } from '../src/evidence/collect-see.mjs';
 import { buildBmp, parseBmp } from '../src/critique/pixels.mjs';
 
 test('collectSee records a stable verdict when the screen holds still', async () => {
@@ -242,3 +242,37 @@ function writeConfig(root, overrides = {}) {
     ...overrides
   }, null, 2)}\n`);
 }
+
+test('caret exemption only sees exactly one focused editable field', () => {
+  // The parser was previously bypassed entirely: stability tests injected
+  // regions directly, so dropping the focus requirement would have gone unseen.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-focus-'));
+  const write = (tree) => {
+    const file = path.join(dir, `${Math.random().toString(36).slice(2)}.json`);
+    fs.writeFileSync(file, JSON.stringify(tree));
+    return file;
+  };
+  const root = (children) => ({ role: 'AXApplication', frame: { x: 0, y: 0, width: 402, height: 874 }, children });
+  const field = (extra) => ({ role: 'AXTextField', frame: { x: 10, y: 20, width: 200, height: 40 }, ...extra });
+
+  // One focused editable field: usable.
+  assert.equal(readEditableRegions(write(root([field({ focused: true })]))).length, 1);
+
+  // Unfocused, or focus expressed as anything other than true: no exemption.
+  assert.equal(readEditableRegions(write(root([field({ focused: false })]))).length, 0);
+  assert.equal(readEditableRegions(write(root([field({})]))).length, 0);
+  assert.equal(readEditableRegions(write(root([field({ focused: 'yes' })]))).length, 0);
+  assert.equal(readEditableRegions(write(root([field({ focused: 1 })]))).length, 0);
+
+  // Two fields both claiming focus is a contradiction, not a caret.
+  assert.equal(readEditableRegions(write(root([field({ focused: true }), field({ focused: true })]))).length, 0);
+
+  // A focused non-editable node is not a caret host.
+  assert.equal(readEditableRegions(write(root([{ role: 'AXButton', focused: true, frame: field({}).frame }]))).length, 0);
+
+  // Unreadable or shapeless trees degrade to no exemption.
+  assert.equal(readEditableRegions(path.join(dir, 'missing.json')).length, 0);
+  assert.equal(readEditableRegions(write({ role: 'AXApplication', children: [field({ focused: true })] })).length, 0);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});

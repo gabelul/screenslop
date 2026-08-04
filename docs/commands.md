@@ -187,7 +187,7 @@ Three signals, because each is blind to something the others see:
 
 1. **Global** — more than 1% of sampled pixels moving. On a real simulator a still screen changes 0% and a screen mid-transition about 40%.
 2. **Per-tile** — the frame is split into a 16×16 grid and any single tile above 20% counts. A 44×44pt spinner is only 0.55% of the screen, so the global rule alone would never see it. The grid is evaluated at four independent axis offsets: with one fixed grid the same region scored 0.24 inside a tile and 0.10 straddling a corner, so detection depended on where the motion happened to sit.
-3. **Localized window** — changed samples are scanned with a fixed-size sliding window, and enough of them inside one window means something was moving there. Tiles measure *density*, which is the wrong question for a real activity indicator: it is thin arcs and gaps, not a filled square.
+3. **Localized neighbours** — around each changed sample, the number of other changed samples within a fixed radius is counted; enough neighbours means something was moving there. This is a radius search centred on real samples rather than a window free to sit anywhere, so two changes further apart than the radius are not neighbours even though some window could hold both. The radius is set by what the rotation sweep empirically catches, not derived from spinner geometry. Tiles measure *density*, which is the wrong question for a real activity indicator: it is thin arcs and gaps, not a filled square.
 
 That third signal is monotonic by construction, which took three attempts. A global bounding box and then connected components both asked "is this region compact" — and compactness *falls* as samples are added, so two spinners in opposite corners, or a sparse diagonal bridging them, made adding motion **reduce** detection. A window count only rises, which gives the invariant those designs lacked: if a set of changes is unstable, every superset stays unstable.
 
@@ -200,6 +200,8 @@ The floor is two changed samples inside a window, which is low on purpose: three
 **Caret exemption.** That floor is below what a blinking caret produces, and no threshold separates a caret from a turning arc. So the caret is bounded by *where* it can legally be rather than by how much it changes: motion is exempt only when there is exactly one **focused** editable field, every changed sample falls inside it, and the motion spans no more than a caret's width. Motion outside the field, a field repainting its content, or two fields both claiming focus all still fail. The exemption is also refused whenever the change record was truncated — judging confinement from a prefix once let later out-of-field motion vanish from a strict superset.
 
 This exists because a frame caught mid-animation produces a manifest identical to a clean one, and every rule downstream inherits it: layout math reads frames that were still moving, contrast reads colors that were still fading. `critique` raises `evidence.unstable-capture` (P1) for an unstable bundle, and `verify` gates on it (below). Short transitions usually finish before `see` reaches the screenshot, so the check earns its keep on sustained motion — loading states, spinners, momentum scrolling, video.
+
+A capture whose stability is not proven does not report success. `capture.status` becomes `partial` and `see` exits non-zero, because reporting a clean capture while the stability step failed let a matrix cell, an agent, or CI carry on with evidence photographed mid-animation. The bundle is still written and still inspectable — it just stops claiming to be a settled capture.
 
 Only a measured `stable` is a passing stability step. `unknown` means the probe itself failed and carries a `reason`; it is reported as a failed step rather than a quiet success, because an unproven capture that looks proven is the failure mode this whole check exists to prevent.
 
@@ -441,6 +443,8 @@ The identity comes from XcodeBuildMCP's structured output (`data.artifacts.simul
 
 - `verified` — both ends reported the same device. The cell counts as `captured`.
 - `mismatch` — they reported different devices. The cell **fails**.
+Any cell that is not a proven capture makes the whole run unproven: `report.ok` is false and `matrix` exits non-zero when any cell failed or went unverified, or when nothing was captured. Counting only outright failures let five verified cells plus one unverified cell exit zero.
+
 - `unverified` — the build reported no identity, so the two resolved a name independently. The bundle and its critique are still written and still inspectable, but the cell status is `unavailable` and it is **not** counted in `summary.captured`. A cell claims "built this, then captured it"; without both identities it cannot claim that, and an unproven target must not sit in the captured tally.
 
 MVP usage:

@@ -222,7 +222,13 @@ async function captureWithBaguette({ root, bundle, options }) {
     if (logsOk) bundle.manifest.artifacts.logs = path.relative(root, logsPath);
   }
 
-  const ok = screenshotOk && accessibilityOk;
+  // Stability is part of whether this bundle can be used as proof, not a note
+  // beside it. Reporting success while the stability step failed meant a
+  // caller — a matrix cell, an agent, CI — saw a clean capture and carried on
+  // with evidence photographed mid-animation. The bundle is still written and
+  // still inspectable; it just stops claiming to be a settled capture.
+  const stabilityProven = !stability || stability.status === 'stable';
+  const ok = screenshotOk && accessibilityOk && stabilityProven;
   setCapture(bundle, root, {
     status: ok ? 'complete' : 'partial',
     steps,
@@ -299,7 +305,7 @@ async function measureStability({ driver, device, screenshotPath, options, captu
  * @param {string} accessibilityPath Path to the captured AX tree.
  * @returns {{frame:object, rootWidth:number}[]} At most one focused field, in point space.
  */
-function readEditableRegions(accessibilityPath) {
+export function readEditableRegions(accessibilityPath) {
   try {
     const tree = JSON.parse(fs.readFileSync(accessibilityPath, 'utf8'));
     const rootWidth = Number(tree?.frame?.width) || 0;

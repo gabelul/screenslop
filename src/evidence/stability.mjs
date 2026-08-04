@@ -47,8 +47,12 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // wrong question — what separates a spinner from noise is how tightly grouped
 // the changes are, not how solidly they fill their own outline.
 //
-// Localized motion is therefore measured with a fixed-size sliding window: if
-// any window holds enough changed samples, something was moving there.
+// Localized motion is therefore measured by counting, around each changed
+// sample, how many other changed samples sit within a fixed radius. Enough
+// neighbours means something was moving there. Note this is a radius search
+// centred on real samples, not a window free to sit anywhere: two changes
+// further apart than the radius are not neighbours even though some window
+// could contain both.
 //
 // This is the third design for this signal and the first that is monotonic by
 // construction. A single global bounding box failed because two spinners in

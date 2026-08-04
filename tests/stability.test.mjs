@@ -195,16 +195,29 @@ test('the caret exemption cannot be widened, split, or outrun by truncation', ()
     'unstable'
   );
 
-  // Monotonicity across the recording cap: changed cells stop being recorded
-  // past a budget, and judging confinement on that prefix once let later
-  // out-of-field motion disappear from a strict superset.
+  // Out-of-field motion is never exempt, cap or no cap.
   const outside = [[900, 900, 8, 8], [908, 900, 8, 8]];
   assert.equal(compareFrames(blank, paint(outside), { editableRegions: [field] }).status, 'unstable');
-  assert.equal(
-    compareFrames(blank, paint([[110, 110, 97, 103], ...outside]), { editableRegions: [field] }).status,
-    'unstable',
-    'a superset must not become stable because the change record was truncated'
-  );
+});
+
+test('a change record truncated by the cell budget cannot claim caret confinement', () => {
+  // This has to truncate for real. A narrow, very tall frame lets a strip that
+  // is *within* the caret width still overrun the 1% recording cap, so the
+  // truncation guard is the only thing that can reject it — verified by
+  // removing the guard, which turns this fixture stable.
+  const width = 100;
+  const height = 4000;
+  const field = { x: 10, y: 0, width: 80, height };
+  const blank = parseBmp(buildBmp(width, height, () => white));
+  const strip = parseBmp(buildBmp(width, height, (x, y) => (
+    x >= 20 && x < 26 && y >= 100 && y < 3100 ? black : white
+  )));
+
+  const verdict = compareFrames(blank, strip, { editableRegions: [field] });
+  // 4500 changed samples against a cap of ~1001, and only 6px wide.
+  assert.ok(verdict.changedRatio * verdict.sampled > 1200, 'fixture must exceed the recording cap');
+  assert.equal(verdict.status, 'unstable');
+  assert.notEqual(verdict.caretExempt, true);
 });
 
 test('localized detection is monotonic: a superset of moving pixels stays moving', () => {
@@ -351,9 +364,11 @@ test('a rotating indicator is caught at 2x and 3x, at every lattice phase', () =
     // from a single 0->45 transition hid slower rotations entirely.
     for (const start of [0, 17, 33, 60]) {
       for (const delta of [22.5, 45, 90]) {
-        for (let phase = 0; phase < 4; phase += 1) {
-          const cx = Math.round(width / 2) + phase;
-          const cy = Math.round(height / 2) + phase;
+        for (let phase = 0; phase < 16; phase += 1) {
+          // Independent x and y phases: stepping both together only ever
+          // covered the four diagonal pairs while claiming sixteen.
+          const cx = Math.round(width / 2) + (phase % 4);
+          const cy = Math.round(height / 2) + Math.floor(phase / 4);
           const verdict = compareFrames(
             paint(quarterArc(scale, start), cx, cy),
             paint(quarterArc(scale, start + delta), cx, cy)
@@ -361,7 +376,7 @@ test('a rotating indicator is caught at 2x and 3x, at every lattice phase', () =
           assert.equal(
             verdict.status,
             'unstable',
-            `${name} spinner missed: start ${start} step ${delta} phase ${phase}`
+            `${name} spinner missed: start ${start} step ${delta} phase ${phase % 4},${Math.floor(phase / 4)}`
           );
         }
       }
