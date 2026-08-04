@@ -93,16 +93,24 @@ export function attributeColor(sampled, tokens = [], options = {}) {
 
   if (inBand.length > 0) {
     const equal = inBand.filter((entry) => entry.distance === 0);
-    if (equal.length === 1) {
-      return { status: 'exact', token: equal[0].token, candidates: [equal[0].token], lightnessDelta: 0, confidence: 'high' };
+    const winner = equal.length === 1 ? equal[0].token : (inBand.length === 1 ? inBand[0].token : null);
+
+    // Landing on a token does not mean it was the token used. A different token
+    // drawn at partial opacity over this background can land exactly there, and
+    // returning before checking that made the most confident answer the wrong
+    // one. The blend test has to gate every path that names a token, not just
+    // the derived one.
+    const blendRivals = winner ? blendExplanations(sampled, background, usable, winner) : [];
+    if (winner && blendRivals.length === 0) {
+      return equal.length === 1
+        ? { status: 'exact', token: winner, candidates: [winner], lightnessDelta: 0, confidence: 'high' }
+        : { status: 'close', token: winner, candidates: [winner], lightnessDelta: 0, confidence: 'medium' };
     }
-    if (inBand.length === 1) {
-      return { status: 'close', token: inBand[0].token, candidates: [inBand[0].token], lightnessDelta: 0, confidence: 'medium' };
-    }
+
     return {
       status: 'ambiguous',
       token: null,
-      candidates: inBand.map((entry) => entry.token),
+      candidates: winner ? [winner, ...blendRivals] : inBand.map((entry) => entry.token),
       lightnessDelta: 0,
       confidence: 'low'
     };
@@ -152,21 +160,16 @@ export function attributeColor(sampled, tokens = [], options = {}) {
   }
 
   // Hue survives opacity, so a token blended over the background can look like
-  // a derived variant of a different token. When the background is known, any
-  // other token that explains the sample as a blend makes this ambiguous.
-  if (background) {
-    const blendFits = usable.filter((token) => (
-      token !== best.token && fitsAsBlend(sampled, background, token)
-    ));
-    if (blendFits.length > 0) {
-      return {
-        status: 'ambiguous',
-        token: null,
-        candidates: [best.token, ...blendFits],
-        lightnessDelta: best.lightnessDelta,
-        confidence: 'low'
-      };
-    }
+  // a derived variant of a different token.
+  const blendRivals = blendExplanations(sampled, background, usable, best.token);
+  if (blendRivals.length > 0) {
+    return {
+      status: 'ambiguous',
+      token: null,
+      candidates: [best.token, ...blendRivals],
+      lightnessDelta: best.lightnessDelta,
+      confidence: 'low'
+    };
   }
 
   return {
@@ -176,6 +179,30 @@ export function attributeColor(sampled, tokens = [], options = {}) {
     lightnessDelta: best.lightnessDelta,
     confidence: 'medium'
   };
+}
+
+/**
+ * Finds tokens other than the winner that explain the sample as an opacity blend.
+ * @param {{r:number,g:number,b:number}} sampled Observed color.
+ * @param {{r:number,g:number,b:number}|null} background Measured background, when known.
+ * @param {object[]} tokens Candidate tokens.
+ * @param {object} winner Token the primary path selected.
+ * @returns {object[]} Rival tokens a blend would also explain.
+ */
+function blendExplanations(sampled, background, tokens, winner) {
+  if (!background) return [];
+  return tokens.filter((token) => {
+    if (token === winner) return false;
+    if (!fitsAsBlend(sampled, background, token)) return false;
+    // On the neutral axis a blend hypothesis is vacuous: every gray lies
+    // between black and white, so "black at 60% over white explains #AAAAAA"
+    // is arithmetic, not evidence. Requiring one of the three to carry real
+    // chroma keeps the check meaningful instead of making every piece of gray
+    // text ambiguous — which is most text in most apps.
+    const allNeutral = [sampled, background, token]
+      .every((color) => srgbToOklch(color).C < neutralChromaFloor);
+    return !allNeutral;
+  });
 }
 
 /**

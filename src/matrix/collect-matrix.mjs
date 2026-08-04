@@ -200,13 +200,35 @@ async function runMatrixCell(options) {
       });
     }
 
+    // Prefer the UDID the build resolved: a name asks each tool to guess, and
+    // duplicate simulator names across runtimes make those guesses differ.
     const see = await options.collectSeeFn({
       root,
       surface: cell.surface || configState.config.defaultSurface,
-      device: cell.device || configState.target.device,
+      udid: build.resolvedUdid || null,
+      device: build.resolvedUdid ? null : (cell.device || configState.target.device),
       bundleId: configState.target.bundleId,
       includeLogs: true
     });
+
+    // Even with a UDID, prove the evidence came from the simulator that was
+    // built. A cell claiming "build then capture" must not be able to describe
+    // two different devices.
+    const targetMismatch = build.resolvedUdid && see.device?.udid
+      && String(see.device.udid).toUpperCase() !== build.resolvedUdid;
+    if (targetMismatch) {
+      return writeUnavailableCell({
+        root,
+        cell,
+        reason: 'target-mismatch',
+        message: 'The build and the capture landed on different simulators, so this cell cannot claim build-then-capture evidence.',
+        status: 'failed',
+        artifactsDir,
+        extra: { build },
+        includeDesign: options.includeDesign
+      });
+    }
+
     const status = see.ok ? 'captured' : 'failed';
     const shouldCritique = options.includeCritique || options.includeDesign;
     let critique = see.ok && shouldCritique
@@ -313,8 +335,23 @@ function runBuildTarget({ target, cell, commandRunner }) {
     status: result.status,
     durationMs: Date.now() - started,
     command: ['xcodebuildmcp', 'simulator', 'build-and-run'],
-    simulator: cell.device || target.device || null
+    simulator: cell.device || target.device || null,
+    // Which simulator the build actually landed on, when the tool says so.
+    // Without it, capture resolves the same name a second time and independently
+    // — two tools, two answers, and a cell that can build one simulator while
+    // critiquing another.
+    resolvedUdid: extractUdid(result.stdout)
   };
+}
+
+/**
+ * Pulls a simulator UDID out of build output.
+ * @param {string} output Build stdout.
+ * @returns {string|null} First UDID found, or null.
+ */
+function extractUdid(output) {
+  const match = /\b[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\b/i.exec(String(output || ''));
+  return match ? match[0].toUpperCase() : null;
 }
 
 /**

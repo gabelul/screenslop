@@ -160,6 +160,7 @@ async function captureWithBaguette({ root, bundle, options }) {
 
   const screenshotPath = path.join(bundle.dir, 'screenshot.jpg');
   const screenshotStatus = driver.screenshot(device.udid, screenshotPath);
+  const screenshotAt = Date.now();
   const screenshotOk = screenshotStatus.ok && fs.existsSync(screenshotPath);
   steps.push({
     name: 'screenshot',
@@ -184,7 +185,7 @@ async function captureWithBaguette({ root, bundle, options }) {
   // this tool depends on, in the name of proving the screen was still.
   let stability = null;
   if (screenshotOk) {
-    stability = await measureStability({ driver, device, screenshotPath, options });
+    stability = await measureStability({ driver, device, screenshotPath, options, capturedAt: screenshotAt });
     steps.push({
       name: 'stability',
       // Only a measured 'stable' is a pass. 'unknown' means the probe failed,
@@ -234,18 +235,22 @@ async function captureWithBaguette({ root, bundle, options }) {
  * @param {object} params.options Capture options.
  * @returns {Promise<{status:string, changedRatio:number|null, delayMs:number}>} Stability verdict.
  */
-async function measureStability({ driver, device, screenshotPath, options }) {
-  const delayMs = Number.isFinite(options.stabilityDelayMs) ? Number(options.stabilityDelayMs) : 250;
+async function measureStability({ driver, device, screenshotPath, options, capturedAt }) {
+  const sleepMs = Number.isFinite(options.stabilityDelayMs) ? Number(options.stabilityDelayMs) : 250;
+  // The AX capture happens between the screenshot and this probe, so the frames
+  // are further apart than the sleep alone. Reporting the configured sleep as
+  // the gap described a 250ms comparison that was really seconds wide.
+  const elapsed = () => (Number.isFinite(capturedAt) ? Math.max(0, Date.now() - capturedAt) : sleepMs);
   const loadPixels = options.loadPixels || loadScreenshotPixels;
   let probeDir = null;
 
   try {
-    await sleep(delayMs);
+    await sleep(sleepMs);
     probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-stability-'));
     const probePath = path.join(probeDir, 'probe.jpg');
     const probeStatus = driver.screenshot(device.udid, probePath);
     if (!probeStatus.ok || !fs.existsSync(probePath)) {
-      return { status: 'unknown', changedRatio: null, delayMs, reason: 'probe-capture-failed' };
+      return { status: 'unknown', changedRatio: null, delayMs: elapsed(), reason: 'probe-capture-failed' };
     }
 
     // Opportunistic: identical bytes prove stillness without decoding, but a
@@ -253,16 +258,16 @@ async function measureStability({ driver, device, screenshotPath, options }) {
     // shortcut rather than the expected path.
     if (frameBytesMatch(fs.readFileSync(screenshotPath), fs.readFileSync(probePath))) {
       // Same shape as the sampled path so consumers see one contract.
-      return { status: 'stable', changedRatio: 0, busiestTileRatio: 0, delayMs };
+      return { status: 'stable', changedRatio: 0, busiestTileRatio: 0, delayMs: elapsed() };
     }
 
     const verdict = compareFrames(loadPixels(screenshotPath), loadPixels(probePath));
     // Both frames captured but neither decodable — sips missing, or a format the
     // parser cannot read. Distinct from a failed probe capture.
-    if (verdict.status === 'unknown') return { ...verdict, delayMs, reason: 'frames-not-decodable' };
-    return { ...verdict, delayMs };
+    if (verdict.status === 'unknown') return { ...verdict, delayMs: elapsed(), reason: 'frames-not-decodable' };
+    return { ...verdict, delayMs: elapsed() };
   } catch (error) {
-    return { status: 'unknown', changedRatio: null, delayMs, reason: `probe-error: ${error.message}` };
+    return { status: 'unknown', changedRatio: null, delayMs: elapsed(), reason: `probe-error: ${error.message}` };
   } finally {
     if (probeDir) fs.rmSync(probeDir, { recursive: true, force: true });
   }

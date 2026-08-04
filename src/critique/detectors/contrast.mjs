@@ -28,6 +28,10 @@ const textCoreShare = 0.25;
 // How much closer the border must sit to one cluster than the other before
 // foreground/background ownership is considered settled.
 const ownershipMargin = 12;
+// Thickness of the ring sampled outside a label frame to read its background,
+// and how many of those pixels must land inside the image to trust it.
+const backgroundRingWidth = 2;
+const minRingSamples = 16;
 // Captures are JPEG — Baguette emits nothing else — so sampled channels drift a
 // couple of units on flat fills and far more on antialiased text edges, which is
 // exactly where contrast gets measured. A ratio sitting near its threshold is
@@ -211,26 +215,58 @@ function assignOwnership({ border, lower, upper, lowerColor, upperColor }) {
 }
 
 /**
- * Samples the perimeter of a region to estimate its background color.
+ * Estimates the background around a label by sampling just outside its frame.
+ *
+ * Sampling the frame's own perimeter assumes glyphs never reach the edge, which
+ * a tight AX frame breaks: the perimeter median becomes the *text* color and
+ * ownership inverts. A ring outside the frame cannot contain the label's glyphs
+ * at all, so it is background by construction. Frames flush against the image
+ * edge fall back to the inner perimeter, which is why ownership still has to
+ * prove itself decisive afterwards rather than trusting this blindly.
+ *
  * @param {object} image Pixel accessor.
  * @param {{x:number,y:number,width:number,height:number}} region Pixel region.
- * @returns {{r:number,g:number,b:number}|null} Median border color.
+ * @returns {{r:number,g:number,b:number}|null} Median background color.
  */
 function borderColor(image, region) {
-  const right = region.x + region.width - 1;
-  const bottom = region.y + region.height - 1;
+  const outer = ringPixels(image, region, backgroundRingWidth, true);
+  if (outer.length >= minRingSamples) return medianPixel(outer);
+
+  const inner = ringPixels(image, region, 1, false);
+  return inner.length > 0 ? medianPixel(inner) : null;
+}
+
+/**
+ * Collects pixels in a ring just outside or just inside a region.
+ * @param {object} image Pixel accessor.
+ * @param {{x:number,y:number,width:number,height:number}} region Pixel region.
+ * @param {number} width Ring thickness in pixels.
+ * @param {boolean} outside Whether the ring sits outside the region.
+ * @returns {{r:number,g:number,b:number}[]} Ring pixels that fall inside the image.
+ */
+function ringPixels(image, region, width, outside) {
   const pixels = [];
-  for (let x = region.x; x <= right; x += 1) {
-    pixels.push(image.getPixel(x, region.y));
-    pixels.push(image.getPixel(x, bottom));
+  const left = outside ? region.x - width : region.x;
+  const top = outside ? region.y - width : region.y;
+  const right = outside ? region.x + region.width + width - 1 : region.x + region.width - 1;
+  const bottom = outside ? region.y + region.height + width - 1 : region.y + region.height - 1;
+  const inBounds = (x, y) => x >= 0 && y >= 0 && x < image.width && y < image.height;
+
+  for (let offset = 0; offset < width; offset += 1) {
+    const yTop = top + offset;
+    const yBottom = bottom - offset;
+    for (let x = left; x <= right; x += 1) {
+      if (inBounds(x, yTop)) pixels.push(image.getPixel(x, yTop));
+      if (inBounds(x, yBottom)) pixels.push(image.getPixel(x, yBottom));
+    }
+    const xLeft = left + offset;
+    const xRight = right - offset;
+    for (let y = top; y <= bottom; y += 1) {
+      if (inBounds(xLeft, y)) pixels.push(image.getPixel(xLeft, y));
+      if (inBounds(xRight, y)) pixels.push(image.getPixel(xRight, y));
+    }
   }
-  for (let y = region.y; y <= bottom; y += 1) {
-    pixels.push(image.getPixel(region.x, y));
-    pixels.push(image.getPixel(right, y));
-  }
-  // Median, not mean: a descender or a glyph touching the edge should not drag
-  // the estimate toward the text color.
-  return pixels.length > 0 ? medianPixel(pixels) : null;
+  return pixels;
 }
 
 /**

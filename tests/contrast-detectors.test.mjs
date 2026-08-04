@@ -170,14 +170,11 @@ test('light-on-dark text attributes the text token, not the background token', (
 });
 
 test('omits attribution when the border cannot settle foreground from background', () => {
-  // Glyphs flush to every edge: this is a filled rectangle, not a label, and
-  // guessing which cluster is text would be a coin flip.
+  // The surroundings are striped with the same two colors as the glyphs, so
+  // neither the ring outside the frame nor the frame's own perimeter resembles
+  // one cluster more than the other. Nothing here can say which is the text.
   const frame = { x: 10, y: 20, width: 60, height: 18 };
-  const bmp = buildBmp(rootWidth, rootHeight, (x, y) => {
-    const inside = x >= frame.x && x < frame.x + frame.width && y >= frame.y && y < frame.y + frame.height;
-    if (!inside) return white;
-    return x % 2 === 0 ? derivedAmber : white;
-  });
+  const bmp = buildBmp(rootWidth, rootHeight, (x, y) => (x % 2 === 0 ? derivedAmber : white));
   const findings = detectContrastIssues(context, tree([textNode('Ambiguous', frame)]), {
     ...optionsFor(bmp),
     colorTokens: [warningToken]

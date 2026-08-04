@@ -20,10 +20,26 @@ const unstableChangedRatio = 0.01;
 // alone. Splitting the frame into tiles and flagging any single tile that is
 // substantially in motion catches localized animation without lowering the
 // global threshold to somewhere noise lives.
-const tileGridSize = 8;
+//
+// Grid size sets the smallest motion this can see. Swept across every position
+// on a 402x874 frame, a 16x16 grid catches moving regions down to about 24pt
+// square; a 16pt region stays under the tile threshold everywhere. That is the
+// honest floor — small enough for a standard activity indicator, not small
+// enough for a blinking caret, which is the trade we want.
+const tileGridSize = 16;
 const unstableTileRatio = 0.2;
 // A tile needs enough samples for its ratio to mean anything.
 const minTileSamples = 24;
+// One fixed grid makes detection depend on where the motion happens to sit: a
+// region straddling a tile corner splits across four tiles and hides under the
+// per-tile threshold in all of them. Measured on a 402x874 frame, the same
+// 44x44 spinner scored 0.24 inside a tile and 0.10 across a corner.
+//
+// Offsetting both axes together is not enough either — a region centred in x by
+// the offset can land on a y boundary instead. Offsetting each axis
+// independently gives four grids, and every placement sits away from a boundary
+// in at least one of them. Swept across the screen, no position now escapes.
+const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // ~20k samples resolves a 1% change with room to spare and stays cheap.
 const targetSampleCount = 20000;
 
@@ -61,7 +77,8 @@ export function compareFrames(first, second) {
   }
 
   const step = Math.max(1, Math.round(Math.sqrt((first.width * first.height) / targetSampleCount)));
-  const tiles = Array.from({ length: tileGridSize * tileGridSize }, () => ({ changed: 0, sampled: 0 }));
+  // One tile map per offset grid; a sample lands in exactly one tile of each.
+  const grids = tileOffsets.map(() => new Map());
   let changed = 0;
   let sampled = 0;
 
@@ -74,21 +91,28 @@ export function compareFrames(first, second) {
       if (moved) changed += 1;
       sampled += 1;
 
-      const tileX = Math.min(tileGridSize - 1, Math.floor((x / first.width) * tileGridSize));
-      const tileY = Math.min(tileGridSize - 1, Math.floor((y / first.height) * tileGridSize));
-      const tile = tiles[tileY * tileGridSize + tileX];
-      tile.sampled += 1;
-      if (moved) tile.changed += 1;
+      tileOffsets.forEach(([offsetX, offsetY], index) => {
+        const tileX = Math.floor((x / first.width) * tileGridSize - offsetX);
+        const tileY = Math.floor((y / first.height) * tileGridSize - offsetY);
+        const key = `${tileX},${tileY}`;
+        const tile = grids[index].get(key) || { changed: 0, sampled: 0 };
+        tile.sampled += 1;
+        if (moved) tile.changed += 1;
+        grids[index].set(key, tile);
+      });
     }
   }
 
   if (sampled === 0) return { status: 'unknown', changedRatio: null, sampled: 0 };
   const changedRatio = changed / sampled;
-  const busiestTile = tiles.reduce((worst, tile) => {
-    if (tile.sampled < minTileSamples) return worst;
-    const ratio = tile.changed / tile.sampled;
-    return ratio > worst ? ratio : worst;
-  }, 0);
+  let busiestTile = 0;
+  for (const grid of grids) {
+    for (const tile of grid.values()) {
+      if (tile.sampled < minTileSamples) continue;
+      const ratio = tile.changed / tile.sampled;
+      if (ratio > busiestTile) busiestTile = ratio;
+    }
+  }
 
   const unstable = changedRatio > unstableChangedRatio || busiestTile > unstableTileRatio;
   return {

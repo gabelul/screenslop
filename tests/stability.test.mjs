@@ -66,9 +66,16 @@ test('compareFrames calls a screen mid-transition unstable', () => {
   assert.ok(verdict.changedRatio > 0.5, `expected a large change, got ${verdict.changedRatio}`);
 });
 
-test('compareFrames tolerates a blinking cursor without crying unstable', () => {
-  // A 10x10 block of a 200x200 frame is 0.25% — under the 1% threshold.
-  const verdict = compareFrames(frameWithBlock(0), frameWithBlock(10));
+test('compareFrames tolerates a blinking caret without crying unstable', () => {
+  // Proportions matter here, so this uses a real screen size. A text caret is
+  // about 2x16pt on a 402x874 screen — far smaller than the ~24pt square the
+  // tile grid can resolve, and it should stay tolerated.
+  const still = parseBmp(buildBmp(402, 874, () => ({ r: 255, g: 255, b: 255 })));
+  const caret = parseBmp(buildBmp(402, 874, (x, y) => (
+    x >= 100 && x < 102 && y >= 300 && y < 316 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 }
+  )));
+
+  const verdict = compareFrames(still, caret);
   assert.equal(verdict.status, 'stable');
   assert.ok(verdict.changedRatio < 0.01, `expected under 1%, got ${verdict.changedRatio}`);
 });
@@ -101,6 +108,28 @@ test('describeStability explains each verdict in the capture steps', () => {
     describeStability({ status: 'unknown', changedRatio: null, reason: 'probe-capture-failed' }, 250),
     /probe-capture-failed/
   );
+});
+
+test('localized motion is caught wherever it sits, not just where the grid is kind', () => {
+  // A single fixed grid made detection depend on luck: the same region scored
+  // 0.24 inside a tile and 0.10 straddling a corner, so a spinner could hide by
+  // being in the wrong place. This sweeps a realistic screen exhaustively.
+  const width = 402;
+  const height = 874;
+  const still = parseBmp(buildBmp(width, height, () => ({ r: 255, g: 255, b: 255 })));
+  const spinnerAt = (cx, cy, box) => parseBmp(buildBmp(width, height, (x, y) => (
+    x >= cx - box / 2 && x < cx + box / 2 && y >= cy - box / 2 && y < cy + box / 2
+      ? { r: 0, g: 0, b: 0 }
+      : { r: 255, g: 255, b: 255 }
+  )));
+
+  const missed = [];
+  for (let cx = 40; cx < width - 40; cx += 31) {
+    for (let cy = 40; cy < height - 40; cy += 43) {
+      if (compareFrames(still, spinnerAt(cx, cy, 32)).status !== 'unstable') missed.push(`${cx},${cy}`);
+    }
+  }
+  assert.deepEqual(missed, [], `a 32pt spinner escaped detection at: ${missed.join(' ')}`);
 });
 
 test('a small busy region is unstable even though the screen barely moved', () => {

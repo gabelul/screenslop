@@ -2,8 +2,14 @@
   "runId": "missing-ax",
   "createdAt": "2026-06-07T00:00:00.000Z",
   "surface": "Missing AX Fixture",
-  "runtime": { "driver": "baguette", "deviceName": "iPhone Test", "udid": "TEST" },
-  "environment": { "appearance": "unspecified" },
+  "runtime": {
+    "driver": "baguette",
+    "deviceName": "iPhone Test",
+    "udid": "TEST"
+  },
+  "environment": {
+    "appearance": "unspecified"
+  },
   "artifacts": {
     "screenshot": "tests/fixtures/evidence/missing-ax/screenshot.jpg",
     "accessibilityTree": "tests/fixtures/evidence/missing-ax/accessibility.json",
@@ -13,9 +19,24 @@
   "capture": {
     "status": "partial",
     "steps": [
-      { "name": "screenshot", "ok": true, "message": "ok" },
-      { "name": "accessibility-tree", "ok": false, "message": "failed" }
-    ]
+      {
+        "name": "screenshot",
+        "ok": true,
+        "message": "ok"
+      },
+      {
+        "name": "accessibility-tree",
+        "ok": false,
+        "message": "failed"
+      }
+    ],
+    "stability": {
+      "status": "stable",
+      "changedRatio": 0,
+      "busiestTileRatio": 0,
+      "sampled": 18786,
+      "delayMs": 250
+    }
   },
   "sourceHints": []
 }

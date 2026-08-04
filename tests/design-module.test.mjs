@@ -45,8 +45,16 @@ test('deterministic critique does not import design intelligence, transitively',
     if (visited.has(key)) return;
     visited.add(key);
 
+    // Static imports are not the only edge into another lane: `export … from`
+    // and dynamic `import()` both create one while a plain import scan stays
+    // quiet. Match every form that can pull a module in.
     const source = fs.readFileSync(moduleUrl, 'utf8');
-    for (const match of source.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)) {
+    const patterns = [
+      /^\s*import\s[^'"]*['"]([^'"]+)['"]/gm,
+      /^\s*export\s[^'"]*\sfrom\s*['"]([^'"]+)['"]/gm,
+      /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+    ];
+    for (const match of patterns.flatMap((pattern) => [...source.matchAll(pattern)])) {
       const specifier = match[1];
       if (!specifier.startsWith('.')) continue;
       const resolved = new URL(specifier, moduleUrl);

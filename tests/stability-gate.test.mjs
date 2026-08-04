@@ -37,25 +37,29 @@ test('an unstable fresh capture cannot produce verified-fixed', () => {
   assert.match(items[0].reason, /rather than because it was fixed/);
 });
 
-test('an unstable capture does not weaken a still-present finding', () => {
-  // Motion can fake the absence of a problem, never its presence.
+test('an unstable capture keeps still-present but stops calling it high confidence', () => {
+  // A label caught mid-fade measures a contrast it never has at rest, so a
+  // matching fresh finding can itself be an artifact of the motion.
   const items = applyStabilityGate([presentItem], { status: 'unstable', changedRatio: 0.4, reason: null });
-  assert.deepEqual(items[0], presentItem);
+  assert.equal(items[0].status, 'still-present');
+  assert.equal(items[0].confidence, 'medium');
+  assert.match(items[0].reason, /artifact of motion/);
 });
 
-test('unmeasured stability downgrades confidence without blocking', () => {
-  // Blocking here would retroactively invalidate every bundle captured before
-  // the stability check existed.
+test('a bundle with no stability field cannot claim verified-fixed', () => {
+  // Keeping old bundles readable is not the same as granting them proof they
+  // never established.
   const items = applyStabilityGate([fixedItem], readStability({ capture: { status: 'complete' } }));
-  assert.equal(items[0].status, 'verified-fixed');
-  assert.equal(items[0].confidence, 'medium');
-  assert.match(items[0].reason, /not a stability-proven result/);
+  assert.equal(items[0].status, 'needs-human-review');
+  assert.equal(items[0].confidence, 'low');
+  assert.match(items[0].reason, /cannot be reported as deterministic proof/);
   assert.match(items[0].reason, /predates capture-stability checks/);
 });
 
-test('a failed stability probe is treated as unproven, not as proof', () => {
+test('a failed stability probe cannot claim verified-fixed either', () => {
+  // Unlike a legacy bundle, this is a live evidence failure.
   const stability = readStability({ capture: { stability: { status: 'unknown', reason: 'probe-capture-failed' } } });
   const items = applyStabilityGate([fixedItem], stability);
-  assert.equal(items[0].confidence, 'medium');
+  assert.equal(items[0].status, 'needs-human-review');
   assert.match(items[0].reason, /probe-capture-failed/);
 });

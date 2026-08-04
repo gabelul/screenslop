@@ -2,8 +2,14 @@
   "runId": "clean",
   "createdAt": "2026-06-07T00:00:00.000Z",
   "surface": "Clean Fixture",
-  "runtime": { "driver": "baguette", "deviceName": "iPhone Test", "udid": "TEST" },
-  "environment": { "appearance": "unspecified" },
+  "runtime": {
+    "driver": "baguette",
+    "deviceName": "iPhone Test",
+    "udid": "TEST"
+  },
+  "environment": {
+    "appearance": "unspecified"
+  },
   "artifacts": {
     "screenshot": "tests/fixtures/evidence/clean/screenshot.jpg",
     "accessibilityTree": "tests/fixtures/evidence/clean/accessibility.json",
@@ -13,9 +19,26 @@
   "capture": {
     "status": "complete",
     "steps": [
-      { "name": "screenshot", "ok": true, "message": "ok" },
-      { "name": "accessibility-tree", "ok": true, "message": "ok" }
-    ]
+      {
+        "name": "screenshot",
+        "ok": true,
+        "message": "ok"
+      },
+      {
+        "name": "accessibility-tree",
+        "ok": true,
+        "message": "ok"
+      }
+    ],
+    "stability": {
+      "status": "stable",
+      "changedRatio": 0,
+      "busiestTileRatio": 0,
+      "sampled": 18786,
+      "delayMs": 250
+    }
   },
-  "sourceHints": ["CleanView.swift"]
+  "sourceHints": [
+    "CleanView.swift"
+  ]
 }

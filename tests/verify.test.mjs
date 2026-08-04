@@ -36,6 +36,34 @@ test('screenslop verify --json compares temp bundles and writes artifacts', asyn
   assert.equal(fs.existsSync(path.join(root, baseline, 'verification.md')), true);
 });
 
+test('an unstable fresh bundle cannot report verified-fixed end to end', async () => {
+  // The unit tests for the gate all pass if collectVerify stops calling it, or
+  // calls it with the wrong manifest. This drives the real command instead.
+  const { root, baseline, fresh } = await verifyWorkspace();
+  // Drop the finding from the fresh side so it would otherwise verify as fixed.
+  const freshFindings = path.join(root, fresh, 'findings.json');
+  const payload = JSON.parse(fs.readFileSync(freshFindings, 'utf8'));
+  payload.findings = payload.findings.filter((finding) => finding.id !== missingId);
+  fs.writeFileSync(freshFindings, `${JSON.stringify(payload, null, 2)}\n`);
+
+  const stable = await collectVerify({ root, baselineBundle: baseline, freshBundle: fresh, findingIds: [missingId] });
+  assert.equal(stable.freshStability.status, 'stable');
+  assert.equal(stable.items[0].status, 'verified-fixed');
+
+  // Same bundles, same findings — only the recorded stability changes.
+  const manifestPath = path.join(root, fresh, 'evidence.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  manifest.capture.stability = { status: 'unstable', changedRatio: 0.42, busiestTileRatio: 0.6, sampled: 18786, delayMs: 250 };
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  const unstable = await collectVerify({ root, baselineBundle: baseline, freshBundle: fresh, findingIds: [missingId] });
+  assert.equal(unstable.freshStability.status, 'unstable');
+  assert.equal(unstable.items[0].status, 'needs-human-review');
+  assert.match(unstable.items[0].reason, /42\.0% of sampled pixels/);
+  // The summary must reflect the gated status, not the pre-gate one.
+  assert.equal(unstable.summary.verifiedFixed, 0);
+});
+
 test('missing fresh bundle fails with JSON error', async () => {
   const { root, baseline } = await verifyWorkspace();
   const result = spawnSync('node', [path.join(repoRoot, 'bin/screenslop.mjs'), 'verify', baseline, '--json'], {
