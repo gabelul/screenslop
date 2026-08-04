@@ -185,6 +185,38 @@ test('omits attribution when the border cannot settle foreground from background
   assert.equal(findings[0].evidence.attributedToken, undefined);
 });
 
+test('a label on a filled control omits attribution when its references disagree', () => {
+  // White label on a gray button on a white page: the ring outside the frame
+  // catches the page (which matches the text), the frame's own perimeter
+  // catches the button fill. Resolving that by closeness — or by array order on
+  // a tie — named the button fill as the text color.
+  const fill = { r: 150, g: 150, b: 150 };
+  const frame = { x: 10, y: 20, width: 60, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, (x, y) => {
+    const onButton = x >= frame.x - 1 && x < frame.x + frame.width + 1
+      && y >= frame.y - 1 && y < frame.y + frame.height + 1;
+    if (!onButton) return white;
+    const inFrame = x >= frame.x && x < frame.x + frame.width && y >= frame.y && y < frame.y + frame.height;
+    if (!inFrame) return fill;
+    const inCore = x >= frame.x + 2 && x < frame.x + frame.width - 2
+      && y >= frame.y + 2 && y < frame.y + frame.height - 2;
+    if (!inCore) return fill;
+    return x % 2 === 0 ? white : fill;
+  });
+
+  const findings = detectContrastIssues(context, tree([textNode('Save', frame)]), {
+    ...optionsFor(bmp),
+    colorTokens: [
+      { name: 'Page.bg', hex: '#FFFFFF', r: 255, g: 255, b: 255 },
+      { name: 'Button.fill', hex: '#969696', r: 150, g: 150, b: 150 }
+    ]
+  });
+
+  assert.equal(findings.length, 1, 'the ratio is still measured');
+  assert.equal(findings[0].evidence.sampledTextColor, undefined);
+  assert.equal(findings[0].evidence.attributedToken, undefined);
+});
+
 test('token attribution never moves the severity or confidence of a measured finding', () => {
   // The failing ratio is measured from the capture; the token name comes from a
   // profile that may be stale. Naming it must not strengthen the claim.

@@ -224,7 +224,7 @@ async function runMatrixCell(options) {
         message: 'The build and the capture landed on different simulators, so this cell cannot claim build-then-capture evidence.',
         status: 'failed',
         artifactsDir,
-        extra: { build },
+        extra: { build, targetIdentity: 'mismatch' },
         includeDesign: options.includeDesign
       });
     }
@@ -373,8 +373,14 @@ function runBuildTarget({ target, cell, commandRunner }) {
 function extractUdid(output) {
   try {
     const payload = JSON.parse(String(output || ''));
-    if (payload?.schema && payload.schema !== 'xcodebuildmcp.output.build-run-result') return null;
-    if (payload?.didError) return null;
+    // Fail closed on every field. An earlier version rejected a *wrong* schema
+    // name but accepted a missing one, and rejected `didError: true` but
+    // accepted the field being absent — so an arbitrary object carrying a
+    // simulatorId authorized a capture target. The envelope must be present and
+    // say the build succeeded before its identity means anything.
+    if (payload?.schema !== 'xcodebuildmcp.output.build-run-result') return null;
+    if (String(payload?.schemaVersion) !== '1') return null;
+    if (payload?.didError !== false) return null;
     const simulatorId = payload?.data?.artifacts?.simulatorId;
     return typeof simulatorId === 'string' && simulatorId.trim() ? simulatorId.trim().toUpperCase() : null;
   } catch {

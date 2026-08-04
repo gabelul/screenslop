@@ -261,20 +261,26 @@ function borderColor(image, region) {
  * @returns {{r:number,g:number,b:number}|null} Chosen background reference.
  */
 function chooseBackgroundReference(references, lowerColor, upperColor) {
-  const candidates = [references?.outer, references?.inner].filter(Boolean);
-  let best = null;
-  for (const candidate of candidates) {
+  const votes = [];
+  for (const candidate of [references?.outer, references?.inner].filter(Boolean)) {
     const toLower = pixelDistance(candidate, lowerColor);
     const toUpper = pixelDistance(candidate, upperColor);
-    const decisiveness = Math.abs(toLower - toUpper);
-    // A reference that sits between the clusters describes neither.
-    if (decisiveness < ownershipMargin) continue;
-    // Prefer the reference that most closely resembles the cluster it picks.
+    // A reference sitting between the clusters describes neither.
+    if (Math.abs(toLower - toUpper) < ownershipMargin) continue;
     const closeness = Math.min(toLower, toUpper);
     if (closeness > backgroundAgreementDistance) continue;
-    if (!best || closeness < best.closeness) best = { color: candidate, closeness };
+    votes.push({ color: candidate, picks: toLower < toUpper ? 'lower' : 'upper', closeness });
   }
-  return best ? best.color : null;
+
+  if (votes.length === 0) return null;
+  // Two references can decisively pick *opposite* clusters: a white label on a
+  // gray button inside a white page has an outer ring matching the text and an
+  // inner perimeter matching the fill. Picking by closeness — or worse, by
+  // array order on a tie — confidently named the button fill as the text color.
+  // Contradiction is not something to arbitrate; it means neither reference has
+  // established what the background is.
+  if (votes.some((vote) => vote.picks !== votes[0].picks)) return null;
+  return votes.reduce((best, vote) => (vote.closeness < best.closeness ? vote : best)).color;
 }
 
 /**

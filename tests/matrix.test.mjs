@@ -91,6 +91,7 @@ test('matrix live path records capture and optional critique per cell', async ()
       status: 0,
       stdout: JSON.stringify({
         schema: 'xcodebuildmcp.output.build-run-result',
+        schemaVersion: '1',
         didError: false,
         data: { artifacts: { simulatorId: 'SIM-UDID-1' } }
       }),
@@ -171,6 +172,7 @@ test('a build and capture on different simulators fails the cell', async () => {
       status: 0,
       stdout: JSON.stringify({
         schema: 'xcodebuildmcp.output.build-run-result',
+        schemaVersion: '1',
         didError: false,
         data: { artifacts: { simulatorId: 'SIM-BUILT' } }
       }),
@@ -194,6 +196,35 @@ test('a build and capture on different simulators fails the cell', async () => {
   assert.equal(report.summary.captured, 0);
   assert.equal(report.cells[0].status, 'failed');
   assert.match(report.cells[0].reason, /target-mismatch/);
+  assert.equal(report.cells[0].targetIdentity, 'mismatch');
+});
+
+test('a build envelope missing its schema or error flag authorizes nothing', async () => {
+  // An object that merely carries a simulatorId is not proof a build reported
+  // one. Every one of these must fall back to the unproven path.
+  const bogus = [
+    { data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    { schema: 'xcodebuildmcp.output.build-run-result', data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    { schema: 'xcodebuildmcp.output.build-run-result', schemaVersion: '1', didError: true, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } },
+    { schema: 'something.else', schemaVersion: '1', didError: false, data: { artifacts: { simulatorId: 'SIM-UDID-1' } } }
+  ];
+
+  for (const payload of bogus) {
+    const root = createWorkspace();
+    writeConfig(root);
+    const report = await collectMatrix({
+      root,
+      commandRunner: () => ({ status: 0, stdout: JSON.stringify(payload), stderr: '' }),
+      collectSeeFn: async () => {
+        const dir = path.join('artifacts', 'fake-bogus');
+        fs.mkdirSync(path.join(root, dir), { recursive: true });
+        fs.writeFileSync(path.join(root, dir, 'evidence.json'), '{}');
+        return { ok: true, dir, device: { name: 'iPhone Test', udid: 'SIM-UDID-1' }, evidence: path.join(dir, 'evidence.json'), artifacts: {} };
+      }
+    });
+    assert.equal(report.cells[0].targetIdentity, 'unverified', `accepted ${JSON.stringify(payload).slice(0, 60)}`);
+    assert.equal(report.summary.captured, 0);
+  }
 });
 
 
