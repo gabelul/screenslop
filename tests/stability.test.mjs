@@ -132,22 +132,73 @@ const bars = (pt) => (dx, dy) => {
     || (Math.abs(dx) < strokePx / 2 && Math.abs(dy) < half);
 };
 
-test('a blinking caret counts as motion, because it is motion', () => {
-  // An earlier threshold was tuned to tolerate a caret. Detecting a rotating
-  // indicator — which changes only its leading and trailing edges — needs a
-  // floor below what a caret produces, so the two cannot both be satisfied.
-  // The costs are not symmetric: a missed animation silently licenses a
-  // verified-fixed claim, while a flagged caret downgrades a result visibly.
-  const still = blankScreen();
-  const caret = screenWithShape(
+test('a blinking caret is exempt only inside a text field, and only when caret-shaped', () => {
+  // No threshold separates a caret from a turning spinner, so the caret is
+  // bounded by where it can legally be rather than by how much it changes.
+  const field = { x: 200, y: 1000, width: 800, height: 120 };
+  const caret = (offsetX) => screenWithShape(
     (dx, dy) => dx >= 0 && dx < 2 * pointScale && dy >= 0 && dy < 16 * pointScale,
-    600,
-    1200
+    field.x + offsetX,
+    field.y + 40
+  );
+  const still = blankScreen();
+
+  // Inside the field, caret-width: exempt.
+  const inside = compareFrames(still, caret(20), { editableRegions: [field] });
+  assert.equal(inside.status, 'stable');
+  assert.equal(inside.caretExempt, true);
+
+  // Identical motion with no field declared: not exempt.
+  assert.equal(compareFrames(still, caret(20)).status, 'unstable');
+
+  // Same shape outside every field: not exempt.
+  const outside = compareFrames(still, screenWithShape(
+    (dx, dy) => dx >= 0 && dx < 2 * pointScale && dy >= 0 && dy < 16 * pointScale,
+    field.x + field.width + 200,
+    field.y
+  ), { editableRegions: [field] });
+  assert.equal(outside.status, 'unstable');
+
+  // A field repainting its whole content is not a caret.
+  const repaint = compareFrames(still, screenWithShape(
+    (dx, dy) => dx >= 0 && dx < field.width - 20 && dy >= 0 && dy < 40,
+    field.x + 10,
+    field.y + 40
+  ), { editableRegions: [field] });
+  assert.equal(repaint.status, 'unstable');
+});
+
+test('localized detection is monotonic: a superset of moving pixels stays moving', () => {
+  // Two earlier designs failed this. A global bounding box merged distant
+  // motion past its area limit; connected components merged it through a sparse
+  // bridge. Both made *adding* motion reduce detection.
+  const edge = 1000;
+  const dots = (points) => parseBmp(buildBmp(edge, edge, (x, y) => (
+    points.some(([px, py]) => x >= px && x < px + 3 && y >= py && y < py + 3) ? black : white
+  )));
+  const still = parseBmp(buildBmp(edge, edge, () => white));
+
+  const base = [[0, 0], [6, 6], [12, 12]];
+  assert.equal(compareFrames(still, dots(base)).status, 'unstable');
+
+  // Extend the same diagonal to the far corner — a strict superset.
+  const superset = [];
+  for (let i = 0; i < edge - 6; i += 6) superset.push([i, i]);
+  assert.equal(
+    compareFrames(still, dots(superset)).status,
+    'unstable',
+    'adding motion must never make a capture read as more stable'
   );
 
-  const verdict = compareFrames(still, caret);
-  assert.equal(verdict.status, 'unstable');
-  assert.equal(verdict.localizedMotion, true);
+  // Two compact animations far apart: each alone trips, so together must too.
+  const ring = (cx, cy) => (x, y) => {
+    const d = Math.hypot(x - cx, y - cy);
+    return d > 27 && d < 33;
+  };
+  const paint = (shapes) => parseBmp(buildBmp(1206, 2622, (x, y) => (shapes.some((f) => f(x, y)) ? black : white)));
+  const blank = parseBmp(buildBmp(1206, 2622, () => white));
+  assert.equal(compareFrames(blank, paint([ring(300, 500)])).status, 'unstable');
+  assert.equal(compareFrames(blank, paint([ring(300, 500), ring(900, 2200)])).status, 'unstable');
 });
 
 test('an unchanged capture is never called moving', () => {
@@ -257,16 +308,23 @@ test('a rotating indicator is caught at 2x and 3x, at every lattice phase', () =
     const paint = (shape, cx, cy) => parseBmp(buildBmp(width, height, (x, y) => (
       shape(x - cx, y - cy) ? black : white
     )));
-    // Sweep the sample lattice: the original miss depended on sub-step phase.
-    for (let phaseX = 0; phaseX < 4; phaseX += 1) {
-      for (let phaseY = 0; phaseY < 4; phaseY += 1) {
-        const cx = Math.round(width / 2) + phaseX;
-        const cy = Math.round(height / 2) + phaseY;
-        const verdict = compareFrames(
-          paint(quarterArc(scale, 0), cx, cy),
-          paint(quarterArc(scale, 45), cx, cy)
-        );
-        assert.equal(verdict.status, 'unstable', `${name} spinner missed at phase ${phaseX},${phaseY}`);
+    // Sweep starting angle, rotation step, and sample-lattice phase. Calibrating
+    // from a single 0->45 transition hid slower rotations entirely.
+    for (const start of [0, 17, 33, 60]) {
+      for (const delta of [22.5, 45, 90]) {
+        for (let phase = 0; phase < 4; phase += 1) {
+          const cx = Math.round(width / 2) + phase;
+          const cy = Math.round(height / 2) + phase;
+          const verdict = compareFrames(
+            paint(quarterArc(scale, start), cx, cy),
+            paint(quarterArc(scale, start + delta), cx, cy)
+          );
+          assert.equal(
+            verdict.status,
+            'unstable',
+            `${name} spinner missed: start ${start} step ${delta} phase ${phase}`
+          );
+        }
       }
     }
   }

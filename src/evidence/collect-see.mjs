@@ -9,6 +9,9 @@ import { isBooted, resolveCaptureDevice } from '../runtime/device-selection.mjs'
 import { compareFrames, describeStability, frameBytesMatch } from './stability.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 
+// Roles the platform uses for editable text. A caret only blinks inside one.
+const editableRolePattern = /textfield|securetextfield|textarea|searchfield/i;
+
 /**
  * Captures evidence for the current screen.
  * @param {object} options Capture options.
@@ -185,7 +188,14 @@ async function captureWithBaguette({ root, bundle, options }) {
   // this tool depends on, in the name of proving the screen was still.
   let stability = null;
   if (screenshotOk) {
-    stability = await measureStability({ driver, device, screenshotPath, options, capturedAt: screenshotAt });
+    stability = await measureStability({
+      driver,
+      device,
+      screenshotPath,
+      options,
+      capturedAt: screenshotAt,
+      editableRegions: accessibilityOk ? readEditableRegions(accessibilityPath) : []
+    });
     steps.push({
       name: 'stability',
       // Only a measured 'stable' is a pass. 'unknown' means the probe failed,
@@ -235,7 +245,7 @@ async function captureWithBaguette({ root, bundle, options }) {
  * @param {object} params.options Capture options.
  * @returns {Promise<{status:string, changedRatio:number|null, delayMs:number}>} Stability verdict.
  */
-async function measureStability({ driver, device, screenshotPath, options, capturedAt }) {
+async function measureStability({ driver, device, screenshotPath, options, capturedAt, editableRegions }) {
   const sleepMs = Number.isFinite(options.stabilityDelayMs) ? Number(options.stabilityDelayMs) : 250;
   // The AX capture happens between the screenshot and this probe, so the frames
   // are further apart than the sleep alone. Reporting the configured sleep as
@@ -261,7 +271,10 @@ async function measureStability({ driver, device, screenshotPath, options, captu
       return { status: 'stable', changedRatio: 0, busiestTileRatio: 0, delayMs: elapsed() };
     }
 
-    const verdict = compareFrames(loadPixels(screenshotPath), loadPixels(probePath));
+    const captured = loadPixels(screenshotPath);
+    const verdict = compareFrames(captured, loadPixels(probePath), {
+      editableRegions: scaleRegions(editableRegions, captured)
+    });
     // Both frames captured but neither decodable — sips missing, or a format the
     // parser cannot read. Distinct from a failed probe capture.
     if (verdict.status === 'unknown') return { ...verdict, delayMs: elapsed(), reason: 'frames-not-decodable' };
@@ -271,6 +284,56 @@ async function measureStability({ driver, device, screenshotPath, options, captu
   } finally {
     if (probeDir) fs.rmSync(probeDir, { recursive: true, force: true });
   }
+}
+
+/**
+ * Collects the frames of editable text fields from a captured accessibility tree.
+ *
+ * Used only to exempt caret blink from the stability check. The tree carries no
+ * focused flag, so this is every text field on screen rather than the focused
+ * one — the tightest bound the runtime actually offers.
+ *
+ * @param {string} accessibilityPath Path to the captured AX tree.
+ * @returns {{frame:object, rootWidth:number}[]} Editable frames in point space.
+ */
+function readEditableRegions(accessibilityPath) {
+  try {
+    const tree = JSON.parse(fs.readFileSync(accessibilityPath, 'utf8'));
+    const rootWidth = Number(tree?.frame?.width) || 0;
+    if (!rootWidth) return [];
+    const frames = [];
+    const walk = (node) => {
+      if (!node || typeof node !== 'object') return;
+      if (editableRolePattern.test(String(node.role || '')) && node.frame) frames.push(node.frame);
+      for (const child of node.children || []) walk(child);
+    };
+    walk(tree);
+    return frames.map((frame) => ({ frame, rootWidth }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Converts point-space editable frames into capture pixel coordinates.
+ * @param {{frame:object, rootWidth:number}[]} regions Editable frames.
+ * @param {object|null} image Captured pixel accessor.
+ * @returns {{x:number,y:number,width:number,height:number}[]} Pixel regions.
+ */
+function scaleRegions(regions, image) {
+  if (!Array.isArray(regions) || regions.length === 0 || !image?.width) return [];
+  return regions
+    .filter((entry) => entry.rootWidth > 0)
+    .map(({ frame, rootWidth }) => {
+      const scale = image.width / rootWidth;
+      return {
+        x: Number(frame.x) * scale,
+        y: Number(frame.y) * scale,
+        width: Number(frame.width) * scale,
+        height: Number(frame.height) * scale
+      };
+    })
+    .filter((region) => Number.isFinite(region.x) && region.width > 0 && region.height > 0);
 }
 
 /**

@@ -43,30 +43,41 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // Tiles measure density, and density is the wrong question for a real spinner.
 // An activity indicator is thin arcs and gaps, not a filled square: a 24pt
 // spinner drawn as two crossed bars changed only 12% of its tile and read as
-// stable, while a solid 24pt block of the same size read as unstable. What
-// separates a spinner from sensor noise is not how dense it is but how tightly
-// clustered — so changed samples are also bounded, and a small bounding box
-// holding enough changes counts as localized motion regardless of how sparse
-// it is inside. Static captures change zero samples, so the floor can be low.
-// Changed samples are grouped into connected clusters and each is judged alone.
-// A single global bounding box was non-monotonic: two spinners in opposite
-// corners inflated one box past the area limit and the screen came back *more*
-// stable than either spinner produced by itself. Adding motion must never
-// reduce detection.
-// Three, not more. A rotating arc changes only its leading and trailing edges,
-// which land on opposite sides of the indicator and cluster separately — six
-// changed samples in total became two groups of three. Static captures come
-// back byte-identical, so zero is the noise floor and three sits far above it.
+// stable, while a solid block of the same size read as unstable. Density is the
+// wrong question — what separates a spinner from noise is how tightly grouped
+// the changes are, not how solidly they fill their own outline.
 //
-// This does mean a blinking caret reads as motion, because it is motion. The
-// costs are not symmetric: a false `stable` silently licenses a verified-fixed
-// claim, while a false `unstable` downgrades a result visibly and recoverably.
-// When in doubt, say the screen was moving.
-const minLocalizedChanges = 3;
-const maxLocalizedArea = 0.05;
-// Sparse strokes leave gaps on the sample lattice, so neighbours within two
-// cells join the same cluster rather than splintering into unqualified specks.
-const clusterGap = 2;
+// Localized motion is therefore measured with a fixed-size sliding window: if
+// any window holds enough changed samples, something was moving there.
+//
+// This is the third design for this signal and the first that is monotonic by
+// construction. A single global bounding box failed because two spinners in
+// opposite corners inflated one box past its area limit. Connected components
+// failed the same way one level down — a sparse diagonal of changes bridged
+// everything into one screen-sized component. Both asked "is this region
+// compact", and compactness *falls* as samples are added, so adding motion
+// could remove detection. A window count only ever rises, which buys the
+// invariant those designs lacked: if a set of changes is unstable, every
+// superset of it stays unstable.
+//
+// A rotating arc changes only its leading and trailing edges — six samples for
+// a 45 degree step, four for 22.5 — and they land on opposite sides of the
+// indicator, which is what the window has to be wide enough to hold.
+//
+// Two is the floor. Three missed slower rotations, and the floor can go this
+// low because the noise level is genuinely zero: three real captures of a live
+// simulator, four to six seconds apart, each reported changedRatio 0. One
+// stray sample could be a codec artifact; two inside one small window is a
+// shape. Swept across scales, start angles and lattice phases, every rotation
+// of 22.5 degrees or more is caught. A 10 degree step — a spinner turning at
+// 40 degrees per second, far slower than the ~360 a real indicator runs at —
+// can still escape.
+const localizedWindowRadius = 10;
+// Packs a cell pair into one integer key; comfortably above any lattice width.
+const cellKeyStride = 100000;
+// A caret is about 2pt wide; this covers it at every display scale.
+const caretMaxWidthPx = 8;
+const minLocalizedChanges = 2;
 // Sampling density is what actually limits the smallest detectable motion, and
 // the limit is stroke width, not overall size.
 //
@@ -102,9 +113,13 @@ export function frameBytesMatch(first, second) {
  *
  * @param {object|null} first Pixel accessor for the first capture.
  * @param {object|null} second Pixel accessor for the second capture.
+ * @param {object} [options] Comparison options.
+ * @param {{x:number,y:number,width:number,height:number}[]} [options.editableRegions]
+ *   Pixel frames of editable text fields. Motion confined to a caret-width
+ *   sliver inside one of these is exempted; motion anywhere else is not.
  * @returns {{status:string, changedRatio:number|null, sampled:number}} Stability verdict.
  */
-export function compareFrames(first, second) {
+export function compareFrames(first, second, options = {}) {
   if (!usable(first) || !usable(second)) return { status: 'unknown', changedRatio: null, sampled: 0 };
   if (first.width !== second.width || first.height !== second.height) {
     // A size change between two captures 250ms apart means rotation or a
@@ -118,6 +133,12 @@ export function compareFrames(first, second) {
   );
   // One tile map per offset grid; a sample lands in exactly one tile of each.
   const grids = tileOffsets.map(() => new Map());
+  // Cells are only needed for the localized scan, which never runs once the
+  // global rule has tripped. Recording past that point costs memory to build a
+  // list that will be discarded — on an 8K full-frame diff, millions of
+  // entries. Stop at the count that makes the global rule certain.
+  const totalSamples = Math.ceil(first.width / step) * Math.ceil(first.height / step);
+  const cellBudget = Math.ceil(totalSamples * unstableChangedRatio) + 1;
   const changedCells = [];
   let changed = 0;
   let sampled = 0;
@@ -130,7 +151,7 @@ export function compareFrames(first, second) {
       const moved = delta > changedChannelTolerance;
       if (moved) {
         changed += 1;
-        changedCells.push([Math.round(x / step), Math.round(y / step)]);
+        if (changed <= cellBudget) changedCells.push(Math.round(x / step), Math.round(y / step));
       }
       sampled += 1;
 
@@ -157,26 +178,95 @@ export function compareFrames(first, second) {
     }
   }
 
-  // Enough changes packed into one compact cluster is motion, however thin the
-  // shape. Each cluster stands alone, so a second animation elsewhere can only
-  // add detections, never cancel one.
-  const localized = clustersOf(changedCells).some((cluster) => {
-    if (cluster.count < minLocalizedChanges) return false;
-    const boxArea = ((cluster.maxX - cluster.minX + 1) * (cluster.maxY - cluster.minY + 1) * step * step)
-      / (first.width * first.height);
-    return boxArea > 0 && boxArea <= maxLocalizedArea;
-  });
+  // Short-circuit: once the global or tile rule has proved instability there is
+  // nothing left to learn, and the window scan is the expensive part. Skipping
+  // it keeps full-frame motion — where `changedCells` is largest — cheap.
+  const alreadyUnstable = changedRatio > unstableChangedRatio || busiestTile > unstableTileRatio;
+  const localized = alreadyUnstable ? false : hasLocalizedMotion(changedCells);
 
-  const unstable = changedRatio > unstableChangedRatio
-    || busiestTile > unstableTileRatio
-    || localized;
+  // A blinking caret is motion, and the floor needed to see a turning spinner is
+  // below what a caret produces — no threshold separates them. Rather than lose
+  // one or accept the other everywhere, motion is exempted only when it is
+  // confined to a caret-width sliver inside a text field. Anything wider, or
+  // anything outside a field, still fails. Note this is bounded by the *field*
+  // rather than by focus: the runtime's accessibility tree exposes no focused
+  // flag, so a field is the tightest bound available.
+  const caretExempt = (alreadyUnstable || localized)
+    && isCaretConfined(changedCells, step, options.editableRegions);
+
   return {
-    status: unstable ? 'unstable' : 'stable',
+    status: (alreadyUnstable || localized) && !caretExempt ? 'unstable' : 'stable',
     changedRatio,
     busiestTileRatio: busiestTile,
-    localizedMotion: localized,
+    localizedMotion: localized && !caretExempt,
+    ...(caretExempt ? { caretExempt: true } : {}),
     sampled
   };
+}
+
+/**
+ * Reports whether every change sits in a caret-width sliver inside one text field.
+ *
+ * @param {number[]} cells Packed changed-cell coordinates, x then y.
+ * @param {number} step Lattice step in pixels.
+ * @param {{x:number,y:number,width:number,height:number}[]} [regions] Editable field frames, in pixels.
+ * @returns {boolean} Whether the motion is caret-shaped and field-confined.
+ */
+function isCaretConfined(cells, step, regions) {
+  if (!Array.isArray(regions) || regions.length === 0 || cells.length === 0) return false;
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (let i = 0; i < cells.length; i += 2) {
+    const x = cells[i] * step;
+    const y = cells[i + 1] * step;
+    const inside = regions.some((region) => (
+      x >= region.x && x < region.x + region.width && y >= region.y && y < region.y + region.height
+    ));
+    // One changed sample outside every field disqualifies the whole capture.
+    if (!inside) return false;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+
+  // A caret is a narrow vertical bar. A field whose whole content repaints is
+  // not a caret, and must not borrow the exemption.
+  const widest = Math.max(...regions.map((region) => region.width));
+  return (maxX - minX + step) <= Math.max(caretMaxWidthPx, widest / 8);
+}
+
+/**
+ * Reports whether any fixed window holds enough changed samples.
+ *
+ * Monotonic by construction: every changed cell can only add to the windows it
+ * falls in, so a superset of an unstable change set can never become stable.
+ *
+ * @param {Int32Array|number[]} cells Packed changed-cell coordinates, x then y.
+ * @returns {boolean} Whether localized motion was found.
+ */
+function hasLocalizedMotion(cells) {
+  const count = cells.length / 2;
+  if (count < minLocalizedChanges) return false;
+
+  // Numeric keys, not strings: a full-frame diff would otherwise materialize
+  // hundreds of thousands of string keys purely to be discarded.
+  const occupied = new Set();
+  for (let i = 0; i < cells.length; i += 2) occupied.add(cells[i] * cellKeyStride + cells[i + 1]);
+
+  for (let i = 0; i < cells.length; i += 2) {
+    const cx = cells[i];
+    const cy = cells[i + 1];
+    let neighbours = 0;
+    for (let dx = -localizedWindowRadius; dx <= localizedWindowRadius; dx += 1) {
+      for (let dy = -localizedWindowRadius; dy <= localizedWindowRadius; dy += 1) {
+        if (occupied.has((cx + dx) * cellKeyStride + (cy + dy))) {
+          neighbours += 1;
+          if (neighbours >= minLocalizedChanges) return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -205,49 +295,6 @@ export function describeStability(verdict, delayMs) {
     ? `one region changed ${((verdict.busiestTileRatio ?? 0) * 100).toFixed(0)}%`
     : 'a small area kept changing';
   return `Screen was still moving in one place across ${delayMs}ms: ${where} while the screen overall barely moved (${percent}%). That is the signature of a spinner or loading state. Findings from this bundle may reflect a mid-animation frame.`;
-}
-
-/**
- * Groups changed lattice cells into connected clusters.
- *
- * Flood fill over the sample lattice, joining cells within `clusterGap` so a
- * dashed arc or a spoke with gaps stays one shape instead of fragmenting into
- * pieces too small to qualify.
- *
- * @param {Array<[number, number]>} cells Changed cell coordinates.
- * @returns {{count:number, minX:number, maxX:number, minY:number, maxY:number}[]} Clusters.
- */
-function clustersOf(cells) {
-  const remaining = new Map(cells.map(([x, y]) => [`${x},${y}`, [x, y]]));
-  const clusters = [];
-
-  while (remaining.size > 0) {
-    const [firstKey, firstCell] = remaining.entries().next().value;
-    remaining.delete(firstKey);
-    const cluster = { count: 0, minX: firstCell[0], maxX: firstCell[0], minY: firstCell[1], maxY: firstCell[1] };
-    const queue = [firstCell];
-
-    while (queue.length > 0) {
-      const [x, y] = queue.pop();
-      cluster.count += 1;
-      if (x < cluster.minX) cluster.minX = x;
-      if (x > cluster.maxX) cluster.maxX = x;
-      if (y < cluster.minY) cluster.minY = y;
-      if (y > cluster.maxY) cluster.maxY = y;
-
-      for (let dx = -clusterGap; dx <= clusterGap; dx += 1) {
-        for (let dy = -clusterGap; dy <= clusterGap; dy += 1) {
-          const key = `${x + dx},${y + dy}`;
-          const neighbour = remaining.get(key);
-          if (!neighbour) continue;
-          remaining.delete(key);
-          queue.push(neighbour);
-        }
-      }
-    }
-    clusters.push(cluster);
-  }
-  return clusters;
 }
 
 /**
