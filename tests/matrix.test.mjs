@@ -366,3 +366,19 @@ test('an unstable capture is still critiqued, just not counted as proven', async
   assert.equal(report.summary.captured, 0);
   assert.equal(report.ok, false, 'an unproven run must not report success');
 });
+
+test('a run with no runtime is a scaffold, not a failed proof', async () => {
+  // CI runs `matrix --profile ...` on a machine with no simulator. Every cell
+  // short-circuits before capture, which is an environment gap the matrix is
+  // designed to report — not evidence that failed to prove itself. Treating
+  // those as unproven made the command exit non-zero everywhere without a
+  // simulator.
+  const root = createWorkspace();
+  // No config written on purpose.
+  const report = await collectMatrix({ root });
+
+  assert.equal(report.summary.captured, 0);
+  assert.ok(report.summary.unavailable > 0, 'cells should report the gap');
+  assert.equal(report.ok, true, 'a scaffold run must still exit successfully');
+  assert.ok(report.cells.every((cell) => cell.reason), 'every gap cell states its reason');
+});
