@@ -252,6 +252,12 @@ function buildAgentPacket(options) {
     screenshot: options.context.artifacts.screenshot.displayPath,
     accessibilitySummary: summarizeAccessibility(options.context),
     deterministicSummary: options.critiqueResult.summary,
+    // An agent asked to judge a screenshot has to know whether that screenshot
+    // can be trusted. Matrix now runs design review on captured-but-unproven
+    // cells so their findings are not lost, which makes shipping the capture
+    // state alongside the image mandatory rather than nice to have.
+    captureStatus: options.context.manifest.capture?.status || 'unknown',
+    captureStability: options.context.manifest.capture?.stability?.status || 'not-measured',
     matrixCell: options.context.manifest.matrixCell || null,
     questions: [
       'Does the visual hierarchy match the project profile and captured screen goal?',
@@ -378,7 +384,12 @@ function summarizeProfile(profile) {
  * @returns {string} Prompt Markdown.
  */
 function renderAgentPrompt(packet) {
-  return `# Screenslop Design Review Packet\n\nBundle: ${packet.bundle}\n\nProfile status: ${packet.profileStatus}\n\nUse the packet JSON next to this prompt. Answer the review questions and walk each persona in personas[] against the screenshot and AX summary. Return only findings that fit the output schema. Keep subjective design judgment out of the deterministic verified-fixed lane.\n`;
+  // Say it in the prompt, not just the JSON. A reviewer reading the screenshot
+  // needs the capture caveat where they will actually see it.
+  const caveat = packet.captureStatus === 'complete' && packet.captureStability === 'stable'
+    ? ''
+    : `\n\n> Caution: this capture is \`${packet.captureStatus}\` with stability \`${packet.captureStability}\`. The screenshot may show a frame the screen was still moving through, so treat layout and colour judgments from it as provisional.`;
+  return `# Screenslop Design Review Packet\n\nBundle: ${packet.bundle}\n\nProfile status: ${packet.profileStatus}${caveat}\n\nUse the packet JSON next to this prompt. Answer the review questions and walk each persona in personas[] against the screenshot and AX summary. Return only findings that fit the output schema. Keep subjective design judgment out of the deterministic verified-fixed lane.\n`;
 }
 
 /**

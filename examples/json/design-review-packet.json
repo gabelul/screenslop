@@ -17,12 +17,23 @@
   "screenshot": "artifacts/example-settings/screenshot.jpg",
   "accessibilitySummary": {
     "visibleControls": 4,
-    "labels": ["Settings", "Save", "Cancel"]
+    "labels": [
+      "Settings",
+      "Save",
+      "Cancel"
+    ]
   },
   "deterministicSummary": {
     "total": 0,
-    "bySeverity": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 }
+    "bySeverity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    }
   },
+  "captureStatus": "complete",
+  "captureStability": "stable",
   "matrixCell": null,
   "questions": [
     "Does the hierarchy match the project profile?",
@@ -72,7 +83,15 @@
   ],
   "findings": [],
   "outputSchema": {
-    "findingKind": ["design", "product-logic", "profile-gap"],
-    "proofLevel": ["runtime-informed", "profile-informed", "agent-judgment"]
+    "findingKind": [
+      "design",
+      "product-logic",
+      "profile-gap"
+    ],
+    "proofLevel": [
+      "runtime-informed",
+      "profile-informed",
+      "agent-judgment"
+    ]
   }
 }

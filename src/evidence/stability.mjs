@@ -60,7 +60,7 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // failed the same way one level down — a sparse diagonal of changes bridged
 // everything into one screen-sized component. Both asked "is this region
 // compact", and compactness *falls* as samples are added, so adding motion
-// could remove detection. A window count only ever rises, which buys the
+// could remove detection. A neighbour count only ever rises, which buys the
 // invariant those designs lacked: if a set of changes is unstable, every
 // superset of it stays unstable.
 //
@@ -73,7 +73,7 @@ const tileOffsets = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]];
 // Two is the floor. Three missed slower rotations, and the floor can go this
 // low because the noise level is genuinely zero: three real captures of a live
 // simulator, four to six seconds apart, each reported changedRatio 0. One
-// stray sample could be a codec artifact; two inside one small window is a
+// stray sample could be a codec artifact; two within one small radius is a
 // shape. Swept across scales, start angles and lattice phases, every rotation
 // of 22.5 degrees or more is caught. A 10 degree step — a spinner turning at
 // 40 degrees per second, far slower than the ~360 a real indicator runs at —
@@ -184,7 +184,7 @@ export function compareFrames(first, second, options = {}) {
   }
 
   // Short-circuit: once the global or tile rule has proved instability there is
-  // nothing left to learn, and the window scan is the expensive part. Skipping
+  // nothing left to learn, and the neighbour scan is the expensive part. Skipping
   // it keeps full-frame motion — where `changedCells` is largest — cheap.
   const alreadyUnstable = changedRatio > unstableChangedRatio || busiestTile > unstableTileRatio;
   const localized = alreadyUnstable ? false : hasLocalizedMotion(changedCells);

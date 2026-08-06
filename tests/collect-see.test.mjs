@@ -20,6 +20,8 @@ test('collectSee records a stable verdict when the screen holds still', async ()
   assert.equal(result.capture.stability.status, 'stable');
   assert.equal(result.capture.stability.changedRatio, 0);
   assert.equal(result.capture.steps.some((step) => step.name === 'stability' && step.ok), true);
+  assert.equal(result.ok, true);
+  assert.equal(result.capture.status, 'complete');
 });
 
 test('collectSee flags a bundle captured while the screen was still moving', async () => {
@@ -49,6 +51,10 @@ test('collectSee flags a bundle captured while the screen was still moving', asy
 
   assert.equal(result.capture.stability.status, 'unstable');
   assert.equal(result.capture.stability.changedRatio, 1);
+  // The load-bearing part: a capture that cannot be trusted must not report
+  // success, or a matrix cell, an agent, or CI carries on with it.
+  assert.equal(result.ok, false, 'an unproven capture must not report success');
+  assert.equal(result.capture.status, 'partial');
   const step = result.capture.steps.find((entry) => entry.name === 'stability');
   assert.equal(step.ok, false);
   assert.match(step.message, /still moving/);
