@@ -318,3 +318,51 @@ function writeConfig(root, overrides = {}) {
     ...overrides
   }, null, 2)}\n`);
 }
+
+test('an unstable capture is still critiqued, just not counted as proven', async () => {
+  // `see.ok` means "usable as proof". Gating critique on it made a cell with a
+  // spinner produce no findings at all — losing the very report that would have
+  // named the unstable capture.
+  const root = createWorkspace();
+  writeConfig(root);
+  let critiqued = 0;
+
+  const report = await collectMatrix({
+    root,
+    includeCritique: true,
+    commandRunner: () => ({
+      status: 0,
+      stdout: JSON.stringify({
+        schema: 'xcodebuildmcp.output.build-run-result',
+        schemaVersion: '1',
+        didError: false,
+        data: { artifacts: { simulatorId: 'SIM-UDID-1' } }
+      }),
+      stderr: ''
+    }),
+    collectSeeFn: async () => {
+      const dir = path.join('artifacts', `fake-unstable-${critiqued}`);
+      const absolute = path.join(root, dir);
+      fs.mkdirSync(absolute, { recursive: true });
+      fs.writeFileSync(path.join(absolute, 'evidence.json'), '{}');
+      return {
+        // Artifacts captured, but the screen was moving: not proof.
+        ok: false,
+        dir,
+        device: { name: 'iPhone Test', udid: 'SIM-UDID-1' },
+        evidence: path.join(dir, 'evidence.json'),
+        artifacts: { screenshot: path.join(dir, 'screenshot.jpg'), accessibilityTree: path.join(dir, 'accessibility.json') }
+      };
+    },
+    collectCritiqueFn: async ({ bundlePath }) => {
+      critiqued += 1;
+      return { ok: true, summary: { total: 1 }, artifacts: { findingsPath: path.join(bundlePath, 'findings.json') } };
+    }
+  });
+
+  assert.equal(critiqued, 6, 'every captured cell should still be critiqued');
+  assert.equal(report.cells[0].status, 'unavailable', 'captured but unproven, not failed');
+  assert.equal(report.cells[0].critique.findings, 1);
+  assert.equal(report.summary.captured, 0);
+  assert.equal(report.ok, false, 'an unproven run must not report success');
+});

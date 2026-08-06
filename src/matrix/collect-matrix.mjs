@@ -244,9 +244,19 @@ async function runMatrixCell(options) {
     // not an omission — but an unproven target must not land in the captured
     // tally or the successful exit path.
     const targetIdentity = build.resolvedUdid && see.device?.udid ? 'verified' : 'unverified';
-    const status = !see.ok ? 'failed' : (targetIdentity === 'verified' ? 'captured' : 'unavailable');
+    // Two different questions, and conflating them loses information. `see.ok`
+    // now means "this bundle is usable as proof", which is right for exit
+    // codes — but gating critique on it meant a cell with a spinner produced no
+    // findings at all, when critique is exactly what would have reported the
+    // unstable capture. A cell fails only when there are no artifacts to read;
+    // artifacts that exist but cannot be trusted are `unavailable` and still
+    // get critiqued.
+    const hasArtifacts = Boolean(see.artifacts?.screenshot || see.artifacts?.accessibilityTree);
+    const status = !hasArtifacts
+      ? 'failed'
+      : (see.ok && targetIdentity === 'verified' ? 'captured' : 'unavailable');
     const shouldCritique = options.includeCritique || options.includeDesign;
-    let critique = see.ok && shouldCritique
+    let critique = hasArtifacts && shouldCritique
       ? await options.collectCritiqueFn({ root, bundlePath: see.dir })
       : null;
     if (critique && options.includeDesign) {
@@ -285,7 +295,7 @@ async function runMatrixCell(options) {
           designPromptPath: critique.artifacts?.designPromptPath || null
         }
       } : null,
-      error: see.ok ? null : 'capture-failed'
+      error: hasArtifacts ? null : 'capture-failed'
     };
   } catch (error) {
     return writeUnavailableCell({ root, cell, reason: 'capture-error', message: error.message, status: 'failed', artifactsDir, includeDesign: options.includeDesign });
