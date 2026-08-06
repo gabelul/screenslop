@@ -111,3 +111,16 @@ Before shipping design-aware work:
 - Confirm `screenslop learn --json --dry-run`, `--write --yes`, `--check`, and `--refresh --dry-run` pass in a temp project.
 - Confirm `critique --design --agent-packet` and `--import-design-findings` write parseable artifacts without changing measured proof semantics.
 - Confirm design verification statuses stay out of `verified-fixed`: `improved`, `unchanged`, `regressed`, and `needs-human-review`.
+
+## Behaviour-change checks
+
+Screenslop is 0.x, so behaviour can change without a major bump. Anything that
+alters an exit code, a status value, or a proof label has to be written down
+before it ships — a caller reading `verified-fixed` or an exit code should never
+learn about a change by hitting it.
+
+- If a command's exit code changes for any input, add it to `docs/upgrading.md`.
+- If a status or proof label changes meaning (`capture.status`, `targetIdentity`,
+  verification statuses), say what old bundles now report and whether recapturing
+  restores the previous result.
+- Confirm the release PR body links `docs/upgrading.md` when that file changed.
