@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.2.0](https://github.com/gabelul/screenslop/compare/v0.1.10...v0.2.0) (2026-08-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* `see` exits non-zero when capture stability cannot be proven, and records `capture.status: partial` rather than reporting a clean capture. `verify` returns `needs-human-review` instead of `verified-fixed` when the fresh capture was unstable, when the stability probe failed, or when the bundle predates stability checks entirely — so bundles captured with 0.1.10 or earlier no longer verify as fixed until recaptured. `matrix` exits non-zero when any cell failed or could not tie its capture to the simulator it built, and those cells are excluded from `summary.captured` while still being captured and critiqued. See docs/upgrading.md.
+
+### Features
+
+* flag evidence bundles captured while the screen was still moving ([5bf1547](https://github.com/gabelul/screenslop/commit/5bf1547d4c551c7d24340e2ecf5b649733097015))
+* honor config defaultDevice when picking the capture simulator ([9d96987](https://github.com/gabelul/screenslop/commit/9d96987e8f098924b866fc73a3b509628a03b132))
+* name the token behind a failing contrast finding ([7b99b0c](https://github.com/gabelul/screenslop/commit/7b99b0cb6939a41d5fb8e80a6838189ec505ed1b))
+
+
+### Bug Fixes
+
+* attribute derived token variants instead of calling them unknown drift ([68f1b85](https://github.com/gabelul/screenslop/commit/68f1b85d52fda15c70e8b37571791a6cb9619bb0))
+* bound the caret exemption to a focused field and close the truncation hole ([4cc3a39](https://github.com/gabelul/screenslop/commit/4cc3a392d5fd89849466876b352d8354189095d5))
+* capture at full JPEG quality and read PNG screenshots ([f0a14cf](https://github.com/gabelul/screenslop/commit/f0a14cfc05dc17842830667496543dfc6ebf883e))
+* catch turning spinners, cluster motion independently, prove matrix targets ([92bc4c6](https://github.com/gabelul/screenslop/commit/92bc4c600d1213af3ad0b825430b1e7b4967b4d1))
+* close the review findings on capture stability, attribution, and devices ([914326b](https://github.com/gabelul/screenslop/commit/914326b48a7b004cc4d70647f0f61efaeaf99dbf))
+* close the second review round on proof gating, tiles, and blend ambiguity ([cc955b1](https://github.com/gabelul/screenslop/commit/cc955b13c3a23bf9e4bc7f2c461e610334cf441a))
+* detect sparse motion, drop the neutral blend exemption, flag matrix identity ([72ca660](https://github.com/gabelul/screenslop/commit/72ca660285c7ce17433a156e3798ac1b8eeae1c8))
+* disclose capture state in the design packet and pin the see.ok contract ([0556fe2](https://github.com/gabelul/screenslop/commit/0556fe230cd44ecc0659fab20a02e40236d1cc8c))
+* fail closed on build envelopes and conflicting background references ([d4a7ec2](https://github.com/gabelul/screenslop/commit/d4a7ec27ba2ef6e7ecc706e663c89a020f9b7767))
+* grade contrast confidence by threshold margin, not text size alone ([1a2b1dd](https://github.com/gabelul/screenslop/commit/1a2b1ddb35a949a1ae24987c7fcc686fa91a5b14))
+* keep a runtime-less matrix run a scaffold, not a failed proof ([ee5c2d0](https://github.com/gabelul/screenslop/commit/ee5c2d0d4763070ef78b42b5d5d3d09040a8feda))
+* keep critiquing captures that are unproven but not empty ([93d95d0](https://github.com/gabelul/screenslop/commit/93d95d0fdb02773dcc9d60e5e1c795b25c630593))
+* make localized motion monotonic, catch slow rotation, exempt caret by field ([fbadf02](https://github.com/gabelul/screenslop/commit/fbadf02073673904c32287d1747ae79d4cf61940))
+* propagate unproven captures to command success and test what the guards claim ([af75103](https://github.com/gabelul/screenslop/commit/af7510362f731147ee2f6c0fd11c76d6e060ed5b))
+* stop --help from running the command it asks about ([033dd42](https://github.com/gabelul/screenslop/commit/033dd424396b0f89fc260b961b28e8ab85832305))
+
+
+### Maintenance
+
+* mark the capture-proof changes as breaking ([8b5476f](https://github.com/gabelul/screenslop/commit/8b5476f9603773f98e95c67476ce544353146616))
+
 ## [0.1.10](https://github.com/gabelul/screenslop/compare/v0.1.9...v0.1.10) (2026-07-31)
 
 
