@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/gabelul/screenslop/compare/v0.2.0...v0.3.0) (2026-08-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* see exits non-zero when the captured app is not the configured one, verify withholds verified-fixed across mismatched app or screen, and contrast findings change because the ratio is measured from the recovered glyph color rather than blended cluster averages.
+
+### Bug Fixes
+
+* measure contrast from the glyph color, not blended cluster means ([bb0cce8](https://github.com/gabelul/screenslop/commit/bb0cce8f1c84ad3ee89a4cee8e78f7efaabba49a))
+* prove the captured app is the configured one ([b3c4f35](https://github.com/gabelul/screenslop/commit/b3c4f35692d1e28139765aa6727485c4728488bd))
+* refuse to verify a fix across two different screens ([05454f5](https://github.com/gabelul/screenslop/commit/05454f5302cc2c926848fe1301fceb17f56779f4))
+
+
+### Maintenance
+
+* mark the capture-subject checks as breaking ([dc87a8f](https://github.com/gabelul/screenslop/commit/dc87a8fc4cdacfd3bc4c4284d81397ad14a7b6d2))
+
 ## [0.2.0](https://github.com/gabelul/screenslop/compare/v0.1.10...v0.2.0) (2026-08-06)
 
 
