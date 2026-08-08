@@ -205,6 +205,14 @@ A capture whose stability is not proven does not report success. `capture.status
 
 Only a measured `stable` is a passing stability step. `unknown` means the probe itself failed and carries a `reason`; it is reported as a failed step rather than a quiet success, because an unproven capture that looks proven is the failure mode this whole check exists to prevent.
 
+`see` also checks *which app* it photographed. Device selection answers which simulator; nothing answered which app, so pointing `see` at a simulator where the app was not installed captured the iOS home screen and reported a complete, stable capture. The accessibility root carries the frontmost app's display name — empty on the springboard — and it is compared against the name resolved from `defaultBundleId` via `simctl listapps`. The verdict lands in `capture.foreground`.
+
+- **match** — the configured app was on screen.
+- **mismatch** — a different app, no app at all, or the configured app is not installed on this simulator. The capture becomes `partial` and `see` exits non-zero. An app absent from a listing that succeeded is decisive: it cannot be the app in the screenshot.
+- **unverified** — no `defaultBundleId`, or `xcrun` could not answer. Recorded, never failed; rejecting a capture over a missing config field would punish the wrong thing.
+
+Unverified captures still record the app they saw, so a bundle can always answer the question later. The screen's own heading is recorded beside the `--surface` label as `screenTitle`, because the surface name is an operator claim that nothing validates — an app resumed on a different tab yields a bundle named `home` showing something else.
+
 Device targeting, highest precedence first:
 
 1. `--udid <udid>` — exact simulator UDID.
@@ -241,6 +249,8 @@ Design review attributes screen accents to learned tokens in OKLCh, not RGB. App
 When a design profile exists, `color.contrast` also names the token its sampled color came from — "this is your `Theme.warning` token rendered 22 OKLCh lightness points lighter" instead of just "sampled #E8C478". That is additive context only: it never creates a finding, changes a severity, moves a confidence, or alters a fingerprint, because the failing ratio is measured from the capture while the token name comes from a profile that may be stale. With no profile, or a color that cannot be traced, findings read exactly as they did before.
 
 Which cluster is the text is decided from a ring sampled just *outside* the label frame, not from cluster size. Deciding by size silently reversed foreground and background for light-on-dark text and confidently named the background token; sampling the frame's own perimeter fixes the common case but still inverts on a tight frame whose glyphs reach the edge. A ring outside the frame cannot contain the label's glyphs at all. Frames flush against the image edge fall back to the inner perimeter, and when neither can separate the two clusters the ratio is still reported and attribution is omitted rather than guessed.
+
+The reported ratio is measured from the recovered glyph color against that attributed background — not from the average of the text cluster. Most glyph samples land on anti-aliased edges, so the cluster average sits blended toward the background and understates the ratio, inventing failures for text that passes. Cluster averages are used only to decide whether the box holds an edge at all. When the glyph color cannot be attributed, the average is all that remains; the finding then says the ratio is a floor, since blending only ever moves the pair closer together and so can prove a pass but never a failure.
 
 Attribution also refuses to name a token when a *different* token, drawn at partial opacity over the measured background, explains the sample equally well — checked in linear light, and applied to exact matches too, since landing on a token is not proof it was the token used. Neutrals get no exemption: `.opacity(0.6)` on a label color is ordinary SwiftUI, so "black at 60% over white" is a real alternative explanation for a gray, and gray text with both a muted token and a black token in the palette reports both candidates rather than picking one. That is deliberately noisier than naming a winner, because the alternative is being confidently wrong about the most common text on screen.
 
@@ -307,6 +317,10 @@ Verification gates on the fresh bundle's capture stability, because a finding ca
 - Stability **not measured or unknown** — a bundle captured before this check existed, or a probe that failed. Also `needs-human-review`. Keeping old bundles readable is not the same as granting them proof they never established, and a status that contradicts its own explanation is worse than an honest downgrade.
 
 A `still-present` finding keeps its status on an unstable capture but drops to `medium` confidence: motion can invent a finding too — a label caught mid-fade measures a contrast it never has at rest — so the match may itself be an artifact. The normalized verdict is echoed on the result as `freshStability`.
+
+Verification also checks that the two bundles are evidence about the same thing. Findings are matched by fingerprint across whatever pair of bundles is named, so a finding can "disappear" simply because its node path stopped existing on a different screen — which reads as `verified-fixed` with full confidence. The captured app and the screen's own heading are compared, and a disagreement downgrades `verified-fixed` to `needs-human-review` and `still-present` from high to `medium`, on the same reasoning as the stability gate: a finding that vanished because a different screen was captured was never looked at.
+
+Only observed values gate. The `--surface` label is recorded but never compared — it is the operator's word for the screen, so a rename would withdraw proof while the case this exists for (two bundles both labelled `home`, showing different screens) would slip through. A value that was never recorded never counts as a disagreement, so bundles predating this still verify. The verdict is echoed as `subject`.
 
 MVP usage:
 

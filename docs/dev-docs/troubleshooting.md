@@ -5,7 +5,7 @@ feels familiar. This is not a changelog — it records what actually happened,
 including the embarrassing parts, because the embarrassing parts are the useful
 ones.
 
-## Contrast findings that are simply wrong (fixed in 0.2.1)
+## Contrast findings that are simply wrong (fixed after 0.2.0)
 
 **Symptom.** `critique` reports text as failing WCAG at a ratio a contrast
 checker disagrees with. Small secondary labels are the worst affected. The
@@ -39,7 +39,7 @@ docstring explains a bias, check that something actually corrects it rather than
 just apologising for it — the tiny-text caveat and the widened confidence bands
 were compensation machinery built on top of a fixable bug.
 
-## `see` captures the iOS home screen and reports success (fixed in 0.2.1)
+## `see` captures the iOS home screen and reports success (fixed after 0.2.0)
 
 **Symptom.** A clean evidence bundle — `capture.status: complete`, stability
 `stable`, exit 0 — containing a screenshot of the springboard. `critique` then
@@ -63,7 +63,7 @@ the springboard bundle through in the first draft of the fix.
 **Lesson.** Three claims travel with every bundle — which device, which app,
 which screen. Fixing the first one does not touch the other two.
 
-## `verify` proves a fix against a different screen (fixed in 0.2.1)
+## `verify` proves a fix against a different screen (fixed after 0.2.0)
 
 **Symptom.** `verified-fixed` on a finding nobody fixed.
 
@@ -106,3 +106,20 @@ environment gaps rather than proof failures.
 
 **Lesson.** Run the `run:` lines from `ci.yml` verbatim. A paraphrased mirror is
 not a mirror.
+
+## Open: matrix cells and the foreground gate
+
+**Not a bug — an untested interaction.** Matrix cells capture through
+`collectSee`, so they now go through the frontmost-app check. Matrix builds
+*and* launches the target before capturing, so cells should pass — but no real
+matrix cell has been run through the gate, because both CI invocations exit
+early on environment gaps (no simulator, no config) and never reach a capture.
+
+If matrix cells start failing with `foreground-app`, the likely cause is the app
+not being frontmost yet when the capture fires, and the fix is a settle-and-retry
+after launch rather than loosening the gate.
+
+**Known limit:** `screenTitle` takes the first heading-like label on screen. On a
+screen whose first heading is the app's own name, two different screens can share
+a title, so the subject gate can't tell them apart. It fails toward allowing the
+comparison, which is the safe direction.
