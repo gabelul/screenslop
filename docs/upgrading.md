@@ -4,7 +4,61 @@ Behaviour changes worth knowing about before you upgrade. Screenslop is 0.x, so
 these land without a major bump — but they change what commands return, which
 matters if anything automated reads them.
 
-## 0.1.10 → next
+## 0.2.0 → next
+
+Three changes, all from pointing 0.2.0 at a real SwiftUI app for the first time.
+Each one was invisible to the test suite and obvious within twenty minutes of a
+real capture.
+
+### Contrast findings you had before may have been wrong
+
+The reported contrast ratio was computed from the mean of each pixel cluster.
+Most glyph samples land on anti-aliased edges, so the text mean sat blended
+toward the background and the ratio came out low — inventing failures for text
+that passes.
+
+Two labels in a real app measured 4.1:1 and 4.2:1 and were flagged P2. Their
+recorded colors against the sampled background are 5.24:1 and 7.01:1.
+
+The bias only ever ran one way, so **no real failure was ever missed** — but
+expect fewer findings, and expect some previously "failing" text to stop being
+reported. The damage was downstream: `verify` re-measured with the same skew, so
+a genuinely fixed color could still report `still-present`.
+
+Findings where the glyph color could not be attributed now say the ratio is a
+floor rather than presenting a blended average as a measurement.
+
+### `see` fails when the app on screen isn't the configured one
+
+`see` captured whatever the simulator was showing. Pointed at a simulator where
+the app wasn't installed, it captured the iOS home screen and reported a
+complete, stable capture.
+
+Captures now compare the accessibility root's app name against the name resolved
+from `defaultBundleId`, and exit non-zero on a mismatch.
+
+- The configured app **not installed** on the target simulator is a mismatch.
+- No `defaultBundleId`, or no `xcrun`, is `unverified` — recorded, not failed.
+- Every bundle now records the app it saw, even when it can't be checked.
+
+**If you script `see`:** a project with `defaultBundleId` set and the app not
+running will now fail where it used to pass. Launch the app first.
+
+### `verify` won't prove a fix across two different screens
+
+`verify` matched findings by fingerprint across any two bundles, with no check
+they showed the same app or screen. `--surface` is an unvalidated label, so an
+app resumed on a different tab produced a bundle named `home` showing something
+else — and a finding that "disappeared" returned `verified-fixed`.
+
+Captures record the screen's own heading. When the observed app or heading
+differs between baseline and fresh, `verified-fixed` becomes
+`needs-human-review` and `still-present` drops from high to medium confidence.
+
+Bundles predating this carry no heading, and an unrecorded value never counts as
+a disagreement — older baselines still verify as before.
+
+## 0.1.10 → 0.2.0
 
 Four changes can alter an exit code or a status you were already relying on. All
 four make Screenslop claim *less* than it used to, which is the point: the old

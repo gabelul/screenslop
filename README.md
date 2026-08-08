@@ -281,6 +281,7 @@ Read more in [docs/repo-strategy.md](docs/repo-strategy.md).
 - [Repo strategy](docs/repo-strategy.md)
 - [Known limitations](docs/known-limitations.md)
 - [Upgrading](docs/upgrading.md)
+- [Troubleshooting](docs/dev-docs/troubleshooting.md)
 - [Release checklist](docs/release-checklist.md)
 - [Changelog](CHANGELOG.md)
 
