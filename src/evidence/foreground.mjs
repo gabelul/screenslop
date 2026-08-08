@@ -37,6 +37,43 @@ export function readFrontmostApp(accessibilityPath) {
 }
 
 /**
+ * Reads the screen's own heading out of a captured accessibility tree.
+ *
+ * `--surface` is a label the operator types; nothing checks it. An app resumed
+ * on whatever tab it was last on will happily produce a bundle named "home"
+ * showing a different screen, and `verify` will then match findings across two
+ * screens that have nothing to do with each other. This records what the screen
+ * actually called itself, so the claim can be checked against something.
+ *
+ * @param {string} accessibilityPath Path to a captured accessibility.json.
+ * @returns {string|null} First heading-like label, or null when absent.
+ */
+export function readScreenTitle(accessibilityPath) {
+  try {
+    const tree = JSON.parse(fs.readFileSync(accessibilityPath, 'utf8'));
+    const headingRole = /statictext|heading/i;
+    const walk = (node) => {
+      if (!node || typeof node !== 'object') return null;
+      const label = typeof node.label === 'string' ? node.label.trim() : '';
+      if (label && headingRole.test(String(node.role || ''))) return label;
+      for (const child of node.children || []) {
+        const found = walk(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    // Children only: the root is the app, which readFrontmostApp already covers.
+    for (const child of tree?.children || []) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Looks up an installed app's display name from its bundle id.
  *
  * The accessibility tree reports a display name, config records a bundle id, and

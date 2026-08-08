@@ -81,7 +81,9 @@
             "status": { "enum": ["match", "mismatch", "unverified"] },
             "observed": { "type": ["string", "null"] },
             "expected": { "type": ["string", "null"] },
-            "message": { "type": ["string", "null"] }
+            "message": { "type": ["string", "null"] },
+            "screenTitle": { "type": ["string", "null"] },
+            "declaredSurface": { "type": ["string", "null"] }
           }
         }
       }

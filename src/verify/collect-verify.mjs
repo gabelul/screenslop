@@ -2,6 +2,7 @@ import { displayPath } from '../critique/load-evidence.mjs';
 import { loadVerifyInput } from './load-verify-input.mjs';
 import { matchFindings, summarizeVerification } from './match-findings.mjs';
 import { applyStabilityGate, readStability } from './stability-gate.mjs';
+import { applySubjectGate, compareSubjects, readSubject } from './subject-gate.mjs';
 import { writeVerificationArtifacts } from './verification-report.mjs';
 
 /**
@@ -27,7 +28,10 @@ export async function collectVerify(options) {
   // A finding can vanish because the fresh capture caught an animation. Gate the
   // verified-fixed track on whether that capture was proven still.
   const freshStability = readStability(input.fresh.manifest);
-  const items = applyStabilityGate(matched, freshStability);
+  // A fix cannot be proven on a capture of a different app or screen, any more
+  // than it can on a capture taken mid-animation.
+  const subject = compareSubjects(readSubject(input.baseline.manifest), readSubject(input.fresh.manifest));
+  const items = applySubjectGate(applyStabilityGate(matched, freshStability), subject);
   const summary = summarizeVerification(items);
   const result = {
     ok: true,
@@ -41,6 +45,7 @@ export async function collectVerify(options) {
     freshHasDesignReview: input.freshHasDesignReview,
     fixSessionPath: input.fixSessionPath,
     freshStability,
+    subject,
     summary,
     items,
     artifacts: null

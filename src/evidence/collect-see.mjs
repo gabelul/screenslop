@@ -7,7 +7,7 @@ import { detectRuntimes } from '../runtime/detect.mjs';
 import { loadScreenshotPixels } from '../critique/pixels.mjs';
 import { isBooted, resolveCaptureDevice } from '../runtime/device-selection.mjs';
 import { compareFrames, describeStability, frameBytesMatch } from './stability.mjs';
-import { checkForeground, readFrontmostApp, resolveExpectedApp } from './foreground.mjs';
+import { checkForeground, readFrontmostApp, readScreenTitle, resolveExpectedApp } from './foreground.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 
 // Roles the platform uses for editable text. A caret only blinks inside one.
@@ -197,6 +197,11 @@ async function captureWithBaguette({ root, bundle, options }) {
       observed: readFrontmostApp(accessibilityPath),
       expected: resolve(device.udid, options.configuredBundleId || null)
     });
+    // What the screen called itself, beside what the operator called it. No
+    // verdict here — there is no ground truth mapping a surface name to a
+    // heading — but a bundle that records both can be checked later.
+    foreground.declaredSurface = options.surface || null;
+    foreground.screenTitle = readScreenTitle(accessibilityPath);
     steps.push({
       // 'unverified' is not a failure: with no configured bundle id there is
       // nothing to compare against, and inventing a verdict from that would
