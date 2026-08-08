@@ -73,6 +73,16 @@
             "delayMs": { "type": "number" },
             "reason": { "type": ["string", "null"] }
           }
+        },
+        "foreground": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["match", "mismatch", "unverified"] },
+            "observed": { "type": ["string", "null"] },
+            "expected": { "type": ["string", "null"] },
+            "message": { "type": ["string", "null"] }
+          }
         }
       }
     },

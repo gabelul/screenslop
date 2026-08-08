@@ -249,6 +249,96 @@ function writeConfig(root, overrides = {}) {
   }, null, 2)}\n`);
 }
 
+/**
+ * Fake driver that writes an accessibility tree for a named frontmost app.
+ * @param {string} label Root AXApplication label ('' for the home screen).
+ * @returns {Function} Driver factory.
+ */
+function driverShowing(label) {
+  return () => {
+    const driver = new FakeBaguetteDriver();
+    driver.accessibilityTree = (_udid, outputPath) => {
+      fs.writeFileSync(outputPath, JSON.stringify({ role: 'AXApplication', label }));
+      return { ok: true, message: 'accessibility ok' };
+    };
+    return driver;
+  };
+}
+
+test('a capture of the wrong app does not report success', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-wrong-app-'));
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    configuredBundleId: 'com.example.petpacket',
+    resolveExpectedApp: () => ({ status: 'resolved', name: 'PetPacket' }),
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: driverShowing('Settings')
+  });
+
+  assert.equal(result.ok, false, 'evidence about a different app must not report success');
+  assert.equal(result.capture.status, 'partial');
+  assert.equal(result.capture.foreground.status, 'mismatch');
+  assert.equal(result.capture.foreground.observed, 'Settings');
+  const step = result.capture.steps.find((entry) => entry.name === 'foreground-app');
+  assert.equal(step.ok, false);
+});
+
+test('a capture of the home screen does not pass as the app', async () => {
+  // The original defect: pointed at a simulator without the app installed, every
+  // other signal read clean and the bundle claimed to be the configured surface.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-springboard-'));
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    configuredBundleId: 'com.example.petpacket',
+    resolveExpectedApp: () => ({ status: 'resolved', name: 'PetPacket' }),
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: driverShowing('')
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.capture.foreground.status, 'mismatch');
+  assert.equal(result.capture.foreground.observed, null);
+});
+
+test('the configured app on screen captures clean and records what it saw', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-right-app-'));
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    configuredBundleId: 'com.example.petpacket',
+    resolveExpectedApp: () => ({ status: 'resolved', name: 'PetPacket' }),
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: driverShowing('PetPacket')
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.capture.status, 'complete');
+  assert.equal(result.capture.foreground.status, 'match');
+  assert.equal(result.capture.foreground.observed, 'PetPacket');
+});
+
+test('an unconfigured project still records the app it captured', async () => {
+  // No bundle id means no verdict is possible, but the bundle should still say
+  // what it saw — otherwise nothing downstream can ever tell.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'screenslop-see-unverified-'));
+  const result = await collectSee({
+    root,
+    surface: 'Home',
+    stabilityDelayMs: 0,
+    detectRuntimesFn: () => ({ preferred: 'baguette', tools: {} }),
+    createDriver: driverShowing('PetPacket')
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.capture.foreground.status, 'unverified');
+  assert.equal(result.capture.foreground.observed, 'PetPacket');
+});
+
 test('caret exemption only sees exactly one focused editable field', () => {
   // The parser was previously bypassed entirely: stability tests injected
   // regions directly, so dropping the focus requirement would have gone unseen.

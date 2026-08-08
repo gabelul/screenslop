@@ -7,6 +7,7 @@ import { detectRuntimes } from '../runtime/detect.mjs';
 import { loadScreenshotPixels } from '../critique/pixels.mjs';
 import { isBooted, resolveCaptureDevice } from '../runtime/device-selection.mjs';
 import { compareFrames, describeStability, frameBytesMatch } from './stability.mjs';
+import { checkForeground, readFrontmostApp, resolveExpectedApp } from './foreground.mjs';
 import { createEvidenceBundle, writeEvidenceBundle } from './bundle.mjs';
 
 // Roles the platform uses for editable text. A caret only blinks inside one.
@@ -24,6 +25,8 @@ const editableRolePattern = /textfield|securetextfield|textarea|searchfield/i;
  * @param {string|null} [options.device] Exact or partial simulator name.
  * @param {string|null} [options.deviceSet] Custom simulator device set path.
  * @param {string|null} [options.configuredDevice] Overrides config `defaultDevice` (tests).
+ * @param {string|null} [options.configuredBundleId] Overrides config `defaultBundleId` (tests).
+ * @param {Function} [options.resolveExpectedApp] Frontmost-app resolver override (tests).
  * @param {string|null} [options.bundleId] Optional log filter.
  * @param {number} [options.logDurationMs] Log capture duration.
  * @param {string|null} [options.artifactsDir] Explicit artifact directory override.
@@ -38,6 +41,7 @@ export async function collectSee(options = {}) {
   const configTarget = readCaptureTarget(root);
   const artifactsDir = options.artifactsDir || configTarget.artifactsDir || 'artifacts';
   const configuredDevice = options.configuredDevice ?? configTarget.device;
+  const configuredBundleId = options.configuredBundleId ?? configTarget.bundleId;
   const bundle = createEvidenceBundle({
     surface: options.surface,
     driver: detected.preferred,
@@ -67,7 +71,7 @@ export async function collectSee(options = {}) {
     return { ...result, ok: false, artifacts: bundle.manifest.artifacts, capture: bundle.manifest.capture };
   }
 
-  return captureWithBaguette({ root, bundle, options: { ...options, configuredDevice } });
+  return captureWithBaguette({ root, bundle, options: { ...options, configuredDevice, configuredBundleId } });
 }
 
 /**
@@ -78,16 +82,17 @@ export async function collectSee(options = {}) {
  * `matrix` already honours it.
  *
  * @param {string} root Project root.
- * @returns {{artifactsDir:string|null, device:string|null}} Capture target defaults.
+ * @returns {{artifactsDir:string|null, device:string|null, bundleId:string|null}} Capture target defaults.
  */
 function readCaptureTarget(root) {
   const read = readProjectConfig(root);
-  if (!read.exists) return { artifactsDir: null, device: null };
+  if (!read.exists) return { artifactsDir: null, device: null, bundleId: null };
   if (read.error) throw new Error(read.error);
   const target = resolveTargetConfig(read.config, { root });
   return {
     artifactsDir: path.relative(root, target.artifactsDir) || '.',
-    device: target.device || null
+    device: target.device || null,
+    bundleId: target.bundleId || null
   };
 }
 
@@ -182,6 +187,26 @@ async function captureWithBaguette({ root, bundle, options }) {
   });
   if (accessibilityOk) bundle.manifest.artifacts.accessibilityTree = path.relative(root, accessibilityPath);
 
+  // Which app was actually on screen. Picking the right simulator does not mean
+  // the right app was running on it — capture the home screen and every other
+  // signal here still reads clean.
+  let foreground = null;
+  if (accessibilityOk) {
+    const resolve = options.resolveExpectedApp || resolveExpectedApp;
+    foreground = checkForeground({
+      observed: readFrontmostApp(accessibilityPath),
+      expected: resolve(device.udid, options.configuredBundleId || null)
+    });
+    steps.push({
+      // 'unverified' is not a failure: with no configured bundle id there is
+      // nothing to compare against, and inventing a verdict from that would
+      // fail captures for a missing config field rather than a wrong app.
+      name: 'foreground-app',
+      ok: foreground.status !== 'mismatch',
+      message: foreground.message
+    });
+  }
+
   // The stability probe runs after the AX capture, not between it and the
   // screenshot. Putting the 250ms wait in the middle pushed the AX tree further
   // from the frame it describes — widening exactly the screenshot-to-AX gap
@@ -228,11 +253,15 @@ async function captureWithBaguette({ root, bundle, options }) {
   // with evidence photographed mid-animation. The bundle is still written and
   // still inspectable; it just stops claiming to be a settled capture.
   const stabilityProven = !stability || stability.status === 'stable';
-  const ok = screenshotOk && accessibilityOk && stabilityProven;
+  // A confirmed wrong app is worse than a shaky capture: the bundle is not weak
+  // evidence about this app, it is confident evidence about a different one.
+  const rightApp = !foreground || foreground.status !== 'mismatch';
+  const ok = screenshotOk && accessibilityOk && stabilityProven && rightApp;
   setCapture(bundle, root, {
     status: ok ? 'complete' : 'partial',
     steps,
-    ...(stability ? { stability } : {})
+    ...(stability ? { stability } : {}),
+    ...(foreground ? { foreground } : {})
   });
   return captureResult({ root, bundle, ok, device });
 }
