@@ -67,6 +67,63 @@ function optionsFor(bmp) {
   return { loadPixels: () => parseBmp(bmp) };
 }
 
+/**
+ * Paints text regions the way a real renderer does: a solid glyph core with
+ * half-strength blended pixels beside it. Every other fixture here paints crisp
+ * alternating columns, which is exactly why a detector that averaged the text
+ * cluster passed them all — with no blended pixels, the average is the glyph
+ * color. Anti-aliasing is what pulls the two apart.
+ * @param {{frame:object,color:object}[]} regions Regions to paint.
+ * @param {{r:number,g:number,b:number}} [surface] Background color.
+ * @returns {(x:number,y:number)=>object} Painter for buildBmp.
+ */
+function paintAntialiasedRegions(regions, surface = white) {
+  const blend = (color) => ({
+    r: Math.round((color.r + surface.r) / 2),
+    g: Math.round((color.g + surface.g) / 2),
+    b: Math.round((color.b + surface.b) / 2)
+  });
+  return (x, y) => {
+    for (const { frame, color } of regions) {
+      const inside = x >= frame.x && x < frame.x + frame.width && y >= frame.y && y < frame.y + frame.height;
+      if (!inside) continue;
+      const inCore = x >= frame.x + glyphInset && x < frame.x + frame.width - glyphInset
+        && y >= frame.y + glyphInset && y < frame.y + frame.height - glyphInset;
+      if (!inCore) return surface;
+      return x % 2 === 0 ? color : blend(color);
+    }
+    return surface;
+  };
+}
+
+// rgb(109) on white is ~5.2:1 — a clear pass. Averaged with its own 50% blend
+// pixels it measures ~2.9:1, a confident P1. The gap between those two numbers
+// is the bug this pair exists to catch.
+const passingGrey = { r: 109, g: 109, b: 109 };
+
+test('measures the glyph core rather than the anti-aliased pixels around it', () => {
+  const frame = { x: 10, y: 20, width: 30, height: 18 };
+  const bmp = buildBmp(rootWidth, rootHeight, paintAntialiasedRegions([{ frame, color: passingGrey }]));
+  const findings = detectContrastIssues(context, tree([textNode('Status', frame)]), optionsFor(bmp));
+
+  // Reporting the blended cluster average here invents a failure for text that
+  // passes WCAG comfortably — the false positive found by running this against
+  // a real SwiftUI screen.
+  assert.deepEqual(findings, []);
+});
+
+test('still flags genuinely failing text when it is anti-aliased', () => {
+  const frame = { x: 10, y: 20, width: 30, height: 18 };
+  // rgb(200) on white is ~1.7:1 and fails whichever pixels you sample. Without
+  // this, the test above could be satisfied by a detector that finds nothing.
+  const bmp = buildBmp(rootWidth, rootHeight, paintAntialiasedRegions([{ frame, color: { r: 200, g: 200, b: 200 } }]));
+  const findings = detectContrastIssues(context, tree([textNode('Faint', frame)]), optionsFor(bmp));
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].severity, 'P1');
+  assert.equal(findings[0].confidence, 'high');
+});
+
 test('flags light-gray text on white as P1 with the measured ratio in the detail', () => {
   const frame = { x: 10, y: 20, width: 30, height: 12 };
   // rgb(200) on white measures ~1.7:1 — well under the 3:1 P1 line.
@@ -82,8 +139,9 @@ test('flags light-gray text on white as P1 with the measured ratio in the detail
   assert.match(findings[0].detail, /pixel-sampled estimate/);
   assert.equal(findings[0].evidence.artifact, 'screenshot.jpg');
   assert.deepEqual(findings[0].evidence.screenshotRegion, frame);
-  // 12pt-tall text is caption-size: sampling skews low, so the finding says so.
-  assert.match(findings[0].detail, /anti-aliasing skews sampling low/);
+  // The ratio is measured from the recovered glyph color, so there is no
+  // anti-aliasing skew left to apologise for — at any text size.
+  assert.doesNotMatch(findings[0].detail, /understates the real one/);
   // 1.7:1 against a 4.5:1 threshold is 2.8 clear of the line — no amount of
   // JPEG noise or anti-aliasing skew turns that into a pass, tiny text or not.
   assert.equal(findings[0].confidence, 'high');

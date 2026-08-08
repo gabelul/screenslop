@@ -91,7 +91,8 @@ export function detectContrastIssues(context, nodes, options = {}) {
       required,
       isLargeText,
       textColor: measured.textColor,
-      backgroundColor: measured.backgroundColor
+      backgroundColor: measured.backgroundColor,
+      ratioIsLowerBound: measured.ratioIsLowerBound === true
     });
   }
 
@@ -171,9 +172,14 @@ function measureRegionContrast(image, region) {
   const upper = samples.slice(splitIndex);
   const lowerMean = mean(lower.map((entry) => entry.luminance));
   const upperMean = mean(upper.map((entry) => entry.luminance));
-  const ratio = contrastRatio(lowerMean, upperMean);
+  // Cluster means answer one question only: is there an edge in this box at all?
+  // They are a bad contrast measurement, because most glyph samples land on
+  // anti-aliased edges, so the text mean sits blended toward the background and
+  // the ratio lands low. The real number is computed further down, from the
+  // recovered glyph color.
+  const clusterRatio = contrastRatio(lowerMean, upperMean);
   // Nearly identical clusters = solid fill or photo, not text over a background.
-  if (ratio < flatClusterRatio) return null;
+  if (clusterRatio < flatClusterRatio) return null;
 
   // Which cluster is the text cannot be decided by size. Cluster counts tie
   // often, and a dense glyph run can own more of the box than its background,
@@ -184,12 +190,30 @@ function measureRegionContrast(image, region) {
   const upperColor = meanPixel(upper.map((entry) => entry.pixel));
   const border = chooseBackgroundReference(borderColor(image, region), lowerColor, upperColor);
   const ownership = assignOwnership({ border, lower, upper, lowerColor, upperColor });
-  if (!ownership) return { ratio, textColor: null, backgroundColor: null };
+  // With no owner there is no trustworthy glyph color, so the blended cluster
+  // mean is all we have. Blending only ever pulls the pair together, so treat it
+  // as a floor: it can prove "this passes", never "this fails".
+  if (!ownership) {
+    return { ratio: clusterRatio, textColor: null, backgroundColor: null, ratioIsLowerBound: true };
+  }
 
+  const textColor = representativeTextColor(ownership.text, ownership.backgroundColor);
+  if (!textColor) {
+    return {
+      ratio: clusterRatio,
+      textColor: null,
+      backgroundColor: ownership.backgroundColor,
+      ratioIsLowerBound: true
+    };
+  }
+
+  // The measurement that ships: recovered glyph color against the background the
+  // border attributed. Anything else reports the anti-aliasing, not the design.
   return {
-    ratio,
-    textColor: representativeTextColor(ownership.text, ownership.backgroundColor),
-    backgroundColor: ownership.backgroundColor
+    ratio: contrastRatio(relativeLuminance(textColor), relativeLuminance(ownership.backgroundColor)),
+    textColor,
+    backgroundColor: ownership.backgroundColor,
+    ratioIsLowerBound: false
   };
 }
 
@@ -399,22 +423,24 @@ function pixelDistance(a, b) {
  * @returns {object} Contrast finding.
  */
 function contrastFinding(context, entry, colorTokens) {
-  const { node, ratio, required, isLargeText, textColor, backgroundColor } = entry;
+  const { node, ratio, required, isLargeText, textColor, backgroundColor, ratioIsLowerBound } = entry;
   const name = accessibleName(node);
-  // Small text is mostly anti-aliased edge pixels, which drag the sampled
-  // text cluster toward the background and understate the true ratio. The
-  // finding stays (a caption that measures 2:1 is failing even if it's really
-  // 3:1), but the number deserves less trust below caption size.
-  const isTinyText = Number(node.frame.height) < tinyTextMaxHeight;
-  const tinyCaveat = isTinyText
-    ? ' At this text size, anti-aliasing skews sampling low — the real ratio is likely somewhat higher, so verify the tokens before trusting the exact number.'
+  // When the glyph color could not be attributed, the ratio falls back to
+  // blended cluster averages, which understate it. Say that outright instead of
+  // presenting a floor as if it were a measurement.
+  const boundCaveat = ratioIsLowerBound
+    ? ' The glyph color could not be attributed in this box, so this ratio comes from blended cluster averages and understates the real one — read it as a floor, not a measurement.'
     : '';
+  // Small text yields fewer full-strength glyph samples, so the median behind
+  // the color is noisier even when attribution succeeded.
+  const isTinyText = Number(node.frame.height) < tinyTextMaxHeight;
+  const uncertain = ratioIsLowerBound || isTinyText;
 
   // How far below the threshold the measurement landed decides whether codec
   // noise could have invented this finding.
   const margin = required - ratio;
-  const noiseBand = isTinyText ? noiseBandTiny : noiseBandNormal;
-  const strongMargin = isTinyText ? strongMarginTiny : strongMarginNormal;
+  const noiseBand = uncertain ? noiseBandTiny : noiseBandNormal;
+  const strongMargin = uncertain ? strongMarginTiny : strongMarginNormal;
   const withinNoise = margin <= noiseBand;
   const confidence = margin >= strongMargin ? 'high' : withinNoise ? 'low' : 'medium';
   const marginCaveat = withinNoise
@@ -445,7 +471,7 @@ function contrastFinding(context, entry, colorTokens) {
     severity: ratio < largeTextMinimum ? 'P1' : 'P2',
     pillar: 'color',
     title: 'Text contrast falls below the WCAG minimum',
-    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${attributionNote}${marginCaveat}${tinyCaveat}`,
+    detail: `"${name}" measures a contrast ratio of ${round(ratio)}:1 against its sampled background; ${isLargeText ? 'large' : 'normal'} text needs at least ${required}:1. This is a pixel-sampled estimate from the screenshot, not a color-token verdict — verify against the actual foreground/background tokens.${attributionNote}${marginCaveat}${boundCaveat}`,
     evidence: {
       artifact: context.artifacts.screenshot?.displayPath || null,
       node: nodeEvidence(node),
