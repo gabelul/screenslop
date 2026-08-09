@@ -107,17 +107,24 @@ environment gaps rather than proof failures.
 **Lesson.** Run the `run:` lines from `ci.yml` verbatim. A paraphrased mirror is
 not a mirror.
 
-## Open: matrix cells and the foreground gate
+## Matrix cells and the foreground gate — verified
 
-**Not a bug — an untested interaction.** Matrix cells capture through
-`collectSee`, so they now go through the frontmost-app check. Matrix builds
-*and* launches the target before capturing, so cells should pass — but no real
-matrix cell has been run through the gate, because both CI invocations exit
-early on environment gaps (no simulator, no config) and never reach a capture.
+Matrix cells capture through `collectSee`, so they inherit the frontmost-app
+check. This was flagged as an untested interaction because both CI invocations
+exit on environment gaps before reaching a capture, so no real cell had ever
+exercised it — a regression there would have been invisible to the suite for the
+same reason the contrast bug was.
 
-If matrix cells start failing with `foreground-app`, the likely cause is the app
-not being frontmost yet when the capture fires, and the fix is a settle-and-retry
-after launch rather than loosening the gate.
+Settled with a real single-cell run against a live app: `foreground-app` passes,
+`targetIdentity` is `verified`, the cell captures, and matrix exits 0. Build and
+launch settle comfortably before the capture fires.
+
+If cells ever do start failing on `foreground-app`, the cause is the app not
+being frontmost yet, and the fix is a settle-and-retry after launch — not
+loosening the gate.
+
+Note that `matrix --profile` refuses a path outside the project root, so a
+throwaway profile belongs in the git-ignored `.screenslop/` directory.
 
 **Known limit:** `screenTitle` takes the first heading-like label on screen. On a
 screen whose first heading is the app's own name, two different screens can share
