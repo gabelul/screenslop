@@ -670,6 +670,36 @@ function validateAgainstSchema(value, schema, location = '$') {
   }
 }
 
+test('every relative README link ships in the npm package', () => {
+  // A README link that resolves on GitHub and 404s in node_modules is invisible
+  // until someone installs the package and follows it. Individual `files`
+  // assertions elsewhere only cover the docs somebody remembered to assert, so
+  // this one closes the gap for anything added later.
+  const readme = readText('README.md');
+  const packaged = readJson('package.json').files;
+
+  const covered = (target) => packaged.some((entry) => {
+    if (entry === target) return true;
+    const asDir = entry.endsWith('/') ? entry : `${entry}/`;
+    if (target.startsWith(asDir)) return true;
+    if (!entry.includes('*')) return false;
+    const pattern = new RegExp(`^${entry.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')}$`);
+    return pattern.test(target);
+  });
+
+  const links = [...readme.matchAll(/\]\((?!https?:|mailto:|#)([^)]+)\)/g)]
+    .map((match) => match[1].split('#')[0].trim())
+    .filter(Boolean);
+
+  assert.ok(links.length > 0, 'README should contain relative links');
+
+  const broken = [...new Set(links)].filter((link) => !fileExists(link));
+  assert.deepEqual(broken, [], `README links point at missing files: ${broken.join(', ')}`);
+
+  const unshipped = [...new Set(links)].filter((link) => !covered(link));
+  assert.deepEqual(unshipped, [], `README links to files the tarball omits: ${unshipped.join(', ')}`);
+});
+
 /**
  * Checks a JavaScript value against a JSON Schema primitive type name.
  *
