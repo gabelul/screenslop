@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/gabelul/screenslop/compare/v0.3.0...v0.3.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* ship the troubleshooting doc the README links to ([cd4ff85](https://github.com/gabelul/screenslop/commit/cd4ff856ab9d0605ca3f0bc3c3f7e01c1f363e97))
+
 ## [0.3.0](https://github.com/gabelul/screenslop/compare/v0.2.0...v0.3.0) (2026-08-08)
 
 
